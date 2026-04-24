@@ -1,0 +1,87 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,650;9..144,750&display=swap');
+
+:root {
+  --ink-950: #2d1722;
+  --ink-900: #3b1f2d;
+  --ink-800: #512d3d;
+  --paper-50: #fffdf9;
+  --paper-100: #f8f2e9;
+  --paper-200: #eee4d7;
+  --paper-300: #dfd0bf;
+  --coral-500: #d76443;
+  --coral-600: #bd4e31;
+  --sage-500: #39776c;
+  --sage-600: #2c6259;
+  --gold-400: #d8aa58;
+  --text-900: #292126;
+  --text-700: #5f5259;
+  --text-500: #897a81;
+  --line: rgba(59, 31, 45, .14);
+  --shadow-soft: 0 18px 50px rgba(52, 30, 38, .12);
+  --shadow-card: 0 8px 24px rgba(52, 30, 38, .09);
+  font-family: 'DM Sans', 'Segoe UI', sans-serif;
+  color: var(--text-900);
+  background: var(--ink-950);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'DM Sans', 'Segoe UI', sans-serif;
+  color: var(--text-900);
+  background: var(--ink-950);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[contenteditable="true"]:focus-visible {
+  outline: 3px solid rgba(215, 100, 67, .72);
+  outline-offset: 3px;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(81, 45, 61, .34);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(81, 45, 61, .52);
+  background-clip: content-box;
+  border: 2px solid transparent;
+}

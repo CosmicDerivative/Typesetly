@@ -1,0 +1,17 @@
+node_modules/
+dist/
+scripts/
+History.md
+Legal.md
+release/
+.vite/
+.agents/
+.idea/
+.tmp-video-frames/
+src/assets/hero.png
+*.log
+*.tsbuildinfo
+*.7z
+*.rar
+.DS_Store
+Thumbs.db

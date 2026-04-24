@@ -1,0 +1,124 @@
+{
+  "name": "typesetly",
+  "private": true,
+  "version": "1.0.0",
+  "description": "A local-first desktop studio for writing, formatting, previewing, and exporting books",
+  "author": {
+    "name": "Typesetly Contributors",
+    "url": "https://github.com/CosmicDerivative/Typesetly/graphs/contributors"
+  },
+  "homepage": "https://github.com/CosmicDerivative/Typesetly#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CosmicDerivative/Typesetly.git"
+  },
+  "bugs": {
+    "url": "https://github.com/CosmicDerivative/Typesetly/issues"
+  },
+  "license": "MIT",
+  "main": "electron/main.cjs",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:electron": "concurrently -k -n vite,electron -c cyan,magenta \"vite\" \"wait-on http://127.0.0.1:5173 && electron .\"",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "verify": "npm run lint && npm run test && npm run build",
+    "preview": "vite preview",
+    "start": "npm run dev:electron",
+    "electron": "electron .",
+    "package:dir": "npm run build && electron-builder --dir",
+    "package:win": "npm run build && electron-builder --win nsis portable --x64",
+    "package:mac": "npm run build && electron-builder --mac dmg zip --x64 --arm64",
+    "package:linux": "npm run build && electron-builder --linux AppImage deb --x64"
+  },
+  "dependencies": {
+    "@tiptap/extension-character-count": "^3.28.0",
+    "@tiptap/extension-horizontal-rule": "^3.28.0",
+    "@tiptap/extension-link": "^3.28.0",
+    "@tiptap/extension-placeholder": "^3.28.0",
+    "@tiptap/extension-text-align": "^3.28.0",
+    "@tiptap/extension-underline": "^3.28.0",
+    "@tiptap/pm": "^3.28.0",
+    "@tiptap/react": "^3.28.0",
+    "@tiptap/starter-kit": "^3.28.0",
+    "docx": "^9.7.1",
+    "file-saver": "^2.0.5",
+    "jszip": "^3.10.1",
+    "lucide-react": "^1.25.0",
+    "mammoth": "^1.12.0",
+    "pdf-lib": "^1.17.1",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "uuid": "^14.0.1"
+  },
+  "devDependencies": {
+    "@types/file-saver": "^2.0.7",
+    "@types/jszip": "^3.4.0",
+    "@types/node": "^24.13.2",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@types/uuid": "^10.0.0",
+    "@vitejs/plugin-react": "^6.0.3",
+    "concurrently": "^10.0.3",
+    "cross-env": "^10.1.0",
+    "electron": "^43.2.0",
+    "electron-builder": "26.15.3",
+    "oxlint": "^1.71.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.1.1",
+    "wait-on": "^9.1.0"
+  },
+  "build": {
+    "appId": "io.github.jorda.typesetly",
+    "productName": "Typesetly",
+    "asar": true,
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "buildResources": "build",
+      "output": "release"
+    },
+    "win": {
+      "icon": "build/icon.png",
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "artifactName": "${productName}-Setup-${version}-${arch}.${ext}"
+    },
+    "portable": {
+      "artifactName": "${productName}-Portable-${version}-${arch}.${ext}"
+    },
+    "mac": {
+      "icon": "build/icon.png",
+      "category": "public.app-category.productivity",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "category": "Office",
+      "maintainer": "Typesetly Contributors <CosmicDerivative@users.noreply.github.com>",
+      "vendor": "Typesetly Contributors",
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    }
+  }
+}
