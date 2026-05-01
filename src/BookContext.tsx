@@ -80,8 +80,19 @@ export interface AppContextValue {
   updateDetails: (details: Partial<BookDetails>) => void
   updateBookSeries: (id: string, series: { name: string; number?: number; total?: number }) => void
   setActiveChapter: (id: string) => void
+  updateChapterTitle: (id: string, title: string) => void
+  updateChapterType: (id: string, type: PageType) => void
+  updateChapterSubtitle: (id: string, subtitle: string) => void
+  updateChapterImage: (id: string, imageDataUrl?: string, metadata?: { width: number; height: number; bytes: number }) => void
+  updateChapterImageDetails: (id: string, details: Pick<Chapter, 'imageAlt' | 'imageCaption' | 'imageLayout'>) => void
+  updateChapterContent: (id: string, content: string) => void
+  splitChapter: (id: string, beforeHtml: string, afterHtml: string) => void
+  updateChapterOptions: (id: string, options: Partial<ChapterOptions>) => void
+  setEpubStartChapter: (id?: string) => void
+  updateBodyChapterOptions: (options: Partial<ChapterOptions>) => void
   addChapter: () => void
-  removeChapter: (chapterId: string) => void
+  addChapterToPart: (partId: string) => void
+  addPage: (type: PageType) => void
   markSaved: () => void
 }
 
