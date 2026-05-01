@@ -33,12 +33,15 @@ export type RightPanel =
   | 'notes'
 
 export interface AppContextValue {
+  books: BookProject[]
+  loading: boolean
+  openBookId: string | null
+  project: BookProject | null
+  themes: BookTheme[]
+  activeTheme: BookTheme
+  mode: AppMode
+  previewDevice: PreviewDevice
   saved: boolean
-  setMode: (mode: WorkspaceMode) => void
-  setActiveChapter: (chapterId: string) => void
-  updateBookDetails: (details: Partial<BookDetails>) => void
-  updateChapterTitle: (chapterId: string, title: string) => void
-  updateChapterContent: (chapterId: string, content: string) => void
   addChapter: () => void
   removeChapter: (chapterId: string) => void
   markSaved: () => void
