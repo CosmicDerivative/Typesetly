@@ -10,8 +10,19 @@ import type {
   CharacterProfile,
   EditorialComment,
   EditorPrefs,
+  PageType,
+  PreviewDevice,
+  SaveStatus,
+  StickyNote,
+  StoryRelationship,
+  WritingGoals,
+  WorldbuildingCategory,
+  WorldbuildingEntry,
+} from './types'
 
-export type WorkspaceMode = 'writing' | 'preview'
+export type RightPanel =
+  | 'none'
+  | 'preview'
 
 export type BookContextValue = {
   project: BookProject
