@@ -162,18 +162,13 @@ export interface AppContextValue {
   setSprintDuration: (seconds: number) => void
   setBreakDuration: (seconds: number) => void
   markSaved: () => void
-  return value
+  downloadSnapshot: () => void
+  createBoxset: (bookIds: string[], title: string) => void
+  dismissNotice: () => void
 }
 
-export function getActiveChapter(project: BookProject) {
-  return project.chapters.find((chapter) => chapter.id === project.activeId)
-}
+export const AppContext = createContext<AppContextValue | null>(null)
 
-export function selectChapter(project: BookProject, chapterId: string): BookProject {
-  if (!project.chapters.some((chapter) => chapter.id === chapterId)) {
-    return project
-  }
-  return { ...project, activeId: chapterId }
 }
 
 export function renameBook(project: BookProject, title: string): BookProject {
