@@ -157,16 +157,11 @@ export interface AppContextValue {
   deleteCalloutPreset: (id: string) => void
   createNamedRevision: (name: string) => void
   restoreNamedRevision: (id: string) => void
+  toggleTimer: () => void
+  resetTimer: () => void
+  setSprintDuration: (seconds: number) => void
+  setBreakDuration: (seconds: number) => void
   markSaved: () => void
-}
-
-export const BookContext = createContext<BookContextValue | null>(null)
-
-export function useBook() {
-  const value = useContext(BookContext)
-  if (!value) {
-    throw new Error('useBook must be used within BookProvider')
-  }
   return value
 }
 
