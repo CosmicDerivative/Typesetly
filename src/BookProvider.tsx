@@ -1,7 +1,53 @@
-import { useMemo, useState, type ReactNode } from 'react'
-import { BookContext, getActiveChapter, selectChapter, type WorkspaceMode } from './BookContext'
-import { createChapter, createEmptyBook } from './data'
-import type { BookDetails, BookProject } from './types'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { v4 as uuid } from 'uuid'
+import { AppContext, type RightPanel } from './BookContext'
+import {
+  BACK_MATTER_TYPES,
+  FRONT_MATTER_TYPES,
+  PAGE_TYPE_LABELS,
+  countWords,
+  createChapter,
+  createEmptyBook,
+  createPart,
+  makePage,
+  todayKey,
+} from './data'
+import {
+  loadLibrary,
+  parseSnapshot,
+  saveLibrary,
+  saveRevision,
+  upsertBook,
+} from './library/store'
+import { convertPageType, nextChapterTitle } from './manuscript/pageTypes'
+import { cloneTheme, getThemeById, PRESET_THEMES } from './themes/presets'
+import {
+  isDarkWorkspaceTheme,
+  resolveWorkspaceTheme,
+} from './themes/workspaceThemes'
+import type {
+  AppMode,
+  BookDetails,
+  BookProject,
+  BookTheme,
+  CharacterProfile,
+  ChapterOptions,
+  EditorPrefs,
+  LibraryState,
+  PageType,
+  PreviewDevice,
+  SaveStatus,
+  StickyNote,
+  StoryRelationship,
+  WritingGoals,
+  WorldbuildingCategory,
+  WorldbuildingEntry,
+} from './types'
+import { defaultChapterOptions, defaultEditorPrefs, defaultGoals, defaultStoryBible } from './types'
+import {
+  duplicateSceneContent,
+  insertScene,
+  joinScenes,
 
 export function BookProvider({ children }: { children: ReactNode }) {
   const [project, setProject] = useState<BookProject>(() => createEmptyBook())
