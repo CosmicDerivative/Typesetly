@@ -93,6 +93,19 @@ export interface AppContextValue {
   addChapter: () => void
   addChapterToPart: (partId: string) => void
   addPage: (type: PageType) => void
+  addPart: () => void
+  saveActiveAsMasterPage: () => void
+  savePageAsMaster: (id: string) => void
+  addMasterPage: (templateId: string) => void
+  duplicateChapter: (id: string) => void
+  deleteChapter: (id: string) => void
+  moveChapterBy: (id: string, direction: -1 | 1) => void
+  moveChapterRelative: (sourceId: string, targetId: string, placement: 'before' | 'after' | 'inside') => void
+  reorderChapters: (fromIndex: number, toIndex: number) => void
+  moveChapterToPart: (chapterId: string, partId?: string) => void
+  addManuscriptFolder: (name: string) => string
+  renameManuscriptFolder: (id: string, name: string) => void
+  deleteManuscriptFolder: (id: string) => void
   markSaved: () => void
 }
 
