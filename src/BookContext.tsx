@@ -1,5 +1,15 @@
 import { createContext, useContext } from 'react'
-import type { BookDetails, BookProject, Chapter } from './types'
+import type {
+  AppMode,
+  BookDetails,
+  BookProject,
+  BookTheme,
+  CalloutPreset,
+  Chapter,
+  ChapterOptions,
+  CharacterProfile,
+  EditorialComment,
+  EditorPrefs,
 
 export type WorkspaceMode = 'writing' | 'preview'
 
