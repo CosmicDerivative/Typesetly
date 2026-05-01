@@ -48,21 +48,54 @@ import {
   duplicateSceneContent,
   insertScene,
   joinScenes,
+  moveSceneContent,
+  normalizedSceneTitles,
+  removeSceneContent,
+  sceneCount,
+  splitScenes,
+} from './editor/scenes'
+import {
+  detachSceneNotes,
+  insertSceneNoteGap,
+  moveSceneNotesBetweenChapters,
+  reorderSceneNotes,
+} from './notes/sceneNotes'
+import { applyHabitWordDelta } from './goals/habitWords'
 
-export function BookProvider({ children }: { children: ReactNode }) {
-  const [project, setProject] = useState<BookProject>(() => createEmptyBook())
-  const [mode, setMode] = useState<WorkspaceMode>('writing')
-  const [saved, setSaved] = useState(true)
+const PINNED_LAYOUT_KEY = 'typesetly-pinned-layout-v1'
 
-  const changeProject = (update: (book: BookProject) => BookProject) => {
-    setProject((book) => ({
-      ...update(book),
-      updatedAt: new Date().toISOString(),
-    }))
-    setSaved(false)
+function readPinnedLayout(): { sidebarPinned: boolean; pinnedRightPanel: RightPanel } {
+  try {
+    const value = JSON.parse(localStorage.getItem(PINNED_LAYOUT_KEY) || '{}') as {
+      sidebarPinned?: unknown
+      pinnedRightPanel?: unknown
+    }
+    const validRightPanels: RightPanel[] = [
+      'none',
+      'preview',
+      'find',
+      'goals',
+      'settings',
+      'quotes',
+      'editorial',
+      'revisions',
+      'story',
+      'notes',
+    ]
+    return {
+      sidebarPinned: value.sidebarPinned === true,
+      pinnedRightPanel: validRightPanels.includes(value.pinnedRightPanel as RightPanel)
+        ? value.pinnedRightPanel as RightPanel
+        : 'none',
+    }
+  } catch {
+    return { sidebarPinned: false, pinnedRightPanel: 'none' }
   }
+}
 
-  const value = useMemo(() => ({
+/**
+ * Hydrates projects from every earlier schema revision. Keeping migration at
+ * this boundary lets components assume optional arrays and options exist.
     project,
     activeChapter: getActiveChapter(project),
     mode,
