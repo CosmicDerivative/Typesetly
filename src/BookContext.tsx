@@ -144,6 +144,19 @@ export interface AppContextValue {
   saveEditingTheme: (name?: string) => void
   cancelThemeEdit: () => void
   toggleThemeFavorite: (themeId: string) => void
+  deleteCustomTheme: (themeId: string) => void
+  updateGoals: (goals: Partial<WritingGoals>) => void
+  logWordsToday: (words: number) => void
+  updateEditorPrefs: (prefs: Partial<EditorPrefs>) => void
+  addComment: (comment: Omit<EditorialComment, 'id' | 'createdAt' | 'resolved'>) => void
+  updateComment: (id: string, patch: Partial<EditorialComment>) => void
+  deleteComment: (id: string) => void
+  setTrackChanges: (enabled: boolean) => void
+  resolveTrackedChange: (id: string, resolution: 'accepted' | 'rejected') => void
+  saveCalloutPreset: (preset: Omit<CalloutPreset, 'id'>) => void
+  deleteCalloutPreset: (id: string) => void
+  createNamedRevision: (name: string) => void
+  restoreNamedRevision: (id: string) => void
   markSaved: () => void
 }
 
