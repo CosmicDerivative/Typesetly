@@ -131,6 +131,19 @@ export interface AppContextValue {
   updateWorldEntry: (id: string, patch: Partial<WorldbuildingEntry>) => void
   deleteWorldEntry: (id: string) => void
   addStoryRelationship: (sourceId: string, targetId: string, label: string) => string
+  updateStoryRelationship: (id: string, patch: Partial<StoryRelationship>) => void
+  deleteStoryRelationship: (id: string) => void
+  addStickyNote: (
+    note?: Partial<Omit<StickyNote, 'id' | 'createdAt' | 'updatedAt'>>,
+  ) => string
+  updateStickyNote: (id: string, patch: Partial<StickyNote>) => void
+  deleteStickyNote: (id: string) => void
+  applyTheme: (themeId: string) => void
+  startThemeEdit: (theme?: BookTheme) => void
+  updateEditingTheme: (patch: Partial<BookTheme>) => void
+  saveEditingTheme: (name?: string) => void
+  cancelThemeEdit: () => void
+  toggleThemeFavorite: (themeId: string) => void
   markSaved: () => void
 }
 
