@@ -106,6 +106,19 @@ export interface AppContextValue {
   addManuscriptFolder: (name: string) => string
   renameManuscriptFolder: (id: string, name: string) => void
   deleteManuscriptFolder: (id: string) => void
+  toggleManuscriptFolder: (id: string) => void
+  addChapterToFolder: (folderId: string) => void
+  moveChapterToFolder: (chapterId: string, folderId?: string) => void
+  addScene: (chapterId: string, afterIndex: number) => void
+  duplicateScene: (chapterId: string, sceneIndex: number) => void
+  moveScene: (chapterId: string, sceneIndex: number, direction: -1 | 1) => void
+  moveSceneToChapter: (
+    sourceChapterId: string,
+    sourceSceneIndex: number,
+    targetChapterId: string,
+    targetSceneIndex: number,
+    placement: 'before' | 'after',
+  ) => void
   markSaved: () => void
 }
 
