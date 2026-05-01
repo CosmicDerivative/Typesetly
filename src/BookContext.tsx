@@ -23,11 +23,16 @@ import type {
 export type RightPanel =
   | 'none'
   | 'preview'
+  | 'find'
+  | 'goals'
+  | 'settings'
+  | 'quotes'
+  | 'editorial'
+  | 'revisions'
+  | 'story'
+  | 'notes'
 
-export type BookContextValue = {
-  project: BookProject
-  activeChapter: Chapter | undefined
-  mode: WorkspaceMode
+export interface AppContextValue {
   saved: boolean
   setMode: (mode: WorkspaceMode) => void
   setActiveChapter: (chapterId: string) => void
