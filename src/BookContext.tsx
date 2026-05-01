@@ -55,6 +55,18 @@ export interface AppContextValue {
   sidebarPinned: boolean
   pinnedRightPanel: RightPanel
   editingTheme: BookTheme | null
+  frontMatter: Chapter[]
+  bodyChapters: Chapter[]
+  backMatter: Chapter[]
+  activeChapter: Chapter | undefined
+  setMode: (mode: AppMode) => void
+  setPreviewDevice: (device: PreviewDevice) => void
+  setRightPanel: (panel: RightPanel) => void
+  setSidebarOpen: (open: boolean) => void
+  setSidebarPinned: (pinned: boolean) => void
+  setPinnedRightPanel: (panel: RightPanel) => void
+  openBook: (id: string) => void
+  goHome: () => void
   addChapter: () => void
   removeChapter: (chapterId: string) => void
   markSaved: () => void
