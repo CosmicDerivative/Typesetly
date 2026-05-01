@@ -42,6 +42,19 @@ export interface AppContextValue {
   mode: AppMode
   previewDevice: PreviewDevice
   saved: boolean
+  saveStatus: SaveStatus
+  saveError: string
+  notice: string
+  timerRunning: boolean
+  timerSeconds: number
+  timerPhase: 'sprint' | 'break'
+  sprintDuration: number
+  breakDuration: number
+  rightPanel: RightPanel
+  sidebarOpen: boolean
+  sidebarPinned: boolean
+  pinnedRightPanel: RightPanel
+  editingTheme: BookTheme | null
   addChapter: () => void
   removeChapter: (chapterId: string) => void
   markSaved: () => void
