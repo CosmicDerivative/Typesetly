@@ -119,6 +119,18 @@ export interface AppContextValue {
     targetSceneIndex: number,
     placement: 'before' | 'after',
   ) => void
+  deleteScene: (chapterId: string, sceneIndex: number) => void
+  updateSceneTitle: (chapterId: string, sceneIndex: number, title: string) => void
+  restoreTrashItem: (id: string) => void
+  permanentlyDeleteTrashItem: (id: string) => void
+  emptyTrash: () => void
+  addCharacter: () => string
+  updateCharacter: (id: string, patch: Partial<CharacterProfile>) => void
+  deleteCharacter: (id: string) => void
+  addWorldEntry: (category?: WorldbuildingCategory) => string
+  updateWorldEntry: (id: string, patch: Partial<WorldbuildingEntry>) => void
+  deleteWorldEntry: (id: string) => void
+  addStoryRelationship: (sourceId: string, targetId: string, label: string) => string
   markSaved: () => void
 }
 
