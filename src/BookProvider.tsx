@@ -912,13 +912,62 @@ export function BookProvider({ children }: { children: ReactNode }) {
               partId: target.type !== 'part' ? target.partId : undefined,
               folderId: target.type !== 'part' ? target.folderId : undefined,
             }
-      }))
-    },
-    updateChapterContent: (chapterId: string, content: string) => {
-      changeProject((book) => ({
+          : source
+        const chapters = book.chapters.filter((chapter) => chapter.id !== source.id)
+        const targetIndex = chapters.findIndex((chapter) => chapter.id === target.id)
+        chapters.splice(targetIndex + (placement === 'after' ? 1 : 0), 0, moved)
+        return { ...book, chapters }
+      }),
+    reorderChapters: (fromIndex: number, toIndex: number) =>
+      mutateOpen((book) => {
+        const chapters = [...book.chapters]
+        const [moved] = chapters.splice(fromIndex, 1)
+        if (!moved) return book
+        chapters.splice(toIndex, 0, moved)
+        return { ...book, chapters }
+      }),
+    moveChapterToPart: (chapterId: string, partId?: string) =>
+      mutateOpen((book) => ({
         ...book,
         chapters: book.chapters.map((chapter) =>
-          chapter.id === chapterId ? { ...chapter, content } : chapter
+          chapter.id === chapterId
+            ? { ...chapter, partId, folderId: partId ? undefined : chapter.folderId }
+            : chapter,
+        ),
+      })),
+    addManuscriptFolder: (name: string) => {
+      const id = uuid()
+      const trimmed = name.trim()
+      mutateOpen((book) => ({
+        ...book,
+        manuscriptFolders: [
+          ...(book.manuscriptFolders || []),
+          {
+            id,
+            name: trimmed || `Folder ${(book.manuscriptFolders || []).length + 1}`,
+            collapsed: false,
+          },
+        ],
+      }))
+      setNotice('Manuscript folder created.')
+      return id
+    },
+    renameManuscriptFolder: (id: string, name: string) => {
+      const trimmed = name.trim()
+      if (!trimmed) return
+      mutateOpen((book) => ({
+        ...book,
+        manuscriptFolders: (book.manuscriptFolders || []).map((folder) =>
+          folder.id === id ? { ...folder, name: trimmed } : folder,
+        ),
+      }))
+      setNotice('Folder renamed.')
+    },
+    deleteManuscriptFolder: (id: string) => {
+      mutateOpen((book) => ({
+        ...book,
+        manuscriptFolders: (book.manuscriptFolders || []).filter((folder) => folder.id !== id),
+        chapters: book.chapters.map((chapter) =>
         ),
       }))
     },
