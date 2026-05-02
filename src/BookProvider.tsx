@@ -858,6 +858,60 @@ export function BookProvider({ children }: { children: ReactNode }) {
         }
         const sectionIndices = book.chapters
           .map((chapter, index) => ({ chapter, index }))
+          .filter(({ chapter }) => sameSection(chapter))
+          .map(({ index }) => index)
+        const sectionPosition = sectionIndices.indexOf(fromIndex)
+        const targetIndex = sectionIndices[sectionPosition + direction]
+        if (targetIndex === undefined) return book
+        const chapters = [...book.chapters]
+        ;[chapters[fromIndex], chapters[targetIndex]] = [chapters[targetIndex], chapters[fromIndex]]
+        return { ...book, chapters }
+      }),
+    moveChapterRelative: (
+      sourceId: string,
+      targetId: string,
+      placement: 'before' | 'after' | 'inside',
+    ) =>
+      mutateOpen((book) => {
+        if (sourceId === targetId) return book
+        const source = book.chapters.find((chapter) => chapter.id === sourceId)
+        const target = book.chapters.find((chapter) => chapter.id === targetId)
+        if (!source || !target || ['title-page', 'copyright', 'contents'].includes(source.type)) return book
+
+        const section = (type: PageType) => (
+          FRONT_MATTER_TYPES.includes(type)
+            ? 'front'
+            : BACK_MATTER_TYPES.includes(type)
+              ? 'back'
+              : 'body'
+        )
+        if (section(source.type) !== section(target.type)) return book
+        if (section(source.type) === 'front' && ['title-page', 'copyright', 'contents'].includes(target.type)) return book
+
+        if (placement === 'inside') {
+          if (source.type !== 'chapter' || target.type !== 'part') return book
+          const chapters = book.chapters.filter((chapter) => chapter.id !== source.id)
+          const childIndices = chapters
+            .map((chapter, index) => ({ chapter, index }))
+            .filter(({ chapter }) => chapter.partId === target.id)
+            .map(({ index }) => index)
+          const partIndex = chapters.findIndex((chapter) => chapter.id === target.id)
+          const insertAt = childIndices.length ? Math.max(...childIndices) + 1 : partIndex + 1
+          chapters.splice(insertAt, 0, { ...source, partId: target.id, folderId: undefined })
+          return { ...book, chapters }
+        }
+
+        // Parts only trade places with parts. A chapter dropped next to another
+        // chapter adopts that destination chapter's parent part.
+        if (section(source.type) === 'body' && (source.type === 'part') !== (target.type === 'part')) {
+          return book
+        }
+        const moved = source.type !== 'part'
+          ? {
+              ...source,
+              partId: target.type !== 'part' ? target.partId : undefined,
+              folderId: target.type !== 'part' ? target.folderId : undefined,
+            }
       }))
     },
     updateChapterContent: (chapterId: string, content: string) => {
