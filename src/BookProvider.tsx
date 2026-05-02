@@ -1347,4 +1347,59 @@ export function BookProvider({ children }: { children: ReactNode }) {
           ...(book.storyBible || defaultStoryBible()),
           world: [...(book.storyBible?.world || []), entry],
         },
+      }))
+      return id
+    },
+    updateWorldEntry: (id: string, patch: Partial<WorldbuildingEntry>) =>
+      mutateOpen((book) => ({
+        ...book,
+        storyBible: {
+          ...(book.storyBible || defaultStoryBible()),
+          world: (book.storyBible?.world || []).map((entry) =>
+            entry.id === id ? { ...entry, ...patch } : entry
+          ),
+        },
+      })),
+    deleteWorldEntry: (id: string) => {
+      mutateOpen((book) => ({
+        ...book,
+        storyBible: {
+          ...(book.storyBible || defaultStoryBible()),
+          world: (book.storyBible?.world || []).filter((entry) => entry.id !== id),
+          relationships: (book.storyBible?.relationships || []).filter(
+            (relationship) => relationship.sourceId !== id && relationship.targetId !== id,
+          ),
+        },
+      }))
+      setNotice('Worldbuilding entry removed from the Story Bible.')
+    },
+    addStoryRelationship: (sourceId: string, targetId: string, label: string) => {
+      const id = uuid()
+      const relationship: StoryRelationship = {
+        id,
+        sourceId,
+        targetId,
+        label: label.trim() || 'connected to',
+        createdAt: new Date().toISOString(),
+      }
+      mutateOpen((book) => {
+        const bible = book.storyBible || defaultStoryBible()
+        const entityIds = new Set([
+          ...bible.characters.map((character) => character.id),
+          ...bible.world.map((entry) => entry.id),
+        ])
+        if (
+          sourceId === targetId ||
+          !entityIds.has(sourceId) ||
+          !entityIds.has(targetId)
+        ) return book
+        return {
+          ...book,
+          storyBible: {
+            ...bible,
+            relationships: [...bible.relationships, relationship],
+          },
+        }
+      })
+      return id
 }
