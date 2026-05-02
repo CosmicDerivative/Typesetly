@@ -530,15 +530,60 @@ export function BookProvider({ children }: { children: ReactNode }) {
       setThemes(restoredThemes)
       setOpenBookId(null)
       markDirty()
-        ...book,
-        details: { ...book.details, ...details },
-      }))
+      await saveLibrary({ books: restoredBooks, openBookId: null, themes: restoredThemes })
+      setNotice(`${restoredBooks.length} book(s) restored from snapshot.`)
     },
-    updateChapterTitle: (chapterId: string, title: string) => {
-      changeProject((book) => ({
+    replaceProject: (next: BookProject) => {
+      setBooks((previous) => upsertBook({ books: previous, openBookId, themes }, normalizeBook(next)).books)
+      setOpenBookId(next.id)
+      markDirty()
+    },
+    updateDetails: (details: Partial<BookDetails>) =>
+      mutateOpen((book) => ({ ...book, details: { ...book.details, ...details } })),
+    updateBookSeries: (id: string, series: { name: string; number?: number; total?: number }) => {
+      markDirty()
+      setBooks((previous) => previous.map((book) => book.id === id ? {
+        ...book,
+        details: {
+          ...book.details,
+          seriesName: series.name.trim(),
+          seriesNumber: series.number,
+          seriesTotal: series.total,
+        },
+        updatedAt: new Date().toISOString(),
+      } : book))
+    },
+    setActiveChapter: (id: string) => {
+      if (!openBookId) return
+      setBooks((previous) =>
+        previous.map((book) => (book.id === openBookId ? { ...book, activeId: id } : book)),
+      )
+      if (window.innerWidth <= 760) setSidebarOpen(false)
+    },
+    updateChapterTitle: (id: string, title: string) =>
+      mutateOpen((book) => ({
+        ...book,
+        chapters: book.chapters.map((chapter) => (chapter.id === id ? { ...chapter, title } : chapter)),
+      })),
+    updateChapterType: (id: string, type: PageType) => {
+      mutateOpen((book) => convertPageType(book, id, type))
+      setNotice(`Page type changed to ${PAGE_TYPE_LABELS[type]}.`)
+    },
+    updateChapterSubtitle: (id: string, subtitle: string) =>
+      mutateOpen((book) => ({
+        ...book,
+        chapters: book.chapters.map((chapter) => (chapter.id === id ? { ...chapter, subtitle } : chapter)),
+      })),
+    updateChapterImage: (id: string, imageDataUrl?: string, metadata?: { width: number; height: number; bytes: number }) =>
+      mutateOpen((book) => ({
         ...book,
         chapters: book.chapters.map((chapter) =>
-          chapter.id === chapterId ? { ...chapter, title } : chapter
+          chapter.id === id ? {
+            ...chapter,
+            imageDataUrl,
+            imageWidthPx: metadata?.width || 0,
+            imageHeightPx: metadata?.height || 0,
+            imageBytes: metadata?.bytes || 0,
         ),
       }))
     },
