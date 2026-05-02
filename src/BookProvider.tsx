@@ -96,6 +96,60 @@ function readPinnedLayout(): { sidebarPinned: boolean; pinnedRightPanel: RightPa
 /**
  * Hydrates projects from every earlier schema revision. Keeping migration at
  * this boundary lets components assume optional arrays and options exist.
+ */
+function normalizeBook(book: BookProject): BookProject {
+  const partIds = new Set(book.chapters.filter((chapter) => chapter.type === 'part').map((chapter) => chapter.id))
+  const manuscriptFolders = (book.manuscriptFolders || []).map((folder, index) => ({
+    id: folder.id || uuid(),
+    name: folder.name?.trim() || `Folder ${index + 1}`,
+    collapsed: folder.collapsed === true,
+  }))
+  const folderIds = new Set(manuscriptFolders.map((folder) => folder.id))
+  const workspaceTheme = resolveWorkspaceTheme(
+    book.editorPrefs?.workspaceTheme,
+    book.editorPrefs?.darkMode,
+  )
+  return {
+    ...book,
+    schemaVersion: 3,
+    goals: { ...defaultGoals(), ...book.goals },
+    editorPrefs: {
+      ...defaultEditorPrefs(),
+      ...book.editorPrefs,
+      workspaceTheme,
+      darkMode: isDarkWorkspaceTheme(workspaceTheme),
+    },
+    customThemes: book.customThemes || [],
+    masterPages: book.masterPages || [],
+    comments: book.comments || [],
+    revisions: book.revisions || [],
+    trackedChanges: book.trackedChanges || [],
+    calloutPresets: book.calloutPresets || [],
+    trashItems: book.trashItems || [],
+    storyBible: {
+      ...defaultStoryBible(),
+      ...book.storyBible,
+      characters: book.storyBible?.characters || [],
+      world: book.storyBible?.world || [],
+      relationships: book.storyBible?.relationships || [],
+    },
+    stickyNotes: book.stickyNotes || [],
+    manuscriptFolders,
+    trackChanges: book.trackChanges || false,
+    themeId: book.themeId || 'theme-classic',
+    chapters: book.chapters.map((chapter, index) => ({
+      ...chapter,
+      sortOrder: chapter.sortOrder ?? index,
+      partId: chapter.partId && partIds.has(chapter.partId) ? chapter.partId : undefined,
+      folderId:
+        !(chapter.partId && partIds.has(chapter.partId)) &&
+        chapter.folderId &&
+        folderIds.has(chapter.folderId)
+          ? chapter.folderId
+          : undefined,
+      options: { ...defaultChapterOptions(), ...chapter.options },
+      subtitle: chapter.subtitle ?? '',
+      imageAlt: chapter.imageAlt ?? '',
     project,
     activeChapter: getActiveChapter(project),
     mode,
