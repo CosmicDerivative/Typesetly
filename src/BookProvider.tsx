@@ -1129,4 +1129,58 @@ export function BookProvider({ children }: { children: ReactNode }) {
           sourceScenes.push('<p></p>')
           sourceTitles.push('Scene 1')
         }
+        return {
+          ...book,
+          chapters: book.chapters.map((chapter) => {
+            if (chapter.id === source.id) {
+              return { ...chapter, content: joinScenes(sourceScenes), sceneTitles: sourceTitles }
+            }
+            if (chapter.id === target.id) {
+              return { ...chapter, content: joinScenes(targetScenes), sceneTitles: targetTitles }
+            }
+            return chapter
+          }),
+          activeId: target.id,
+          stickyNotes: moveSceneNotesBetweenChapters(
+            book.stickyNotes || [],
+            source.id,
+            sourceSceneIndex,
+            target.id,
+            insertAt,
+          ),
+        }
+      })
+      setNotice('Scene moved.')
+    },
+    deleteScene: (chapterId: string, sceneIndex: number) => {
+      const source = project?.chapters.find((chapter) => chapter.id === chapterId)
+      if (!source || source.type !== 'chapter') return
+      if (sceneCount(source.content) <= 1) {
+        setNotice('A chapter must keep at least one scene.')
+        return
+      }
+      mutateOpen((book) => {
+        const source = book.chapters.find((chapter) => chapter.id === chapterId)
+        if (!source || source.type !== 'chapter') return book
+        const removed = removeSceneContent(source.content, sceneIndex)
+        if (!removed) return book
+        const titles = normalizedSceneTitles(source.sceneTitles, sceneCount(source.content))
+        const [sceneTitle] = titles.splice(sceneIndex, 1)
+        const sceneNotes = detachSceneNotes(book.stickyNotes || [], chapterId, sceneIndex)
+        return {
+          ...book,
+          chapters: book.chapters.map((chapter) =>
+            chapter.id === chapterId
+              ? { ...chapter, content: removed.html, sceneTitles: titles }
+              : chapter,
+          ),
+          trashItems: [
+            ...(book.trashItems || []),
+            {
+              id: uuid(),
+              kind: 'scene' as const,
+              deletedAt: new Date().toISOString(),
+              chapterId,
+              chapterTitle: source.title,
+              sceneIndex,
 }
