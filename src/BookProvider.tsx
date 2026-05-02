@@ -749,6 +749,60 @@ export function BookProvider({ children }: { children: ReactNode }) {
         const template = {
           ...structuredClone(source),
           id: uuid(),
+          partId: undefined,
+          folderId: undefined,
+          title: `${source.title} Master`,
+        }
+        return { ...book, masterPages: [...(book.masterPages || []), template] }
+      })
+      setNotice('Master page saved.')
+    },
+    addMasterPage: (templateId: string) => {
+      const template = project?.masterPages?.find((page) => page.id === templateId)
+      if (!template) return
+      const page = {
+        ...structuredClone(template),
+        id: uuid(),
+        partId: undefined,
+        folderId: undefined,
+        title: template.title.replace(/\s+Master$/, ''),
+      }
+      mutateOpen((book) => {
+        const chapters = [...book.chapters, page]
+        return { ...book, chapters, activeId: page.id }
+      })
+      setNotice('Master page added.')
+    },
+    duplicateChapter: (id: string) => {
+      const source = project?.chapters.find((chapter) => chapter.id === id)
+      if (!source) return
+      if (['title-page', 'copyright', 'contents'].includes(source.type)) {
+        setNotice('Required book pages cannot be duplicated.')
+        return
+      }
+      mutateOpen((book) => {
+        const index = book.chapters.findIndex((chapter) => chapter.id === id)
+        if (index < 0) return book
+        const sourceChapter = book.chapters[index]
+        if (['title-page', 'copyright', 'contents'].includes(sourceChapter.type)) return book
+        const duplicate = {
+          ...structuredClone(sourceChapter),
+          id: uuid(),
+          title: `${sourceChapter.title || PAGE_TYPE_LABELS[sourceChapter.type]} Copy`,
+        }
+        const chapters = [...book.chapters]
+        chapters.splice(index + 1, 0, duplicate)
+        return { ...book, chapters, activeId: duplicate.id }
+      })
+      setNotice('Page duplicated.')
+    },
+    deleteChapter: (id: string) => {
+      const source = project?.chapters.find((chapter) => chapter.id === id)
+      if (!source) return
+      if (['title-page', 'copyright', 'contents'].includes(source.type)) {
+        setNotice('Required book pages cannot be moved to Trash.')
+        return
+      }
       }))
     },
     updateChapterContent: (chapterId: string, content: string) => {
