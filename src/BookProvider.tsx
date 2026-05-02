@@ -368,9 +368,59 @@ export function BookProvider({ children }: { children: ReactNode }) {
     setSidebarPinned,
     setPinnedRightPanel,
     openBook: (id: string) => {
+      setOpenBookId(id)
+      setMode('draft')
+      setRightPanel(pinnedRightPanel)
+      setSidebarOpen(sidebarPinned)
     },
-    updateBookDetails: (details: Partial<BookDetails>) => {
-      changeProject((book) => ({
+    goHome: () => setOpenBookId(null),
+    createBook: (title?: string) => {
+      const book = normalizeBook(createEmptyBook(title))
+      markDirty()
+      setBooks((previous) => [book, ...previous])
+      setOpenBookId(book.id)
+      setNotice('New book created.')
+    },
+    duplicateBook: (id: string) => {
+      const source = books.find((book) => book.id === id)
+      if (!source) return
+      const idMap = new Map(source.chapters.map((chapter) => [chapter.id, uuid()]))
+      const folderIdMap = new Map(
+        (source.manuscriptFolders || []).map((folder) => [folder.id, uuid()]),
+      )
+      const copy = normalizeBook({
+        ...structuredClone(source),
+        id: uuid(),
+        details: { ...source.details, title: `${source.details.title} (Copy)` },
+        chapters: source.chapters.map((chapter) => ({
+          ...structuredClone(chapter),
+          id: idMap.get(chapter.id)!,
+          partId: chapter.partId ? idMap.get(chapter.partId) : undefined,
+          folderId: chapter.folderId ? folderIdMap.get(chapter.folderId) : undefined,
+        })),
+        manuscriptFolders: (source.manuscriptFolders || []).map((folder) => ({
+          ...structuredClone(folder),
+          id: folderIdMap.get(folder.id)!,
+        })),
+        activeId: idMap.get(source.activeId) || idMap.get(source.chapters[0].id)!,
+        trashItems: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      })
+      markDirty()
+      setBooks((previous) => [copy, ...previous])
+      setNotice('Book duplicated.')
+    },
+    deleteBook: (id: string) => {
+      markDirty()
+      setBooks((previous) => previous.filter((book) => book.id !== id))
+      if (openBookId === id) setOpenBookId(null)
+      setNotice('Book deleted.')
+    },
+    importBookFromDocx: async (file: File) => {
+      const { importDocxToBook } = await import('./import/docx')
+      const report = await importDocxToBook(file)
+      markDirty()
         ...book,
         details: { ...book.details, ...details },
       }))
