@@ -1074,6 +1074,59 @@ export function BookProvider({ children }: { children: ReactNode }) {
               : chapter
           ),
           stickyNotes: reorderSceneNotes(book.stickyNotes || [], chapterId, sceneIndex, moved.index),
+        }
+      }),
+    moveSceneToChapter: (
+      sourceChapterId: string,
+      sourceSceneIndex: number,
+      targetChapterId: string,
+      targetSceneIndex: number,
+      placement: 'before' | 'after',
+    ) => {
+      mutateOpen((book) => {
+        const source = book.chapters.find((chapter) => chapter.id === sourceChapterId)
+        const target = book.chapters.find((chapter) => chapter.id === targetChapterId)
+        if (!source || source.type !== 'chapter' || !target || target.type !== 'chapter') return book
 
-  return <BookContext.Provider value={value}>{children}</BookContext.Provider>
+        const sourceScenes = splitScenes(source.content)
+        if (sourceSceneIndex < 0 || sourceSceneIndex >= sourceScenes.length) return book
+        const sourceTitles = normalizedSceneTitles(source.sceneTitles, sourceScenes.length)
+        const [sceneHtml] = sourceScenes.splice(sourceSceneIndex, 1)
+        const [sceneTitle] = sourceTitles.splice(sourceSceneIndex, 1)
+
+        if (source.id === target.id) {
+          let insertAt = targetSceneIndex + (placement === 'after' ? 1 : 0)
+          if (sourceSceneIndex < insertAt) insertAt -= 1
+          insertAt = Math.max(0, Math.min(insertAt, sourceScenes.length))
+          sourceScenes.splice(insertAt, 0, sceneHtml)
+          sourceTitles.splice(insertAt, 0, sceneTitle)
+          return {
+            ...book,
+            chapters: book.chapters.map((chapter) =>
+              chapter.id === source.id
+                ? { ...chapter, content: joinScenes(sourceScenes), sceneTitles: sourceTitles }
+                : chapter,
+            ),
+            stickyNotes: moveSceneNotesBetweenChapters(
+              book.stickyNotes || [],
+              source.id,
+              sourceSceneIndex,
+              target.id,
+              insertAt,
+            ),
+          }
+        }
+
+        const targetScenes = splitScenes(target.content)
+        const targetTitles = normalizedSceneTitles(target.sceneTitles, targetScenes.length)
+        const insertAt = Math.max(
+          0,
+          Math.min(targetSceneIndex + (placement === 'after' ? 1 : 0), targetScenes.length),
+        )
+        targetScenes.splice(insertAt, 0, sceneHtml)
+        targetTitles.splice(insertAt, 0, sceneTitle)
+        if (!sourceScenes.length) {
+          sourceScenes.push('<p></p>')
+          sourceTitles.push('Scene 1')
+        }
 }
