@@ -421,6 +421,61 @@ export function BookProvider({ children }: { children: ReactNode }) {
       const { importDocxToBook } = await import('./import/docx')
       const report = await importDocxToBook(file)
       markDirty()
+      setBooks((previous) => [normalizeBook(report.book), ...previous])
+      setOpenBookId(report.book.id)
+      setNotice(
+        report.warnings.length
+          ? `Book imported with ${report.warnings.length} warning(s): ${report.warnings[0]}`
+          : 'Book imported successfully.',
+      )
+    },
+    importChaptersFromDocx: async (file: File) => {
+      const { importDocxToBook } = await import('./import/docx')
+      const report = await importDocxToBook(file)
+      const incoming = report.book.chapters.filter((chapter) => chapter.type === 'chapter')
+      mutateOpen((book) => {
+        const insertAt = book.chapters.findIndex((chapter) => BACK_MATTER_TYPES.includes(chapter.type))
+        const chapters = [...book.chapters]
+        chapters.splice(insertAt < 0 ? chapters.length : insertAt, 0, ...incoming)
+        return { ...book, chapters, activeId: incoming[0]?.id || book.activeId }
+      })
+      setNotice(`${incoming.length} chapter(s) imported.${report.warnings[0] ? ` ${report.warnings[0]}` : ''}`)
+    },
+    connectScrivenerSync: async (format: 'rtf' | 'txt' = 'rtf') => {
+      if (!project) return
+      const bridge = window.typesetly
+      if (!bridge?.chooseScrivenerSyncFolder || !bridge.writeScrivenerSyncFiles) {
+        setNotice('Live Scrivener folder sync is available in the Typesetly desktop app.')
+        return
+      }
+      const snapshot = await bridge.chooseScrivenerSyncFolder()
+      if (!snapshot.ok || !snapshot.folderPath) {
+        if (snapshot.error) setNotice(snapshot.error)
+        return
+      }
+      const { syncScrivenerSources } = await import('./integrations/scrivener')
+      const outcome = syncScrivenerSources(project, snapshot.files || [], {
+        folderPath: snapshot.folderPath,
+        folderName: snapshot.folderName || 'Scrivener Sync',
+        format,
+      })
+      if (outcome.writes.length) {
+        const writeResult = await bridge.writeScrivenerSyncFiles({
+          folderPath: snapshot.folderPath,
+          files: outcome.writes,
+        })
+        if (!writeResult.ok) {
+          setNotice(writeResult.error || 'Typesetly could not write to the Scrivener sync folder.')
+          return
+        }
+      }
+      mutateOpen(() => outcome.project)
+      setNotice([
+        'Scrivener sync folder connected.',
+        outcome.imported ? `${outcome.imported} imported.` : '',
+        outcome.exported ? `${outcome.exported} exported.` : '',
+        outcome.conflicts ? `${outcome.conflicts} conflict copy added.` : '',
+      ].filter(Boolean).join(' '))
         ...book,
         details: { ...book.details, ...details },
       }))
