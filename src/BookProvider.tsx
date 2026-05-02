@@ -1238,4 +1238,58 @@ export function BookProvider({ children }: { children: ReactNode }) {
         const count = sceneCount(source.content)
         const titles = normalizedSceneTitles(source.sceneTitles, count)
         const restored = insertScene(source.content, item.sceneIndex - 1, item.sceneHtml)
+        titles.splice(restored.index, 0, item.sceneTitle)
+        const shiftedNotes = insertSceneNoteGap(book.stickyNotes || [], source.id, restored.index)
+        const restoredNotes = (item.stickyNotes || []).map((note) => ({
+          ...note,
+          chapterId: source.id,
+          sceneIndex: restored.index,
+        }))
+        return {
+          ...book,
+          chapters: book.chapters.map((chapter) =>
+            chapter.id === source.id
+              ? { ...chapter, content: restored.html, sceneTitles: titles }
+              : chapter,
+          ),
+          trashItems,
+          stickyNotes: [...shiftedNotes, ...restoredNotes],
+          activeId: source.id,
+        }
+      })
+      setNotice('Item restored from Trash.')
+    },
+    permanentlyDeleteTrashItem: (id: string) => {
+      mutateOpen((book) => {
+        const target = book.trashItems?.find((item) => item.id === id)
+        return {
+          ...book,
+          trashItems: (book.trashItems || []).filter((item) =>
+            item.id !== id &&
+            !(target?.kind === 'page' && item.kind === 'scene' && item.chapterId === target.page.id),
+          ),
+        }
+      })
+      setNotice('Item permanently deleted.')
+    },
+    emptyTrash: () => {
+      mutateOpen((book) => ({ ...book, trashItems: [] }))
+      setNotice('Trash emptied.')
+    },
+    addCharacter: () => {
+      const id = uuid()
+      const character: CharacterProfile = {
+        id,
+        name: 'New character',
+        role: '',
+        pronouns: '',
+        age: '',
+        aliases: '',
+        summary: '',
+        appearance: '',
+        personality: '',
+        motivation: '',
+        conflict: '',
+        arc: '',
+        relationships: '',
 }
