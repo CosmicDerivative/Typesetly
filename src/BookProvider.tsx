@@ -1183,4 +1183,59 @@ export function BookProvider({ children }: { children: ReactNode }) {
               chapterId,
               chapterTitle: source.title,
               sceneIndex,
+              sceneTitle,
+              sceneHtml: removed.removedHtml,
+              stickyNotes: sceneNotes.detached,
+            },
+          ],
+          stickyNotes: sceneNotes.remaining,
+        }
+      })
+      setNotice('Scene moved to Trash.')
+    },
+    updateSceneTitle: (chapterId: string, sceneIndex: number, title: string) =>
+      mutateOpen((book) => ({
+        ...book,
+        chapters: book.chapters.map((chapter) => {
+          if (chapter.id !== chapterId || chapter.type !== 'chapter') return chapter
+          const titles = normalizedSceneTitles(chapter.sceneTitles, sceneCount(chapter.content))
+          titles[sceneIndex] = title.trim() || `Scene ${sceneIndex + 1}`
+          return { ...chapter, sceneTitles: titles }
+        }),
+      })),
+    restoreTrashItem: (id: string) => {
+      mutateOpen((book) => {
+        const item = book.trashItems?.find((candidate) => candidate.id === id)
+        if (!item) return book
+        const trashItems = (book.trashItems || []).filter((candidate) => candidate.id !== id)
+        if (item.kind === 'page') {
+          if (book.chapters.some((chapter) => chapter.id === item.page.id)) return { ...book, trashItems }
+          const chapters = [...book.chapters]
+          const restoreAt = Math.max(0, Math.min(item.originalIndex, chapters.length))
+          const folderStillExists = (book.manuscriptFolders || []).some(
+            (folder) => folder.id === item.page.folderId,
+          )
+          chapters.splice(
+            restoreAt,
+            0,
+            folderStillExists ? item.page : { ...item.page, folderId: undefined },
+          )
+          const reattached = chapters.map((chapter) =>
+            item.childPageIds.includes(chapter.id) && !chapter.partId
+              ? { ...chapter, partId: item.page.id }
+              : chapter,
+          )
+          return {
+            ...book,
+            chapters: reattached,
+            trashItems,
+            stickyNotes: [...(book.stickyNotes || []), ...(item.stickyNotes || [])],
+            activeId: item.page.id,
+          }
+        }
+        const source = book.chapters.find((chapter) => chapter.id === item.chapterId)
+        if (!source) return book
+        const count = sceneCount(source.content)
+        const titles = normalizedSceneTitles(source.sceneTitles, count)
+        const restored = insertScene(source.content, item.sceneIndex - 1, item.sceneHtml)
 }
