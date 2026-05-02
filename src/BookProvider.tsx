@@ -694,6 +694,61 @@ export function BookProvider({ children }: { children: ReactNode }) {
           partId,
         }
         const chapters = [...book.chapters]
+        let insertAt = partIndex + 1
+        while (insertAt < chapters.length && chapters[insertAt].partId === partId) insertAt += 1
+        chapters.splice(insertAt, 0, chapter)
+        return { ...book, chapters, activeId: chapter.id }
+      })
+    },
+    addPage: (type: PageType) => {
+      const createdPage = makePage(type, PAGE_TYPE_LABELS[type])
+      const page = type === 'full-page-image'
+        ? {
+            ...createdPage,
+            imageLayout: 'full-page' as const,
+            options: { ...createdPage.options, hideChapterHeading: true, hideHeaderFooter: true, hidePageNumber: true },
+          }
+        : createdPage
+      mutateOpen((book) => {
+        const chapters = [...book.chapters]
+        if (FRONT_MATTER_TYPES.includes(type)) {
+          const lastFront = chapters.reduce(
+            (last, chapter, index) => (FRONT_MATTER_TYPES.includes(chapter.type) ? index : last),
+            -1,
+          )
+          chapters.splice(lastFront + 1, 0, page)
+        } else chapters.push(page)
+        return { ...book, chapters, activeId: page.id }
+      })
+    },
+    addPart: () => {
+      const part = createPart(`Part ${(project?.chapters.filter((candidate) => candidate.type === 'part').length || 0) + 1}`)
+      mutateOpen((book) => {
+        const backStart = book.chapters.findIndex((candidate) => BACK_MATTER_TYPES.includes(candidate.type))
+        const chapters = [...book.chapters]
+        chapters.splice(backStart < 0 ? chapters.length : backStart, 0, part)
+        return { ...book, chapters, activeId: part.id }
+      })
+    },
+    saveActiveAsMasterPage: () => {
+      if (!activeChapter) return
+      const template = {
+        ...structuredClone(activeChapter),
+        id: uuid(),
+        partId: undefined,
+        folderId: undefined,
+        title: `${activeChapter.title} Master`,
+      }
+      mutateOpen((book) => ({ ...book, masterPages: [...(book.masterPages || []), template] }))
+      setNotice('Master page saved.')
+    },
+    savePageAsMaster: (id: string) => {
+      mutateOpen((book) => {
+        const source = book.chapters.find((chapter) => chapter.id === id)
+        if (!source) return book
+        const template = {
+          ...structuredClone(source),
+          id: uuid(),
       }))
     },
     updateChapterContent: (chapterId: string, content: string) => {
