@@ -150,6 +150,61 @@ function normalizeBook(book: BookProject): BookProject {
       options: { ...defaultChapterOptions(), ...chapter.options },
       subtitle: chapter.subtitle ?? '',
       imageAlt: chapter.imageAlt ?? '',
+      imageCaption: chapter.imageCaption ?? '',
+      imageLayout: chapter.imageLayout ?? 'inline',
+      imageWidthPx: chapter.imageWidthPx ?? 0,
+      imageHeightPx: chapter.imageHeightPx ?? 0,
+      imageBytes: chapter.imageBytes ?? 0,
+      sceneTitles: chapter.sceneTitles || [],
+    })),
+  }
+}
+
+function downloadJson(name: string, value: unknown) {
+  const blob = new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' })
+  const anchor = document.createElement('a')
+  const url = URL.createObjectURL(blob)
+  anchor.href = url
+  anchor.download = name
+  anchor.click()
+  URL.revokeObjectURL(url)
+}
+
+export function BookProvider({ children }: { children: ReactNode }) {
+  const initialPinnedLayout = useMemo(readPinnedLayout, [])
+  const [books, setBooks] = useState<BookProject[]>([])
+  const [openBookId, setOpenBookId] = useState<string | null>(null)
+  const [themes, setThemes] = useState<BookTheme[]>(PRESET_THEMES)
+  const [loading, setLoading] = useState(true)
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved')
+  const [saveError, setSaveError] = useState('')
+  const [notice, setNotice] = useState('')
+  const [mode, setMode] = useState<AppMode>('draft')
+  const [previewDevice, setPreviewDevice] = useState<PreviewDevice>('iPad')
+  const [timerRunning, setTimerRunning] = useState(false)
+  const [timerSeconds, setTimerSeconds] = useState(0)
+  const [timerPhase, setTimerPhase] = useState<'sprint' | 'break'>('sprint')
+  const [sprintDuration, setSprintDurationState] = useState(25 * 60)
+  const [breakDuration, setBreakDurationState] = useState(5 * 60)
+  const [rightPanel, setRightPanel] = useState<RightPanel>(initialPinnedLayout.pinnedRightPanel)
+  const [sidebarOpen, setSidebarOpen] = useState(initialPinnedLayout.sidebarPinned)
+  const [sidebarPinned, setSidebarPinned] = useState(initialPinnedLayout.sidebarPinned)
+  const [pinnedRightPanel, setPinnedRightPanel] = useState<RightPanel>(initialPinnedLayout.pinnedRightPanel)
+  const [editingTheme, setEditingTheme] = useState<BookTheme | null>(null)
+  const hydrated = useRef(false)
+  const saveGeneration = useRef(0)
+  const lastRevisionAt = useRef<Record<string, number>>({})
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(PINNED_LAYOUT_KEY, JSON.stringify({ sidebarPinned, pinnedRightPanel }))
+    } catch {
+      // A hardened browser may disable localStorage. Book data still persists
+      // independently through IndexedDB.
+    }
+  }, [pinnedRightPanel, sidebarPinned])
+
+  useEffect(() => {
     project,
     activeChapter: getActiveChapter(project),
     mode,
