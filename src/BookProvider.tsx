@@ -205,6 +205,60 @@ export function BookProvider({ children }: { children: ReactNode }) {
   }, [pinnedRightPanel, sidebarPinned])
 
   useEffect(() => {
+    let active = true
+    void loadLibrary()
+      .then((library) => {
+        if (!active) return
+        setBooks(library.books.map(normalizeBook))
+        setOpenBookId(library.openBookId)
+        setThemes([...PRESET_THEMES, ...library.themes.filter((theme) => !theme.preset)])
+        hydrated.current = true
+      })
+      .catch((error: unknown) => {
+        if (!active) return
+        setSaveStatus('error')
+        setSaveError(error instanceof Error ? error.message : 'The local library could not be opened.')
+      })
+      .finally(() => active && setLoading(false))
+    return () => {
+      active = false
+    }
+  }, [])
+
+  useEffect(() => {
+    const showNotice = (event: Event) => setNotice((event as CustomEvent<string>).detail)
+    window.addEventListener('typesetly:notice', showNotice)
+    return () => window.removeEventListener('typesetly:notice', showNotice)
+  }, [])
+
+  useEffect(() => {
+    if (!hydrated.current) return
+    const generation = ++saveGeneration.current
+    const timer = window.setTimeout(() => {
+      const state: LibraryState = { books, openBookId, themes }
+      void saveLibrary(state)
+        .then(() => {
+          if (saveGeneration.current !== generation) return
+          setSaveStatus('saved')
+          setSaveError('')
+        })
+        .catch((error: unknown) => {
+          if (saveGeneration.current !== generation) return
+          setSaveStatus('error')
+          setSaveError(error instanceof Error ? error.message : 'Changes could not be saved.')
+        })
+    }, 550)
+    return () => window.clearTimeout(timer)
+  }, [books, openBookId, themes])
+
+  useEffect(() => {
+    if (!timerRunning) return
+    const interval = window.setInterval(() => {
+      setTimerSeconds((seconds) => {
+        const duration = timerPhase === 'sprint' ? sprintDuration : breakDuration
+        if (seconds + 1 < duration) return seconds + 1
+        const nextPhase = timerPhase === 'sprint' ? 'break' : 'sprint'
+        if (timerPhase === 'sprint' && openBookId) {
     project,
     activeChapter: getActiveChapter(project),
     mode,
