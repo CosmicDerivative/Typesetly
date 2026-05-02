@@ -314,13 +314,60 @@ export function BookProvider({ children }: { children: ReactNode }) {
     if (editingTheme) return editingTheme
     return getThemeById(themes, project?.themeId || 'theme-classic')
   }, [editingTheme, project?.themeId, themes])
+
+  const frontMatter = useMemo(
+    () => project?.chapters.filter((chapter) => FRONT_MATTER_TYPES.includes(chapter.type)) ?? [],
+    [project],
+  )
+  const bodyChapters = useMemo(
+    () => project?.chapters.filter((chapter) =>
+      chapter.type === 'chapter' || chapter.type === 'part' || chapter.type === 'full-page-image' || chapter.type === 'custom-page'
+    ) ?? [],
+    [project],
+  )
+  const backMatter = useMemo(
+    () => project?.chapters.filter((chapter) => BACK_MATTER_TYPES.includes(chapter.type)) ?? [],
+    [project],
+  )
+  const activeChapter = useMemo(
+    () => project?.chapters.find((chapter) => chapter.id === project.activeId),
+    [project],
+  )
+
+  const value = {
+    books,
+    loading,
+    openBookId,
     project,
-    activeChapter: getActiveChapter(project),
+    themes,
+    activeTheme,
     mode,
-    saved,
+    previewDevice,
+    saved: saveStatus === 'saved',
+    saveStatus,
+    saveError,
+    notice,
+    timerRunning,
+    timerSeconds,
+    timerPhase,
+    sprintDuration,
+    breakDuration,
+    rightPanel,
+    sidebarOpen,
+    sidebarPinned,
+    pinnedRightPanel,
+    editingTheme,
+    frontMatter,
+    bodyChapters,
+    backMatter,
+    activeChapter,
     setMode,
-    setActiveChapter: (chapterId: string) => {
-      changeProject((book) => selectChapter(book, chapterId))
+    setPreviewDevice,
+    setRightPanel,
+    setSidebarOpen,
+    setSidebarPinned,
+    setPinnedRightPanel,
+    openBook: (id: string) => {
     },
     updateBookDetails: (details: Partial<BookDetails>) => {
       changeProject((book) => ({
