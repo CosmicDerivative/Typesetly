@@ -259,6 +259,61 @@ export function BookProvider({ children }: { children: ReactNode }) {
         if (seconds + 1 < duration) return seconds + 1
         const nextPhase = timerPhase === 'sprint' ? 'break' : 'sprint'
         if (timerPhase === 'sprint' && openBookId) {
+          setBooks((previous) => previous.map((book) => book.id === openBookId ? {
+            ...book,
+            goals: {
+              ...book.goals,
+              sprintLog: [...(book.goals.sprintLog || []), { date: todayKey(), seconds: duration }],
+            },
+          } : book))
+        }
+        setTimerPhase(nextPhase)
+        setNotice(nextPhase === 'break' ? 'Sprint complete. Take a break.' : 'Break complete. Ready for another sprint.')
+        return 0
+      })
+    }, 1000)
+    return () => window.clearInterval(interval)
+  }, [breakDuration, openBookId, sprintDuration, timerPhase, timerRunning])
+
+  const project = useMemo(
+    () => books.find((book) => book.id === openBookId) ?? null,
+    [books, openBookId],
+  )
+
+  const markDirty = useCallback(() => {
+    setSaveStatus('saving')
+    setSaveError('')
+  }, [])
+
+  const mutateOpen = useCallback(
+    (updater: (previous: BookProject) => BookProject) => {
+      if (!openBookId) return
+      markDirty()
+      // All project writes pass through one functional update so rapid editor,
+      // drag/drop, and timer changes cannot overwrite one another.
+      setBooks((previous) =>
+        previous.map((book) =>
+          book.id === openBookId
+            ? normalizeBook({ ...updater(book), updatedAt: new Date().toISOString() })
+            : book,
+        ),
+      )
+    },
+    [markDirty, openBookId],
+  )
+
+  useEffect(() => {
+    if (!project || saveStatus !== 'saved') return
+    const now = Date.now()
+    if (now - (lastRevisionAt.current[project.id] || 0) < 30_000) return
+    lastRevisionAt.current[project.id] = now
+    void saveRevision(project)
+  }, [project, saveStatus])
+
+  const activeTheme = useMemo(() => {
+    if (editingTheme) return editingTheme
+    return getThemeById(themes, project?.themeId || 'theme-classic')
+  }, [editingTheme, project?.themeId, themes])
     project,
     activeChapter: getActiveChapter(project),
     mode,
