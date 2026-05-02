@@ -803,6 +803,61 @@ export function BookProvider({ children }: { children: ReactNode }) {
         setNotice('Required book pages cannot be moved to Trash.')
         return
       }
+      mutateOpen((book) => {
+        const originalIndex = book.chapters.findIndex((chapter) => chapter.id === id)
+        const target = book.chapters[originalIndex]
+        if (!target || ['title-page', 'copyright', 'contents'].includes(target.type)) return book
+        const childPageIds = book.chapters
+          .filter((chapter) => chapter.partId === id)
+          .map((chapter) => chapter.id)
+        const detachedNotes = (book.stickyNotes || []).filter((note) => note.chapterId === id)
+        const chapters = book.chapters
+          .filter((chapter) => chapter.id !== id)
+          .map((chapter) => (chapter.partId === id ? { ...chapter, partId: undefined } : chapter))
+        const fallback = chapters[Math.min(originalIndex, Math.max(0, chapters.length - 1))]
+        return {
+          ...book,
+          chapters,
+          trashItems: [
+            ...(book.trashItems || []),
+            {
+              id: uuid(),
+              kind: 'page' as const,
+              deletedAt: new Date().toISOString(),
+              page: structuredClone(target),
+              originalIndex,
+              childPageIds,
+              stickyNotes: detachedNotes,
+            },
+          ],
+          stickyNotes: (book.stickyNotes || []).filter((note) => note.chapterId !== id),
+          activeId: book.activeId === id ? fallback?.id || book.activeId : book.activeId,
+        }
+      })
+      setNotice('Page moved to Trash.')
+    },
+    moveChapterBy: (id: string, direction: -1 | 1) =>
+      mutateOpen((book) => {
+        const fromIndex = book.chapters.findIndex((chapter) => chapter.id === id)
+        if (fromIndex < 0) return book
+        const source = book.chapters[fromIndex]
+        const sameSection = (chapter: typeof source) => {
+          if (FRONT_MATTER_TYPES.includes(source.type)) {
+            return FRONT_MATTER_TYPES.includes(chapter.type) &&
+              !['title-page', 'copyright', 'contents'].includes(chapter.type)
+          }
+          if (BACK_MATTER_TYPES.includes(source.type)) return BACK_MATTER_TYPES.includes(chapter.type)
+          if (source.type === 'part') return chapter.type === 'part'
+          if (source.partId) return chapter.partId === source.partId
+          if (source.folderId) return chapter.folderId === source.folderId
+          return !FRONT_MATTER_TYPES.includes(chapter.type) &&
+            !BACK_MATTER_TYPES.includes(chapter.type) &&
+            chapter.type !== 'part' &&
+            !chapter.partId &&
+            !chapter.folderId
+        }
+        const sectionIndices = book.chapters
+          .map((chapter, index) => ({ chapter, index }))
       }))
     },
     updateChapterContent: (chapterId: string, content: string) => {
