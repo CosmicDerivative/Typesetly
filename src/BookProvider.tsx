@@ -476,6 +476,60 @@ export function BookProvider({ children }: { children: ReactNode }) {
         outcome.exported ? `${outcome.exported} exported.` : '',
         outcome.conflicts ? `${outcome.conflicts} conflict copy added.` : '',
       ].filter(Boolean).join(' '))
+    },
+    syncScrivener: async () => {
+      if (!project?.scrivenerSync) return
+      const bridge = window.typesetly
+      if (!bridge?.readScrivenerSyncFolder || !bridge.writeScrivenerSyncFiles) {
+        setNotice('Live Scrivener folder sync is available in the Typesetly desktop app.')
+        return
+      }
+      const snapshot = await bridge.readScrivenerSyncFolder({
+        folderPath: project.scrivenerSync.folderPath,
+      })
+      if (!snapshot.ok || !snapshot.folderPath) {
+        setNotice(snapshot.error || 'The Scrivener sync folder could not be opened.')
+        return
+      }
+      const { syncScrivenerSources } = await import('./integrations/scrivener')
+      const outcome = syncScrivenerSources(project, snapshot.files || [], {
+        folderPath: snapshot.folderPath,
+        folderName: snapshot.folderName || project.scrivenerSync.folderName,
+        format: project.scrivenerSync.format,
+      })
+      if (outcome.writes.length) {
+        const writeResult = await bridge.writeScrivenerSyncFiles({
+          folderPath: snapshot.folderPath,
+          files: outcome.writes,
+        })
+        if (!writeResult.ok) {
+          setNotice(writeResult.error || 'Typesetly could not write to the Scrivener sync folder.')
+          return
+        }
+      }
+      mutateOpen(() => outcome.project)
+      const changes = outcome.imported + outcome.updated + outcome.exported + outcome.conflicts
+      setNotice([
+        changes ? 'Scrivener sync complete.' : 'Scrivener files are already up to date.',
+        outcome.imported ? `${outcome.imported} imported.` : '',
+        outcome.updated ? `${outcome.updated} updated from Scrivener.` : '',
+        outcome.exported ? `${outcome.exported} sent to Scrivener.` : '',
+        outcome.conflicts ? `${outcome.conflicts} conflict copy added for review.` : '',
+        outcome.missing ? `${outcome.missing} missing external file left unchanged.` : '',
+      ].filter(Boolean).join(' '))
+    },
+    disconnectScrivenerSync: () => {
+      mutateOpen((book) => ({ ...book, scrivenerSync: undefined }))
+      setNotice('Scrivener sync folder disconnected. No external files were removed.')
+    },
+    restoreSnapshot: async (file: File) => {
+      const snapshot = parseSnapshot(await file.text())
+      const restoredThemes = [...PRESET_THEMES, ...snapshot.themes.filter((theme) => !theme.preset)]
+      const restoredBooks = snapshot.books.map(normalizeBook)
+      setBooks(restoredBooks)
+      setThemes(restoredThemes)
+      setOpenBookId(null)
+      markDirty()
         ...book,
         details: { ...book.details, ...details },
       }))
