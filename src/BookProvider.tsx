@@ -968,19 +968,58 @@ export function BookProvider({ children }: { children: ReactNode }) {
         ...book,
         manuscriptFolders: (book.manuscriptFolders || []).filter((folder) => folder.id !== id),
         chapters: book.chapters.map((chapter) =>
+          chapter.folderId === id ? { ...chapter, folderId: undefined } : chapter,
         ),
       }))
+      setNotice('Folder removed. Its pages are now unfiled.')
     },
-    addChapter: () => {
-      changeProject((book) => {
-        const chapter = createChapter(`Chapter ${book.chapters.length + 1}`, book.chapters.length)
-        return { ...book, chapters: [...book.chapters, chapter], activeId: chapter.id }
+    toggleManuscriptFolder: (id: string) =>
+      mutateOpen((book) => ({
+        ...book,
+        manuscriptFolders: (book.manuscriptFolders || []).map((folder) =>
+          folder.id === id ? { ...folder, collapsed: !folder.collapsed } : folder,
+        ),
+      })),
+    moveChapterToFolder: (chapterId: string, folderId?: string) => {
+      mutateOpen((book) => {
+        const validFolder = folderId
+          ? (book.manuscriptFolders || []).some((folder) => folder.id === folderId)
+          : true
+        if (!validFolder) return book
+        return {
+          ...book,
+          chapters: book.chapters.map((chapter) => {
+            if (chapter.id !== chapterId || chapter.type === 'part') return chapter
+            if (
+              FRONT_MATTER_TYPES.includes(chapter.type) ||
+              BACK_MATTER_TYPES.includes(chapter.type)
+            ) return chapter
+            return {
+              ...chapter,
+              folderId,
+              partId: folderId ? undefined : chapter.partId,
+            }
+          }),
+        }
       })
+      setNotice(folderId ? 'Page moved into folder.' : 'Page moved out of folder.')
     },
-    removeChapter: (chapterId: string) => {
-      changeProject((book) => {
-        const chapters = book.chapters.filter((chapter) => chapter.id !== chapterId)
-        return { ...book, chapters, activeId: chapters[0]?.id ?? '' }
+    addScene: (chapterId: string, afterIndex: number) =>
+      mutateOpen((book) => {
+        const source = book.chapters.find((chapter) => chapter.id === chapterId)
+        if (!source || source.type !== 'chapter') return book
+        const count = sceneCount(source.content)
+        const titles = normalizedSceneTitles(source.sceneTitles, count)
+        const inserted = insertScene(source.content, afterIndex)
+        titles.splice(inserted.index, 0, `Scene ${inserted.index + 1}`)
+        return {
+          ...book,
+          chapters: book.chapters.map((chapter) =>
+            chapter.id === chapterId
+              ? { ...chapter, content: inserted.html, sceneTitles: titles }
+              : chapter
+          ),
+          stickyNotes: insertSceneNoteGap(book.stickyNotes || [], chapterId, inserted.index),
       })
     },
     markSaved: () => setSaved(true),
