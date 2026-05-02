@@ -584,7 +584,61 @@ export function BookProvider({ children }: { children: ReactNode }) {
             imageWidthPx: metadata?.width || 0,
             imageHeightPx: metadata?.height || 0,
             imageBytes: metadata?.bytes || 0,
+          } : chapter,
         ),
+      })),
+    updateChapterImageDetails: (id: string, details: Pick<import('./types').Chapter, 'imageAlt' | 'imageCaption' | 'imageLayout'>) =>
+      mutateOpen((book) => ({
+        ...book,
+        chapters: book.chapters.map((chapter) =>
+          chapter.id === id ? { ...chapter, ...details } : chapter,
+        ),
+      })),
+    updateChapterContent: (id: string, content: string) =>
+      mutateOpen((book) => {
+        const current = book.chapters.find((chapter) => chapter.id === id)
+        const delta = current ? countWords(content) - countWords(current.content) : 0
+        const key = todayKey()
+        const trackedChanges = [...(book.trackedChanges || [])]
+        if (book.trackChanges && current && current.content !== content) {
+          const last = trackedChanges.at(-1)
+          const canCoalesce =
+            last?.chapterId === id &&
+            last.status === 'pending' &&
+            Date.now() - new Date(last.updatedAt).getTime() < 120_000
+          if (last && canCoalesce) {
+            trackedChanges[trackedChanges.length - 1] = { ...last, afterHtml: content, updatedAt: new Date().toISOString() }
+          } else {
+            const now = new Date().toISOString()
+            trackedChanges.push({
+              id: uuid(),
+              chapterId: id,
+              beforeHtml: current.content,
+              afterHtml: content,
+              author: 'Author',
+              createdAt: now,
+              updatedAt: now,
+              status: 'pending',
+            })
+          }
+        }
+        return {
+          ...book,
+          trackedChanges,
+          chapters: book.chapters.map((chapter) => (chapter.id === id ? { ...chapter, content } : chapter)),
+          goals: applyHabitWordDelta(book.goals, key, id, delta),
+        }
+      }),
+    splitChapter: (id: string, beforeHtml: string, afterHtml: string) =>
+      mutateOpen((book) => {
+        const index = book.chapters.findIndex((chapter) => chapter.id === id)
+        if (index < 0 || !afterHtml.trim()) return book
+        const source = book.chapters[index]
+        const nextChapter = {
+          ...structuredClone(source),
+          id: uuid(),
+          title: `${source.title} (continued)`,
+          content: afterHtml,
       }))
     },
     updateChapterContent: (chapterId: string, content: string) => {
