@@ -1020,10 +1020,60 @@ export function BookProvider({ children }: { children: ReactNode }) {
               : chapter
           ),
           stickyNotes: insertSceneNoteGap(book.stickyNotes || [], chapterId, inserted.index),
+        }
+      }),
+    duplicateScene: (chapterId: string, sceneIndex: number) => {
+      mutateOpen((book) => {
+        const source = book.chapters.find((chapter) => chapter.id === chapterId)
+        if (!source || source.type !== 'chapter') return book
+        const duplicated = duplicateSceneContent(source.content, sceneIndex)
+        if (!duplicated) return book
+        const titles = normalizedSceneTitles(source.sceneTitles, sceneCount(source.content))
+        titles.splice(duplicated.index, 0, `${titles[sceneIndex]} Copy`)
+        const originalNotes = (book.stickyNotes || []).filter(
+          (note) =>
+            note.target === 'scene' &&
+            note.chapterId === chapterId &&
+            note.sceneIndex === sceneIndex,
+        )
+        const shiftedNotes = insertSceneNoteGap(book.stickyNotes || [], chapterId, duplicated.index)
+        const now = new Date().toISOString()
+        const copiedNotes = originalNotes.map((note) => ({
+          ...note,
+          id: uuid(),
+          title: `${note.title} Copy`,
+          sceneIndex: duplicated.index,
+          createdAt: now,
+          updatedAt: now,
+        }))
+        return {
+          ...book,
+          chapters: book.chapters.map((chapter) =>
+            chapter.id === chapterId
+              ? { ...chapter, content: duplicated.html, sceneTitles: titles }
+              : chapter
+          ),
+          stickyNotes: [...shiftedNotes, ...copiedNotes],
+        }
       })
+      setNotice('Scene duplicated.')
     },
-    markSaved: () => setSaved(true),
-  }), [mode, project, saved])
+    moveScene: (chapterId: string, sceneIndex: number, direction: -1 | 1) =>
+      mutateOpen((book) => {
+        const source = book.chapters.find((chapter) => chapter.id === chapterId)
+        if (!source || source.type !== 'chapter') return book
+        const moved = moveSceneContent(source.content, sceneIndex, direction)
+        if (!moved) return book
+        const titles = normalizedSceneTitles(source.sceneTitles, sceneCount(source.content))
+        ;[titles[sceneIndex], titles[moved.index]] = [titles[moved.index], titles[sceneIndex]]
+        return {
+          ...book,
+          chapters: book.chapters.map((chapter) =>
+            chapter.id === chapterId
+              ? { ...chapter, content: moved.html, sceneTitles: titles }
+              : chapter
+          ),
+          stickyNotes: reorderSceneNotes(book.stickyNotes || [], chapterId, sceneIndex, moved.index),
 
   return <BookContext.Provider value={value}>{children}</BookContext.Provider>
 }
