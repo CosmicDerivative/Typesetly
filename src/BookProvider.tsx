@@ -639,6 +639,61 @@ export function BookProvider({ children }: { children: ReactNode }) {
           id: uuid(),
           title: `${source.title} (continued)`,
           content: afterHtml,
+        }
+        const chapters = [...book.chapters]
+        chapters[index] = { ...source, content: beforeHtml }
+        chapters.splice(index + 1, 0, nextChapter)
+        return { ...book, chapters, activeId: nextChapter.id }
+      }),
+    updateChapterOptions: (id: string, options: Partial<ChapterOptions>) =>
+      mutateOpen((book) => ({
+        ...book,
+        chapters: book.chapters.map((chapter) =>
+          chapter.id === id ? { ...chapter, options: { ...chapter.options, ...options } } : chapter,
+        ),
+      })),
+    setEpubStartChapter: (id?: string) => mutateOpen((book) => ({ ...book, epubStartChapterId: id })),
+    updateBodyChapterOptions: (options: Partial<ChapterOptions>) =>
+      mutateOpen((book) => ({
+        ...book,
+        chapters: book.chapters.map((chapter) =>
+          chapter.type === 'chapter'
+            ? { ...chapter, options: { ...chapter.options, ...options } }
+            : chapter,
+        ),
+      })),
+    addChapter: () => {
+      mutateOpen((book) => {
+        const chapter = createChapter(nextChapterTitle(book.chapters))
+        const backStart = book.chapters.findIndex((candidate) => BACK_MATTER_TYPES.includes(candidate.type))
+        const chapters = [...book.chapters]
+        chapters.splice(backStart < 0 ? chapters.length : backStart, 0, chapter)
+        return { ...book, chapters, activeId: chapter.id }
+      })
+    },
+    addChapterToFolder: (folderId: string) => {
+      mutateOpen((book) => {
+        if (!(book.manuscriptFolders || []).some((folder) => folder.id === folderId)) return book
+        const chapter = {
+          ...createChapter(nextChapterTitle(book.chapters)),
+          folderId,
+        }
+        const backStart = book.chapters.findIndex((candidate) => BACK_MATTER_TYPES.includes(candidate.type))
+        const chapters = [...book.chapters]
+        chapters.splice(backStart < 0 ? chapters.length : backStart, 0, chapter)
+        return { ...book, chapters, activeId: chapter.id }
+      })
+      setNotice('Chapter added to folder.')
+    },
+    addChapterToPart: (partId: string) => {
+      mutateOpen((book) => {
+        const partIndex = book.chapters.findIndex((candidate) => candidate.id === partId && candidate.type === 'part')
+        if (partIndex < 0) return book
+        const chapter = {
+          ...createChapter(nextChapterTitle(book.chapters)),
+          partId,
+        }
+        const chapters = [...book.chapters]
       }))
     },
     updateChapterContent: (chapterId: string, content: string) => {
