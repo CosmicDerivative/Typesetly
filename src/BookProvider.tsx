@@ -1402,4 +1402,58 @@ export function BookProvider({ children }: { children: ReactNode }) {
         }
       })
       return id
+    },
+    updateStoryRelationship: (id: string, patch: Partial<StoryRelationship>) =>
+      mutateOpen((book) => {
+        const bible = book.storyBible || defaultStoryBible()
+        return {
+          ...book,
+          storyBible: {
+            ...bible,
+            relationships: bible.relationships.map((relationship) =>
+              relationship.id === id
+                ? {
+                    ...relationship,
+                    ...patch,
+                    id: relationship.id,
+                    createdAt: relationship.createdAt,
+                  }
+                : relationship
+            ),
+          },
+        }
+      }),
+    deleteStoryRelationship: (id: string) => {
+      mutateOpen((book) => {
+        const bible = book.storyBible || defaultStoryBible()
+        return {
+          ...book,
+          storyBible: {
+            ...bible,
+            relationships: bible.relationships.filter((relationship) => relationship.id !== id),
+          },
+        }
+      })
+      setNotice('Relationship removed from the story map.')
+    },
+    addStickyNote: (
+      note: Partial<Omit<StickyNote, 'id' | 'createdAt' | 'updatedAt'>> = {},
+    ) => {
+      const id = uuid()
+      const now = new Date().toISOString()
+      const sticky: StickyNote = {
+        id,
+        title: note.title || 'New note',
+        body: note.body || '',
+        color: note.color || 'gold',
+        target: note.target || 'book',
+        chapterId: note.chapterId,
+        sceneIndex: note.sceneIndex,
+        characterId: note.characterId,
+        worldEntryId: note.worldEntryId,
+        quote: note.quote,
+        createdAt: now,
+        updatedAt: now,
+      }
+      mutateOpen((book) => ({
 }
