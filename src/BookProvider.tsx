@@ -1292,4 +1292,59 @@ export function BookProvider({ children }: { children: ReactNode }) {
         conflict: '',
         arc: '',
         relationships: '',
+        notes: '',
+        tags: [],
+      }
+      mutateOpen((book) => ({
+        ...book,
+        storyBible: {
+          ...(book.storyBible || defaultStoryBible()),
+          characters: [...(book.storyBible?.characters || []), character],
+        },
+      }))
+      return id
+    },
+    updateCharacter: (id: string, patch: Partial<CharacterProfile>) =>
+      mutateOpen((book) => ({
+        ...book,
+        storyBible: {
+          ...(book.storyBible || defaultStoryBible()),
+          characters: (book.storyBible?.characters || []).map((character) =>
+            character.id === id ? { ...character, ...patch } : character
+          ),
+        },
+      })),
+    deleteCharacter: (id: string) => {
+      mutateOpen((book) => ({
+        ...book,
+        storyBible: {
+          ...(book.storyBible || defaultStoryBible()),
+          characters: (book.storyBible?.characters || []).filter((character) => character.id !== id),
+          relationships: (book.storyBible?.relationships || []).filter(
+            (relationship) => relationship.sourceId !== id && relationship.targetId !== id,
+          ),
+        },
+      }))
+      setNotice('Character removed from the Story Bible.')
+    },
+    addWorldEntry: (category: WorldbuildingCategory = 'location') => {
+      const id = uuid()
+      const entry: WorldbuildingEntry = {
+        id,
+        name: 'New world entry',
+        aliases: '',
+        category,
+        summary: '',
+        details: '',
+        rules: '',
+        connections: '',
+        notes: '',
+        tags: [],
+      }
+      mutateOpen((book) => ({
+        ...book,
+        storyBible: {
+          ...(book.storyBible || defaultStoryBible()),
+          world: [...(book.storyBible?.world || []), entry],
+        },
 }
