@@ -1565,4 +1565,59 @@ export function BookProvider({ children }: { children: ReactNode }) {
             chapters: book.chapters.map(({ id, title, subtitle, content }) => ({ id, title, subtitle, content })),
           },
         ],
+      })),
+    resolveTrackedChange: (id: string, resolution: 'accepted' | 'rejected') =>
+      mutateOpen((book) => {
+        const change = book.trackedChanges?.find((item) => item.id === id)
+        if (!change || change.status !== 'pending') return book
+        return {
+          ...book,
+          chapters: resolution === 'rejected'
+            ? book.chapters.map((chapter) => chapter.id === change.chapterId ? { ...chapter, content: change.beforeHtml } : chapter)
+            : book.chapters,
+          trackedChanges: (book.trackedChanges || []).map((item) =>
+            item.id === id ? { ...item, status: resolution } : item
+          ),
+        }
+      }),
+    saveCalloutPreset: (preset: Omit<import('./types').CalloutPreset, 'id'>) =>
+      mutateOpen((book) => ({
+        ...book,
+        calloutPresets: [...(book.calloutPresets || []), { ...preset, id: uuid() }],
+      })),
+    deleteCalloutPreset: (id: string) =>
+      mutateOpen((book) => ({ ...book, calloutPresets: (book.calloutPresets || []).filter((preset) => preset.id !== id) })),
+    createNamedRevision: (name: string) =>
+      mutateOpen((book) => ({
+        ...book,
+        revisions: [
+          ...(book.revisions || []),
+          {
+            id: uuid(),
+            name: name.trim() || `Revision ${(book.revisions?.length || 0) + 1}`,
+            createdAt: new Date().toISOString(),
+            chapters: book.chapters.map(({ id, title, subtitle, content }) => ({ id, title, subtitle, content })),
+          },
+        ],
+      })),
+    restoreNamedRevision: (id: string) =>
+      mutateOpen((book) => {
+        const revision = book.revisions?.find((item) => item.id === id)
+        if (!revision) return book
+        const contentById = new Map(revision.chapters.map((chapter) => [chapter.id, chapter]))
+        return {
+          ...book,
+          chapters: book.chapters.map((chapter) => {
+            const savedChapter = contentById.get(chapter.id)
+            return savedChapter ? { ...chapter, ...savedChapter } : chapter
+          }),
+        }
+      }),
+    toggleTimer: () => setTimerRunning((running) => !running),
+    resetTimer: () => {
+      setTimerRunning(false)
+      setTimerSeconds(0)
+      setTimerPhase('sprint')
+    },
+    setSprintDuration: (seconds: number) => {
 }
