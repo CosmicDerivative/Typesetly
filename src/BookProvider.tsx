@@ -1456,4 +1456,59 @@ export function BookProvider({ children }: { children: ReactNode }) {
         updatedAt: now,
       }
       mutateOpen((book) => ({
+        ...book,
+        stickyNotes: [...(book.stickyNotes || []), sticky],
+      }))
+      return id
+    },
+    updateStickyNote: (id: string, patch: Partial<StickyNote>) =>
+      mutateOpen((book) => ({
+        ...book,
+        stickyNotes: (book.stickyNotes || []).map((note) =>
+          note.id === id
+            ? { ...note, ...patch, id: note.id, createdAt: note.createdAt, updatedAt: new Date().toISOString() }
+            : note
+        ),
+      })),
+    deleteStickyNote: (id: string) => {
+      mutateOpen((book) => ({
+        ...book,
+        stickyNotes: (book.stickyNotes || []).filter((note) => note.id !== id),
+      }))
+      setNotice('Sticky note deleted.')
+    },
+    applyTheme: (themeId: string) => mutateOpen((book) => ({ ...book, themeId })),
+    startThemeEdit: (theme?: BookTheme) => {
+      const base = theme || activeTheme
+      setEditingTheme(cloneTheme(base, `${base.name} Custom`))
+      setMode('design')
+    },
+    updateEditingTheme: (patch: Partial<BookTheme>) =>
+      setEditingTheme((previous) => (previous ? { ...previous, ...patch } : previous)),
+    saveEditingTheme: (name?: string) => {
+      if (!editingTheme) return
+      const savedTheme = { ...editingTheme, name: name || editingTheme.name, preset: false }
+      setThemes((previous) => {
+        const index = previous.findIndex((theme) => theme.id === savedTheme.id)
+        if (index < 0) return [...previous, savedTheme]
+        const next = [...previous]
+        next[index] = savedTheme
+        return next
+      })
+      mutateOpen((book) => ({ ...book, themeId: savedTheme.id }))
+      setEditingTheme(null)
+      setNotice('Custom theme saved.')
+    },
+    cancelThemeEdit: () => setEditingTheme(null),
+    toggleThemeFavorite: (themeId: string) => {
+      markDirty()
+      setThemes((previous) =>
+        previous.map((theme) => (theme.id === themeId ? { ...theme, favorite: !theme.favorite } : theme)),
+      )
+    },
+    deleteCustomTheme: (themeId: string) => {
+      markDirty()
+      setThemes((previous) => previous.filter((theme) => theme.id !== themeId || theme.preset))
+      if (project?.themeId === themeId) mutateOpen((book) => ({ ...book, themeId: 'theme-classic' }))
+    },
 }
