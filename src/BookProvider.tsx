@@ -1511,4 +1511,58 @@ export function BookProvider({ children }: { children: ReactNode }) {
       setThemes((previous) => previous.filter((theme) => theme.id !== themeId || theme.preset))
       if (project?.themeId === themeId) mutateOpen((book) => ({ ...book, themeId: 'theme-classic' }))
     },
+    updateGoals: (goals: Partial<WritingGoals>) =>
+      mutateOpen((book) => ({ ...book, goals: { ...book.goals, ...goals } })),
+    logWordsToday: (words: number) =>
+      mutateOpen((book) => {
+        const key = todayKey()
+        return {
+          ...book,
+          goals: {
+            ...book.goals,
+            habitLog: { ...book.goals.habitLog, [key]: (book.goals.habitLog[key] || 0) + words },
+          },
+        }
+      }),
+    updateEditorPrefs: (prefs: Partial<EditorPrefs>) =>
+      mutateOpen((book) => {
+        const workspaceTheme = resolveWorkspaceTheme(
+          prefs.workspaceTheme ?? book.editorPrefs.workspaceTheme,
+          prefs.darkMode ?? book.editorPrefs.darkMode,
+        )
+        return {
+          ...book,
+          editorPrefs: {
+            ...book.editorPrefs,
+            ...prefs,
+            workspaceTheme,
+            darkMode: isDarkWorkspaceTheme(workspaceTheme),
+          },
+        }
+      }),
+    addComment: (comment: Omit<import('./types').EditorialComment, 'id' | 'createdAt' | 'resolved'>) =>
+      mutateOpen((book) => ({
+        ...book,
+        comments: [...(book.comments || []), { ...comment, id: uuid(), createdAt: new Date().toISOString(), resolved: false }],
+      })),
+    updateComment: (id: string, patch: Partial<import('./types').EditorialComment>) =>
+      mutateOpen((book) => ({
+        ...book,
+        comments: (book.comments || []).map((comment) => comment.id === id ? { ...comment, ...patch } : comment),
+      })),
+    deleteComment: (id: string) =>
+      mutateOpen((book) => ({ ...book, comments: (book.comments || []).filter((comment) => comment.id !== id) })),
+    setTrackChanges: (enabled: boolean) =>
+      mutateOpen((book) => ({
+        ...book,
+        trackChanges: enabled,
+        revisions: [
+          ...(book.revisions || []),
+          {
+            id: uuid(),
+            name: enabled ? 'Before tracked editing' : 'After tracked editing',
+            createdAt: new Date().toISOString(),
+            chapters: book.chapters.map(({ id, title, subtitle, content }) => ({ id, title, subtitle, content })),
+          },
+        ],
 }
