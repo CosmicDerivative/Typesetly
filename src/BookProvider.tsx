@@ -1620,4 +1620,59 @@ export function BookProvider({ children }: { children: ReactNode }) {
       setTimerPhase('sprint')
     },
     setSprintDuration: (seconds: number) => {
+      setSprintDurationState(Math.max(60, seconds))
+      setTimerSeconds(0)
+      setTimerPhase('sprint')
+    },
+    setBreakDuration: (seconds: number) => setBreakDurationState(Math.max(60, seconds)),
+    markSaved: () => setSaveStatus('saved'),
+    downloadSnapshot: () => {
+      const payload = {
+        version: 3 as const,
+        books,
+        themes: themes.filter((theme) => !theme.preset),
+        exportedAt: new Date().toISOString(),
+      }
+      if (window.typesetly?.saveJson) {
+        void window.typesetly.saveJson({ defaultName: 'typesetly-snapshot.json', data: payload })
+      } else downloadJson('typesetly-snapshot.json', payload)
+      setNotice('Snapshot downloaded.')
+    },
+    createBoxset: (bookIds: string[], title: string) => {
+      const selected = bookIds.map((id) => books.find((book) => book.id === id)).filter(Boolean) as BookProject[]
+      if (!selected.length) return
+      const chapters = [
+        makePage('title-page', 'Title Page'),
+        makePage('copyright', 'Copyright', '<p>Copyright © Box Set. All rights reserved.</p>'),
+        makePage('contents', 'Contents'),
+      ]
+      for (const book of selected) {
+        const part = createPart(book.details.title)
+        chapters.push(part)
+        for (const sourceChapter of book.chapters.filter((candidate) => candidate.type === 'chapter')) {
+          chapters.push({ ...structuredClone(sourceChapter), id: uuid(), partId: part.id })
+        }
+      }
+      const box = normalizeBook({
+        ...createEmptyBook(title),
+        details: {
+          ...createEmptyBook(title).details,
+          title,
+          author: selected[0]?.details.author || '',
+        },
+        chapters,
+        activeId: chapters[3]?.id || chapters[0].id,
+        isBoxset: true,
+        volumeBookIds: bookIds,
+      })
+      markDirty()
+      setBooks((previous) => [box, ...previous])
+      setOpenBookId(box.id)
+    },
+    dismissNotice: () => setNotice(''),
+  }
+
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>
 }
+
+export { BookProvider as AppProvider }
