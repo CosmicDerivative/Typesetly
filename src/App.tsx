@@ -16,8 +16,14 @@ import {
   SmartQuotesPanel,
 } from './components/SidePanels'
 import { UtilityBar } from './components/UtilityBar'
+import { StoryBiblePanel } from './components/StoryBiblePanel'
+import { NotesPanel } from './components/NotesPanel'
+import { isDarkWorkspaceTheme, resolveWorkspaceTheme } from './themes/workspaceThemes'
 import './App.css'
+import './workspace-themes.css'
 
+function Workspace() {
+  const {
 export default function App() {
   return (
     <main className="app">
