@@ -24,6 +24,12 @@ import './workspace-themes.css'
 
 function Workspace() {
   const {
+    project,
+    mode,
+    loading,
+    notice,
+    dismissNotice,
+    saveStatus,
 export default function App() {
   return (
     <main className="app">
