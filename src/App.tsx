@@ -10,6 +10,12 @@ import { LeftSidebar } from './components/LeftSidebar'
 import { Organizer } from './components/Organizer'
 import { Previewer } from './components/Previewer'
 import {
+  EditorSettingsPanel,
+  FindReplacePanel,
+  GoalsPanel,
+  SmartQuotesPanel,
+} from './components/SidePanels'
+import { UtilityBar } from './components/UtilityBar'
 import './App.css'
 
 export default function App() {
