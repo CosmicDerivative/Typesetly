@@ -42,6 +42,12 @@ function Workspace() {
   if (loading) {
     return (
       <div className="app-loading" role="status">
+        <div className="loading-mark"><img src={TYPESETLY_LOGO_URL} alt="" /></div>
+        <p>Opening your library…</p>
+      </div>
+    )
+  }
+  if (!project) return <Home />
 export default function App() {
   return (
     <main className="app">
