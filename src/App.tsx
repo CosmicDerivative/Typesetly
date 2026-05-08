@@ -48,6 +48,12 @@ function Workspace() {
     )
   }
   if (!project) return <Home />
+
+  const workspaceTheme = resolveWorkspaceTheme(
+    project.editorPrefs.workspaceTheme,
+    project.editorPrefs.darkMode,
+  )
+
 export default function App() {
   return (
     <main className="app">
