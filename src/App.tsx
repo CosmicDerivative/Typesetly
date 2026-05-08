@@ -60,6 +60,12 @@ function Workspace() {
       className={[
         'app-shell',
         `workspace-${mode}`,
+        `theme-${workspaceTheme}`,
+        sidebarOpen && sidebarPinned ? 'has-pinned-left' : '',
+        rightPanel !== 'none' &&
+        rightPanel === pinnedRightPanel &&
+        !(mode === 'publish' && rightPanel === 'preview')
+          ? 'has-pinned-right'
 export default function App() {
   return (
     <main className="app">
