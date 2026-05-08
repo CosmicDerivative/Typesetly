@@ -72,6 +72,12 @@ function Workspace() {
     >
       <Header />
       <div className="workspace">
+        {sidebarOpen && !sidebarPinned && (
+          <button
+            type="button"
+            className="sidebar-scrim"
+            aria-label="Close navigation"
+            onClick={() => setSidebarOpen(false)}
 export default function App() {
   return (
     <main className="app">
