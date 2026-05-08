@@ -84,6 +84,12 @@ function Workspace() {
         {mode === 'draft' && <EditorPane />}
         {mode === 'plan' && <StoryBiblePanel />}
         {mode === 'organize' && <Organizer />}
+        {mode === 'design' && <div className="formatting-host"><FormattingPanel /></div>}
+        {rightPanel !== 'none' &&
+          rightPanel !== 'preview' &&
+          rightPanel !== pinnedRightPanel && (
+          <button
+            type="button"
 export default function App() {
   return (
     <main className="app">
