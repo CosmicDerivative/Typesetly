@@ -66,6 +66,12 @@ function Workspace() {
         rightPanel === pinnedRightPanel &&
         !(mode === 'publish' && rightPanel === 'preview')
           ? 'has-pinned-right'
+          : '',
+        isDarkWorkspaceTheme(workspaceTheme) ? 'dark' : '',
+      ].filter(Boolean).join(' ')}
+    >
+      <Header />
+      <div className="workspace">
 export default function App() {
   return (
     <main className="app">
