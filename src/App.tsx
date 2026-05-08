@@ -54,6 +54,12 @@ function Workspace() {
     project.editorPrefs.darkMode,
   )
 
+  return (
+    <div
+      data-workspace-theme={workspaceTheme}
+      className={[
+        'app-shell',
+        `workspace-${mode}`,
 export default function App() {
   return (
     <main className="app">
