@@ -36,6 +36,12 @@ function Workspace() {
     rightPanel,
     setRightPanel,
     sidebarPinned,
+    pinnedRightPanel,
+  } = useApp()
+
+  if (loading) {
+    return (
+      <div className="app-loading" role="status">
 export default function App() {
   return (
     <main className="app">
