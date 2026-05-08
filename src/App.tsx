@@ -78,6 +78,12 @@ function Workspace() {
             className="sidebar-scrim"
             aria-label="Close navigation"
             onClick={() => setSidebarOpen(false)}
+          />
+        )}
+        {sidebarOpen && <LeftSidebar />}
+        {mode === 'draft' && <EditorPane />}
+        {mode === 'plan' && <StoryBiblePanel />}
+        {mode === 'organize' && <Organizer />}
 export default function App() {
   return (
     <main className="app">
