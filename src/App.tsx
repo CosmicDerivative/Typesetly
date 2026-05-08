@@ -30,6 +30,12 @@ function Workspace() {
     notice,
     dismissNotice,
     saveStatus,
+    saveError,
+    sidebarOpen,
+    setSidebarOpen,
+    rightPanel,
+    setRightPanel,
+    sidebarPinned,
 export default function App() {
   return (
     <main className="app">
