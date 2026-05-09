@@ -90,6 +90,12 @@ function Workspace() {
           rightPanel !== pinnedRightPanel && (
           <button
             type="button"
+            className="panel-scrim"
+            aria-label="Close tool drawer"
+            onClick={() => setRightPanel(mode === 'publish' ? 'preview' : 'none')}
+          />
+        )}
+        <Previewer />
 export default function App() {
   return (
     <main className="app">
