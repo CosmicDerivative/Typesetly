@@ -1,0 +1,31 @@
+.editor-pane {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  background: #f3f0ea;
+}
+
+.editor-toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 18px;
+  border-bottom: 1px solid #ddd6ca;
+  background: #fff;
+}
+
+.editor-toolbar span {
+  margin-left: auto;
+  color: #756f66;
+}
+
+.editor-pane textarea {
+  width: min(760px, calc(100% - 48px));
+  min-height: 70vh;
+  margin: 40px auto;
+  padding: 64px;
+  border: 0;
+  box-shadow: 0 12px 40px #4d45331a;
+  font: 18px/1.7 Georgia, serif;
+  resize: none;
+}

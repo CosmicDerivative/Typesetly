@@ -1,0 +1,26 @@
+.home {
+  min-height: 100vh;
+  padding: 64px;
+  background: #f6f1e8;
+}
+
+.home-intro {
+  max-width: 680px;
+}
+
+.home-intro h1 {
+  margin: 12px 0;
+  font-family: Georgia, serif;
+  font-size: clamp(2.5rem, 6vw, 5rem);
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.project-list {
+  margin-top: 72px;
+  padding-top: 24px;
+  border-top: 1px solid #d6cdbf;
+}

@@ -118,9 +118,8 @@ function Workspace() {
 
 export default function App() {
   return (
-      <section className="app-welcome">
-        <p>Your book workspace is being prepared.</p>
-      </section>
-    </main>
+    <BookProvider>
+      <Workspace />
+    </BookProvider>
   )
 }
