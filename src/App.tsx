@@ -108,6 +108,12 @@ function Workspace() {
       </div>
       {(notice || saveStatus === 'error') && (
         <div className={saveStatus === 'error' ? 'app-toast error' : 'app-toast'} role="status">
+          <span>{saveStatus === 'error' ? `Save failed: ${saveError}` : notice}</span>
+          <button type="button" onClick={dismissNotice} aria-label="Dismiss notification">×</button>
+        </div>
+      )}
+    </div>
+  )
 export default function App() {
   return (
     <main className="app">
