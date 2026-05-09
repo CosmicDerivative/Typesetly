@@ -96,6 +96,12 @@ function Workspace() {
           />
         )}
         <Previewer />
+        <FindReplacePanel />
+        <GoalsPanel />
+        <EditorSettingsPanel />
+        <SmartQuotesPanel />
+        <EditorialPanel />
+        <RevisionsPanel />
 export default function App() {
   return (
     <main className="app">
