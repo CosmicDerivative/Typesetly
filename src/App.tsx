@@ -102,6 +102,12 @@ function Workspace() {
         <SmartQuotesPanel />
         <EditorialPanel />
         <RevisionsPanel />
+        {mode !== 'plan' && <StoryBiblePanel />}
+        <NotesPanel />
+        {mode !== 'plan' && <UtilityBar />}
+      </div>
+      {(notice || saveStatus === 'error') && (
+        <div className={saveStatus === 'error' ? 'app-toast error' : 'app-toast'} role="status">
 export default function App() {
   return (
     <main className="app">
