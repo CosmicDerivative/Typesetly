@@ -71,6 +71,41 @@ export function Home() {
   }, [books])
 
   useEffect(() => {
+    if (seriesFilter && !availableSeries.some(([name]) => name === seriesFilter)) {
+      setSeriesFilter('')
+    }
+  }, [availableSeries, seriesFilter])
+
+  const filtered = useMemo(() => {
+    let list = [...books]
+    if (query.trim()) {
+      const q = query.toLowerCase()
+      list = list.filter(
+        (b) =>
+          b.details.title.toLowerCase().includes(q) ||
+          b.details.author.toLowerCase().includes(q) ||
+          b.details.seriesName?.toLowerCase().includes(q),
+      )
+    }
+    if (seriesFilter) {
+      list = list.filter((book) =>
+        book.details.seriesName?.localeCompare(seriesFilter, undefined, { sensitivity: 'base' }) === 0
+      )
+    }
+    list.sort((a, b) => {
+      if (sort === 'alpha') return a.details.title.localeCompare(b.details.title)
+      if (sort === 'added') return b.createdAt.localeCompare(a.createdAt)
+      if (sort === 'series') {
+        const leftSeries = a.details.seriesName || '\uffff'
+        const rightSeries = b.details.seriesName || '\uffff'
+        return leftSeries.localeCompare(rightSeries) ||
+          (a.details.seriesNumber ?? Number.MAX_SAFE_INTEGER) -
+            (b.details.seriesNumber ?? Number.MAX_SAFE_INTEGER) ||
+          a.details.title.localeCompare(b.details.title)
+      }
+      return b.updatedAt.localeCompare(a.updatedAt)
+    })
+    return list
   return (
     <main className="home">
       <section className="home-intro">
