@@ -106,17 +106,32 @@ export function Home() {
       return b.updatedAt.localeCompare(a.updatedAt)
     })
     return list
+  }, [books, query, seriesFilter, sort])
+
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+  }
+
   return (
-    <main className="home">
-      <section className="home-intro">
-        <p className="eyebrow">Your writing desk</p>
-        <h1>Turn a manuscript into a finished book.</h1>
-        <p>Create a project to begin writing and formatting.</p>
-        <button type="button">Create a book</button>
-      </section>
-      <section className="project-list" aria-label="Recent projects">
-        <h2>Recent projects</h2>
-        <p>No projects yet.</p>
+    <div className="home">
+      <header className="home-header">
+        <div className="home-brand">
+          <img src={TYPESETLY_LOGO_URL} alt="" />
+          <div>
+            <h1>Typesetly</h1>
+            <p>Your private workshop for finished books</p>
+          </div>
+        </div>
+        <div className="home-actions">
+          <button type="button" className="ghost" onClick={() => restoreRef.current?.click()}>
+            Restore snapshot
+          </button>
+          <button type="button" className="ghost" onClick={downloadSnapshot}>
+            Backup snapshot
+          </button>
+          <input
+            ref={restoreRef}
+            hidden
       </section>
     </main>
   )
