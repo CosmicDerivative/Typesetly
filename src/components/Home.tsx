@@ -36,6 +36,41 @@ export function Home() {
     name: string
     number: string
     total: string
+  } | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+  const [boxsetTitle, setBoxsetTitle] = useState('Box Set')
+  const [namingBoxset, setNamingBoxset] = useState(false)
+  const [importReport, setImportReport] = useState<ImportReport | null>(null)
+  const [importKind, setImportKind] = useState<'word' | 'scrivener'>('word')
+  const [scrivenerPickerOpen, setScrivenerPickerOpen] = useState(false)
+  const [scrivenerImportError, setScrivenerImportError] = useState('')
+  const [importing, setImporting] = useState(false)
+  const [includedChapters, setIncludedChapters] = useState<string[]>([])
+  const [starterTitle, setStarterTitle] = useState('')
+
+  useEffect(() => {
+    const closeBookMenu = (event: PointerEvent) => {
+      const target = event.target instanceof Element ? event.target : null
+      if (!target?.closest('.book-menu, .book-dropdown')) setMenuId(null)
+    }
+    document.addEventListener('pointerdown', closeBookMenu)
+    return () => document.removeEventListener('pointerdown', closeBookMenu)
+  }, [])
+
+  const availableSeries = useMemo(() => {
+    const counts = new Map<string, [string, number]>()
+    for (const book of books) {
+      const name = book.details.seriesName?.trim()
+      if (name) {
+        const key = name.toLocaleLowerCase()
+        const existing = counts.get(key)
+        counts.set(key, [existing?.[0] || name, (existing?.[1] || 0) + 1])
+      }
+    }
+    return [...counts.values()].sort(([left], [right]) => left.localeCompare(right))
+  }, [books])
+
+  useEffect(() => {
   return (
     <main className="home">
       <section className="home-intro">
