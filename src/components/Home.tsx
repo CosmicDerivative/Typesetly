@@ -342,5 +342,40 @@ export function Home() {
                 })}
               />
             </label>
+            {importReport.warnings.length > 0 && (
+              <div className="import-warnings">
+                <strong>Import notes</strong>
+                {importReport.warnings.map((warning, index) => <p key={`${warning}-${index}`}>{warning}</p>)}
+              </div>
+            )}
+            {importReport.summary && (
+              <div className="import-summary">
+                <span><strong>{importReport.summary.chapters}</strong> chapters</span>
+                <span><strong>{importReport.summary.words.toLocaleString()}</strong> words</span>
+                <span><strong>{importReport.summary.images}</strong> images</span>
+                <span><strong>{importReport.summary.footnotes}</strong> notes</span>
+                <span><strong>{importReport.summary.links}</strong> links</span>
+              </div>
+            )}
+            <div className="import-chapters">
+              {importReport.book.chapters.map((chapter) => (
+                <label key={chapter.id}>
+                  <input
+                    type="checkbox"
+                    checked={includedChapters.includes(chapter.id)}
+                    onChange={() => setIncludedChapters((current) =>
+                      current.includes(chapter.id)
+                        ? current.filter((id) => id !== chapter.id)
+                        : [...current, chapter.id]
+                    )}
+                  />
+                  <span><strong>{chapter.title}</strong><small>{chapter.type}</small></span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </Dialog>
+      )}
+
   )
 }
