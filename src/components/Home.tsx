@@ -237,7 +237,40 @@ export function Home() {
         />
         <input
           ref={fileRef}
+          type="file"
+          accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          hidden
+          onChange={async (e) => {
+            const file = e.target.files?.[0]
+            if (file) {
+              setImporting(true)
+              try {
+                const { importDocxToBook } = await import('../import/docx')
+                const report = await importDocxToBook(file)
+                setImportKind('word')
+                setImportReport(report)
+                setIncludedChapters(report.book.chapters.map((chapter) => chapter.id))
+              } finally {
+                setImporting(false)
+              }
+            }
+            e.target.value = ''
+          }}
+        />
+        {importing && <p className="import-progress" role="status">Reading manuscript and detecting chapters…</p>}
       </section>
-    </main>
+
+      {scrivenerPickerOpen && (
+        <Dialog
+          title="Import from Scrivener"
+          description="Typesetly reads a copy of the project. It never changes files inside the original .scriv project."
+          confirmLabel="Cancel"
+          onCancel={() => setScrivenerPickerOpen(false)}
+          onConfirm={() => setScrivenerPickerOpen(false)}
+        >
+          <div className="scrivener-import-choices">
+            <button type="button" onClick={() => scrivenerFolderRef.current?.click()}>
+              <FolderOpen size={20} />
+              <span>
   )
 }
