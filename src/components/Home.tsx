@@ -412,5 +412,40 @@ export function Home() {
             >
               {name} <span>{count}</span>
             </button>
+          ))}
+        </div>
+      )}
+
+      <div className="book-grid">
+        {filtered.length === 0 && (
+          query ? (
+            <div className="library-empty">
+              <div className="empty-icon">Aa</div>
+              <h3>No books match that search</h3>
+              <p>Try a title or author name.</p>
+            </div>
+          ) : (
+            <section className="library-empty story-compass">
+              <div className="compass-mark" aria-hidden>
+                <span>Plan</span>
+                <strong>✦</strong>
+                <span>Draft</span>
+              </div>
+              <span className="compass-kicker">A new Typesetly workspace</span>
+              <h3>Begin with the next useful decision</h3>
+              <p>
+                No demo manuscript is waiting for you. Name the idea if it has a name,
+                then choose whether to map the story or meet the blank page.
+              </p>
+              <label className="starter-title">
+                Working title
+                <input
+                  value={starterTitle}
+                  placeholder="Untitled Book"
+                  onChange={(event) => setStarterTitle(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter') return
+                    createBook(starterTitle.trim() || undefined)
+                    setMode('draft')
   )
 }
