@@ -447,5 +447,40 @@ export function Home() {
                     if (event.key !== 'Enter') return
                     createBook(starterTitle.trim() || undefined)
                     setMode('draft')
+                  }}
+                />
+              </label>
+              <div className="compass-actions">
+                <button
+                  type="button"
+                  onClick={() => {
+                    createBook(starterTitle.trim() || undefined)
+                    setMode('plan')
+                  }}
+                >
+                  <span>01</span>
+                  <strong>Map the story</strong>
+                  <small>Characters, places, relationships, and notes first.</small>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    createBook(starterTitle.trim() || undefined)
+                    setMode('draft')
+                  }}
+                >
+                  <span>02</span>
+                  <strong>Start drafting</strong>
+                  <small>Open a clean first chapter and begin writing.</small>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setScrivenerImportError('')
+                    setScrivenerPickerOpen(true)
+                  }}
+                >
+                  <span>03</span>
+                  <strong>Carry in a story</strong>
   )
 }
