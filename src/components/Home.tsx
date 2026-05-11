@@ -377,5 +377,40 @@ export function Home() {
         </Dialog>
       )}
 
+      <div className="home-toolbar">
+        <h2>Your shelf</h2>
+        <div className="home-filters">
+          <input
+            placeholder="Search books…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)}>
+            <option value="modified">Date modified</option>
+            <option value="added">Recently added</option>
+            <option value="alpha">Alphabetical</option>
+            <option value="series">Series order</option>
+          </select>
+        </div>
+      </div>
+
+      {availableSeries.length > 0 && (
+        <div className="series-filter" aria-label="Filter by series">
+          <button
+            type="button"
+            className={!seriesFilter ? 'active' : ''}
+            onClick={() => setSeriesFilter('')}
+          >
+            All books <span>{books.length}</span>
+          </button>
+          {availableSeries.map(([name, count]) => (
+            <button
+              type="button"
+              className={seriesFilter === name ? 'active' : ''}
+              key={name}
+              onClick={() => setSeriesFilter(seriesFilter === name ? '' : name)}
+            >
+              {name} <span>{count}</span>
+            </button>
   )
 }
