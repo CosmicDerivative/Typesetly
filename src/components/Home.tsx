@@ -202,6 +202,41 @@ export function Home() {
                 setImporting(false)
               }
             }
+            event.target.value = ''
+          }}
+        />
+        <input
+          ref={scrivenerArchiveRef}
+          type="file"
+          accept=".zip,.scrivzip,application/zip"
+          hidden
+          onChange={async (event) => {
+            const file = event.target.files?.[0]
+            if (file) {
+              setImporting(true)
+              try {
+                const {
+                  importScrivenerSources,
+                  sourceFilesFromArchive,
+                } = await import('../integrations/scrivener')
+                const report = importScrivenerSources(await sourceFilesFromArchive(file))
+                setImportKind('scrivener')
+                setImportReport(report)
+                setIncludedChapters(report.book.chapters.map((chapter) => chapter.id))
+                setScrivenerPickerOpen(false)
+              } catch (error) {
+                setScrivenerImportError(
+                  error instanceof Error ? error.message : 'The Scrivener backup could not be imported.',
+                )
+              } finally {
+                setImporting(false)
+              }
+            }
+            event.target.value = ''
+          }}
+        />
+        <input
+          ref={fileRef}
       </section>
     </main>
   )
