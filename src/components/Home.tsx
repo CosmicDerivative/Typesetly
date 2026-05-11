@@ -307,5 +307,40 @@ export function Home() {
           </button>
         </div>
       )}
+
+      {importReport && (
+        <Dialog
+          title={importKind === 'scrivener' ? 'Review Scrivener Import' : 'Review Word Import'}
+          wide
+          description={
+            importKind === 'scrivener'
+              ? 'Confirm the Binder structure and choose what to bring into your library.'
+              : 'Confirm the detected title and pages before adding this book to your library.'
+          }
+          confirmLabel={`Import ${includedChapters.length} ${includedChapters.length === 1 ? 'page' : 'pages'}`}
+          onCancel={() => setImportReport(null)}
+          onConfirm={() => {
+            const selected = new Set(includedChapters)
+            const chapters = importReport.book.chapters.filter((chapter) => selected.has(chapter.id))
+            const activeId = chapters.find((chapter) => chapter.type === 'chapter')?.id || chapters[0]?.id
+            if (!activeId) return
+            replaceProject({ ...importReport.book, chapters, activeId })
+            setImportReport(null)
+          }}
+        >
+          <div className="import-review">
+            <label>
+              Book title
+              <input
+                value={importReport.book.details.title}
+                onChange={(event) => setImportReport({
+                  ...importReport,
+                  book: {
+                    ...importReport.book,
+                    details: { ...importReport.book.details, title: event.target.value },
+                  },
+                })}
+              />
+            </label>
   )
 }
