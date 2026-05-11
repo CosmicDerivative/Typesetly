@@ -167,6 +167,41 @@ export function Home() {
           type="button"
           className={boxsetMode ? 'cta-card active' : 'cta-card'}
           onClick={() => {
+            setBoxsetMode((v) => !v)
+            setSelected([])
+          }}
+        >
+          <Copy size={22} />
+          <span>Build a collection</span>
+        </button>
+        <input
+          ref={scrivenerFolderRef}
+          type="file"
+          multiple
+          hidden
+          {...({ webkitdirectory: '', directory: '' } as Record<string, string>)}
+          onChange={async (event) => {
+            const files = [...(event.target.files || [])]
+            if (files.length) {
+              setImporting(true)
+              try {
+                const {
+                  importScrivenerSources,
+                  sourceFilesFromSelection,
+                } = await import('../integrations/scrivener')
+                const report = importScrivenerSources(await sourceFilesFromSelection(files))
+                setImportKind('scrivener')
+                setImportReport(report)
+                setIncludedChapters(report.book.chapters.map((chapter) => chapter.id))
+                setScrivenerPickerOpen(false)
+              } catch (error) {
+                setScrivenerImportError(
+                  error instanceof Error ? error.message : 'The Scrivener project could not be imported.',
+                )
+              } finally {
+                setImporting(false)
+              }
+            }
       </section>
     </main>
   )
