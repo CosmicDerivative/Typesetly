@@ -132,6 +132,41 @@ export function Home() {
           <input
             ref={restoreRef}
             hidden
+            type="file"
+            accept=".json,application/json"
+            onChange={async (event) => {
+              const file = event.target.files?.[0]
+              if (file) await restoreSnapshot(file)
+              event.target.value = ''
+            }}
+          />
+        </div>
+      </header>
+
+      <section className="home-cta">
+        <button type="button" className="cta-card" onClick={() => createBook()}>
+          <Plus size={22} />
+          <span>New manuscript</span>
+        </button>
+        <button type="button" className="cta-card" onClick={() => fileRef.current?.click()}>
+          <Upload size={22} />
+          <span>Bring in a Word file</span>
+        </button>
+        <button
+          type="button"
+          className="cta-card"
+          onClick={() => {
+            setScrivenerImportError('')
+            setScrivenerPickerOpen(true)
+          }}
+        >
+          <FolderOpen size={22} />
+          <span>Import a Scrivener project</span>
+        </button>
+        <button
+          type="button"
+          className={boxsetMode ? 'cta-card active' : 'cta-card'}
+          onClick={() => {
       </section>
     </main>
   )
