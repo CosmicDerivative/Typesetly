@@ -272,5 +272,40 @@ export function Home() {
             <button type="button" onClick={() => scrivenerFolderRef.current?.click()}>
               <FolderOpen size={20} />
               <span>
+                <strong>Select .scriv project folder</strong>
+                <small>Best for an uncompressed project on this computer.</small>
+              </span>
+            </button>
+            <button type="button" onClick={() => scrivenerArchiveRef.current?.click()}>
+              <FileArchive size={20} />
+              <span>
+                <strong>Select zipped project backup</strong>
+                <small>Imports .zip and .scrivzip backups without extracting them.</small>
+              </span>
+            </button>
+          </div>
+          <p className="scrivener-import-note">
+            Draft folders become chapters or parts, and their text documents become editable scenes.
+            Research, snapshots, comments, and Compile settings stay in Scrivener.
+          </p>
+          {scrivenerImportError && <p className="scrivener-import-error" role="alert">{scrivenerImportError}</p>}
+        </Dialog>
+      )}
+
+      {boxsetMode && (
+        <div className="boxset-bar">
+          <span>Select books in order, then create.</span>
+          <button
+            type="button"
+            disabled={selected.length < 2}
+            onClick={() => {
+              setBoxsetTitle('Box Set')
+              setNamingBoxset(true)
+            }}
+          >
+            Create boxset ({selected.length})
+          </button>
+        </div>
+      )}
   )
 }
