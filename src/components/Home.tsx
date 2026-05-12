@@ -622,5 +622,40 @@ export function Home() {
           </label>
           <div className="series-dialog-grid">
             <label>
+              Book number
+              <input
+                type="number"
+                min="0"
+                step="0.5"
+                value={seriesTarget.number}
+                onChange={(event) => setSeriesTarget({ ...seriesTarget, number: event.target.value })}
+              />
+            </label>
+            <label>
+              Planned total
+              <input
+                type="number"
+                min="1"
+                value={seriesTarget.total}
+                onChange={(event) => setSeriesTarget({ ...seriesTarget, total: event.target.value })}
+              />
+            </label>
+          </div>
+        </Dialog>
+      )}
+      {deleteTarget && (
+        <Dialog
+          title="Delete this book?"
+          description="This removes the book from the local library. Download a snapshot first if you may need it later."
+          confirmLabel="Delete book"
+          danger
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={() => {
+            deleteBook(deleteTarget)
+            setDeleteTarget(null)
+          }}
+        />
+      )}
+    </div>
   )
 }
