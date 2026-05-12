@@ -552,5 +552,40 @@ export function Home() {
                 </button>
                 <button
                   type="button"
+                  onClick={() => {
+                    setSeriesTarget({
+                      id: book.id,
+                      name: book.details.seriesName || '',
+                      number: book.details.seriesNumber?.toString() || '',
+                      total: book.details.seriesTotal?.toString() || '',
+                    })
+                    setMenuId(null)
+                  }}
+                >
+                  Series details
+                </button>
+                <button
+                  type="button"
+                  className="danger"
+                  onClick={() => {
+                    setDeleteTarget(book.id)
+                    setMenuId(null)
+                  }}
+                >
+                  <Trash2 size={14} /> Delete
+                </button>
+              </div>
+            )}
+          </article>
+        ))}
+      </div>
+      {namingBoxset && (
+        <Dialog
+          title="Name this box set"
+          confirmLabel="Create box set"
+          onCancel={() => setNamingBoxset(false)}
+          onConfirm={() => {
+            createBoxset(selected, boxsetTitle.trim() || 'Box Set')
+            setNamingBoxset(false)
   )
 }
