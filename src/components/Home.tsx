@@ -517,5 +517,40 @@ export function Home() {
             </div>
             <div className="book-meta">
               <h3>{book.details.title}</h3>
+              {book.details.seriesName && (
+                <span className="book-series">
+                  {book.details.seriesName}
+                  {book.details.seriesNumber != null ? ` · Book ${book.details.seriesNumber}` : ''}
+                  {book.details.seriesTotal ? ` of ${book.details.seriesTotal}` : ''}
+                </span>
+              )}
+              <p>
+                {countBookWords(book).toLocaleString()} words ·{' '}
+                {new Date(book.updatedAt).toLocaleDateString()}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="book-menu"
+              onClick={(e) => {
+                e.stopPropagation()
+                setMenuId(menuId === book.id ? null : book.id)
+              }}
+            >
+              <MoreVertical size={16} />
+            </button>
+            {menuId === book.id && (
+              <div className="book-dropdown" onClick={(e) => e.stopPropagation()}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    duplicateBook(book.id)
+                    setMenuId(null)
+                  }}
+                >
+                  Duplicate
+                </button>
+                <button
+                  type="button"
   )
 }
