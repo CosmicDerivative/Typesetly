@@ -587,5 +587,40 @@ export function Home() {
           onConfirm={() => {
             createBoxset(selected, boxsetTitle.trim() || 'Box Set')
             setNamingBoxset(false)
+            setBoxsetMode(false)
+            setSelected([])
+          }}
+        >
+          <label>
+            Box set title
+            <input value={boxsetTitle} onChange={(event) => setBoxsetTitle(event.target.value)} />
+          </label>
+        </Dialog>
+      )}
+      {seriesTarget && (
+        <Dialog
+          title="Series details"
+          description="Use the same series name across books. Series order uses the book number."
+          confirmLabel="Save series"
+          onCancel={() => setSeriesTarget(null)}
+          onConfirm={() => {
+            updateBookSeries(seriesTarget.id, {
+              name: seriesTarget.name,
+              number: seriesTarget.number ? Number(seriesTarget.number) : undefined,
+              total: seriesTarget.total ? Number(seriesTarget.total) : undefined,
+            })
+            setSeriesTarget(null)
+          }}
+        >
+          <label>
+            Series name
+            <input
+              value={seriesTarget.name}
+              placeholder="Leave blank to remove from a series"
+              onChange={(event) => setSeriesTarget({ ...seriesTarget, name: event.target.value })}
+            />
+          </label>
+          <div className="series-dialog-grid">
+            <label>
   )
 }
