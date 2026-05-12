@@ -482,5 +482,40 @@ export function Home() {
                 >
                   <span>03</span>
                   <strong>Carry in a story</strong>
+                  <small>Review and import a Scrivener project.</small>
+                </button>
+              </div>
+            </section>
+          )
+        )}
+        {filtered.map((book) => (
+          <article
+            key={book.id}
+            className={
+              boxsetMode && selected.includes(book.id) ? 'book-card selected' : 'book-card'
+            }
+            onClick={() => {
+              if (boxsetMode) toggleSelect(book.id)
+              else openBook(book.id)
+            }}
+          >
+            <div
+              className="book-cover"
+              style={
+                book.details.coverDataUrl
+                  ? { backgroundImage: `url(${book.details.coverDataUrl})` }
+                  : undefined
+              }
+            >
+              {!book.details.coverDataUrl && (
+                <div className="cover-fallback">
+                  <strong>{book.details.title}</strong>
+                  <span>{book.details.author}</span>
+                </div>
+              )}
+              {book.isBoxset && <span className="badge">Boxset</span>}
+            </div>
+            <div className="book-meta">
+              <h3>{book.details.title}</h3>
   )
 }
