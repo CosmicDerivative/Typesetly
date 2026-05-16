@@ -1,4 +1,26 @@
-import { useState } from 'react'
+import { useEditor, EditorContent } from '@tiptap/react'
+import StarterKit from '@tiptap/starter-kit'
+import TextAlign from '@tiptap/extension-text-align'
+import Placeholder from '@tiptap/extension-placeholder'
+import CharacterCount from '@tiptap/extension-character-count'
+import {
+  AlignCenter,
+  AlignJustify,
+  AlignLeft,
+  AlignRight,
+  Bold,
+  ChevronDown,
+  Clock,
+  Code2,
+  FileDown,
+  Italic,
+  Link2,
+  List,
+  ListOrdered,
+  Maximize2,
+  MessageSquare,
+  Minus,
+  ImagePlus,
 import './Editor.css'
 
 export function EditorPane() {
