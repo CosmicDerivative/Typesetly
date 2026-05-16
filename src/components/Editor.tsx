@@ -144,6 +144,31 @@ export function EditorPane() {
   const [blockEditing, setBlockEditing] = useState(false)
   const [blockVariant, setBlockVariant] = useState<'callout' | 'message'>('callout')
   const [blockBackground, setBlockBackground] = useState('#f2f6fa')
+  const [blockBorder, setBlockBorder] = useState('#9aa7b2')
+  const [blockSender, setBlockSender] = useState('')
+  const [blockDirection, setBlockDirection] = useState<'incoming' | 'outgoing'>('outgoing')
+  const [blockTheme, setBlockTheme] = useState<'ios' | 'android'>('ios')
+  const [blockText, setBlockText] = useState('')
+  const [presetName, setPresetName] = useState('')
+  const [quoteOpen, setQuoteOpen] = useState(false)
+  const [quoteAttribution, setQuoteAttribution] = useState('')
+  const imageRef = useRef<HTMLInputElement>(null)
+  const blockRangeRef = useRef<{ from: number; to: number } | null>(null)
+  const activeChapterId = activeChapter?.id
+  const activeChapterContent = activeChapter?.content
+
+  const editor = useEditor({
+    immediatelyRender: false,
+    extensions: [
+      StarterKit.configure({
+        heading: { levels: [1, 2, 3, 4, 5, 6] },
+        link: { openOnClick: false },
+        horizontalRule: false,
+      }),
+      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      Placeholder.configure({ placeholder: 'Start writing…' }),
+      CharacterCount,
+      ManuscriptImage,
   return (
     <main className="editor-pane">
       <header className="editor-toolbar">
