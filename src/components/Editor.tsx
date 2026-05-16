@@ -95,8 +95,30 @@ function sanitizePastedHtml(html: string) {
         element.removeAttribute('href')
         changed = true
       }
+    }
+  }
+  if (changed) {
+    window.dispatchEvent(new CustomEvent('typesetly:notice', {
+      detail: 'Pasted content was cleaned to remove unsupported formatting and unsafe markup.',
+    }))
+  }
+  return doc.body.innerHTML
+}
+
 export function EditorPane() {
-  const [text, setText] = useState('')
+  const {
+    activeChapter,
+    project,
+    updateChapterContent,
+    updateChapterTitle,
+    updateChapterSubtitle,
+    updateDetails,
+    saveStatus,
+    timerRunning,
+    timerSeconds,
+    toggleTimer,
+    resetTimer,
+    activeTheme,
 
   return (
     <main className="editor-pane">
