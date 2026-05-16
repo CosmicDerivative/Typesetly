@@ -193,6 +193,30 @@ export function EditorPane() {
             selectionNode instanceof Element ? selectionNode : selectionNode.parentElement
           element?.scrollIntoView({ block: 'center', behavior: 'smooth' })
         })
+      }
+    },
+    editorProps: {
+      attributes: { class: 'prose-editor' },
+      transformPastedHTML: sanitizePastedHtml,
+      handleTextInput(view, from, to, text) {
+        if (!project?.editorPrefs.smartQuotes) return false
+        if (text === '"' || text === "'") {
+          const previousCharacter = view.state.doc.textBetween(Math.max(0, from - 1), from)
+          const converted = smartQuoteForInsertion(text, previousCharacter)
+          view.dispatch(view.state.tr.insertText(converted, from, to))
+          return true
+        }
+        return false
+      },
+    },
+  })
+
+  useEffect(() => {
+    if (!editor || !activeChapterId) return
+    if (editor.getHTML() !== activeChapterContent) {
+      editor.commands.setContent(activeChapterContent || '<p></p>', { emitUpdate: false })
+    }
+  }, [activeChapterContent, activeChapterId, editor])
   return (
     <main className="editor-pane">
       <header className="editor-toolbar">
