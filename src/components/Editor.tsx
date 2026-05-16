@@ -169,6 +169,30 @@ export function EditorPane() {
       Placeholder.configure({ placeholder: 'Start writing…' }),
       CharacterCount,
       ManuscriptImage,
+      SceneBreak,
+      PageBreak,
+      Footnote,
+      Callout,
+      SmallCaps,
+      SansSerif,
+      Monospace,
+      Subscript,
+      SuperscriptText,
+      VerseBlock,
+      HangingIndentBlock,
+      AttributedQuote,
+    ],
+    content: activeChapter?.content || '<p></p>',
+    onUpdate: ({ editor: ed }) => {
+      if (!activeChapter) return
+      updateChapterContent(activeChapter.id, ed.getHTML())
+      if (project?.editorPrefs.typewriterScrolling) {
+        window.requestAnimationFrame(() => {
+          const selectionNode = ed.view.domAtPos(ed.state.selection.anchor).node
+          const element =
+            selectionNode instanceof Element ? selectionNode : selectionNode.parentElement
+          element?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+        })
   return (
     <main className="editor-pane">
       <header className="editor-toolbar">
