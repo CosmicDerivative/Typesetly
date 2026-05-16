@@ -71,6 +71,30 @@ function sanitizePastedHtml(html: string) {
   const allowed = new Set(['P', 'BR', 'STRONG', 'B', 'EM', 'I', 'U', 'S', 'STRIKE', 'SUB', 'SUP', 'H2', 'H3', 'H4', 'H5', 'H6', 'UL', 'OL', 'LI', 'BLOCKQUOTE', 'A', 'IMG'])
   let changed = false
   doc.querySelectorAll('script,style,iframe,object,embed,table').forEach((element) => {
+    element.replaceWith(doc.createTextNode(element.textContent || ''))
+    changed = true
+  })
+  for (const element of Array.from(doc.body.querySelectorAll('*'))) {
+    if (!allowed.has(element.tagName)) {
+      element.replaceWith(...Array.from(element.childNodes))
+      changed = true
+      continue
+    }
+    for (const attribute of Array.from(element.attributes)) {
+      const keep =
+        (element.tagName === 'A' && attribute.name === 'href') ||
+        (element.tagName === 'IMG' && ['src', 'alt', 'title'].includes(attribute.name))
+      if (!keep) {
+        element.removeAttribute(attribute.name)
+        changed = true
+      }
+    }
+    if (element.tagName === 'A') {
+      const href = element.getAttribute('href') || ''
+      if (!/^(https?:|mailto:|#)/i.test(href)) {
+        element.removeAttribute('href')
+        changed = true
+      }
 export function EditorPane() {
   const [text, setText] = useState('')
 
