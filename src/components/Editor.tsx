@@ -46,7 +46,31 @@ import {
   Footnote,
   ManuscriptImage,
   Monospace,
+  PageBreak,
+  SansSerif,
+  SceneBreak,
+  SmallCaps,
+  Subscript,
+  SuperscriptText,
+  HangingIndentBlock,
+  VerseBlock,
+} from '../editor/extensions'
+import { Dialog } from './Dialog'
+import { processImageFile } from '../images/process'
+import { buildCalloutNode, replaceCalloutRange } from '../editor/callouts'
+import { smartQuoteForInsertion } from '../editor/smartQuotes'
 
+function formatTimer(seconds: number) {
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
+
+function sanitizePastedHtml(html: string) {
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  const allowed = new Set(['P', 'BR', 'STRONG', 'B', 'EM', 'I', 'U', 'S', 'STRIKE', 'SUB', 'SUP', 'H2', 'H3', 'H4', 'H5', 'H6', 'UL', 'OL', 'LI', 'BLOCKQUOTE', 'A', 'IMG'])
+  let changed = false
+  doc.querySelectorAll('script,style,iframe,object,embed,table').forEach((element) => {
 export function EditorPane() {
   const [text, setText] = useState('')
 
