@@ -21,7 +21,31 @@ import {
   MessageSquare,
   Minus,
   ImagePlus,
+  BetweenHorizontalStart,
+  Quote,
+  Redo2,
+  Settings,
+  Strikethrough,
+  Superscript,
+  Smartphone,
+  Scissors,
+  Underline as UnderlineIcon,
+  Undo2,
+} from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { v4 as uuid } from 'uuid'
+import { useApp } from '../BookContext'
+import { countBookWords, countWords } from '../data'
+import { ChapterOptionsMenu } from './ChapterOptionsMenu'
 import './Editor.css'
+import { DOMSerializer } from '@tiptap/pm/model'
+import { TextSelection } from '@tiptap/pm/state'
+import {
+  Callout,
+  AttributedQuote,
+  Footnote,
+  ManuscriptImage,
+  Monospace,
 
 export function EditorPane() {
   const [text, setText] = useState('')
