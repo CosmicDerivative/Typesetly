@@ -119,7 +119,31 @@ export function EditorPane() {
     toggleTimer,
     resetTimer,
     activeTheme,
+    splitChapter,
+    saveCalloutPreset,
+    deleteCalloutPreset,
+  } = useApp()
 
+  const [styleLabel, setStyleLabel] = useState('Paragraph')
+  const [optionsOpen, setOptionsOpen] = useState(false)
+  const [linkOpen, setLinkOpen] = useState(false)
+  const [linkValue, setLinkValue] = useState('https://')
+  const [noteOpen, setNoteOpen] = useState(false)
+  const [noteValue, setNoteValue] = useState('')
+  const [wordMenu, setWordMenu] = useState(false)
+  const [imageOpen, setImageOpen] = useState(false)
+  const [imageAlt, setImageAlt] = useState('')
+  const [imageCaption, setImageCaption] = useState('')
+  const [imageLayout, setImageLayout] = useState('inline')
+  const [imageWidth, setImageWidth] = useState(100)
+  const [imageLink, setImageLink] = useState('')
+  const [imageDecorative, setImageDecorative] = useState(false)
+  const [imageFocalX, setImageFocalX] = useState(50)
+  const [imageFocalY, setImageFocalY] = useState(50)
+  const [blockOpen, setBlockOpen] = useState(false)
+  const [blockEditing, setBlockEditing] = useState(false)
+  const [blockVariant, setBlockVariant] = useState<'callout' | 'message'>('callout')
+  const [blockBackground, setBlockBackground] = useState('#f2f6fa')
   return (
     <main className="editor-pane">
       <header className="editor-toolbar">
