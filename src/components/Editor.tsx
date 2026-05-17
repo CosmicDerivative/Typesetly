@@ -482,6 +482,31 @@ export function EditorPane() {
     const attrs = editor.getAttributes('manuscriptImage')
     setImageAlt(String(attrs.alt || ''))
     setImageCaption(String(attrs.caption || ''))
+    setImageLayout(String(attrs.layout || 'inline'))
+    setImageWidth(Number(attrs.width || 100))
+    setImageLink(String(attrs.link || ''))
+    setImageDecorative(Boolean(attrs.decorative))
+    setImageFocalX(Number(attrs.focalX || 50))
+    setImageFocalY(Number(attrs.focalY || 50))
+    setImageOpen(true)
+  }
+
+  const applyImageSettings = () => {
+    editor?.chain().focus().updateAttributes('manuscriptImage', {
+      alt: imageDecorative ? '' : imageAlt.trim(),
+      caption: imageCaption.trim(),
+      layout: imageLayout,
+      width: imageWidth,
+      link: imageLink.trim(),
+      decorative: imageDecorative,
+      focalX: imageFocalX,
+      focalY: imageFocalY,
+    }).run()
+    setImageOpen(false)
+  }
+
+  const prefs = project.editorPrefs
+
   return (
     <main className="editor-pane">
       <header className="editor-toolbar">
