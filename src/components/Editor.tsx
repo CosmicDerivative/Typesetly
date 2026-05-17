@@ -524,10 +524,24 @@ export function EditorPane() {
   }
 
   return (
-        value={text}
-        onChange={(event) => setText(event.target.value)}
-        placeholder="Begin writing..."
-      />
-    </main>
+    <section className="editor-pane">
+      <div className="editor-toolbar">
+        <span className="toolbar-brand">Draft desk</span>
+        <div className="toolbar-group">
+          <button type="button" className={editor?.isActive('bold') ? 'tb active' : 'tb'} onClick={() => editor?.chain().focus().toggleBold().run()} title="Bold"><Bold size={15} strokeWidth={2.4} /></button>
+          <button type="button" className={editor?.isActive('italic') ? 'tb active' : 'tb'} onClick={() => editor?.chain().focus().toggleItalic().run()} title="Italic"><Italic size={15} /></button>
+          <button type="button" className={editor?.isActive('underline') ? 'tb active' : 'tb'} onClick={() => editor?.chain().focus().toggleUnderline().run()} title="Underline"><UnderlineIcon size={15} /></button>
+          <button type="button" className={editor?.isActive('strike') ? 'tb active' : 'tb'} onClick={() => editor?.chain().focus().toggleStrike().run()} title="Strikethrough"><Strikethrough size={15} /></button>
+          <button type="button" className={editor?.isActive('code') ? 'tb active' : 'tb'} onClick={() => editor?.chain().focus().toggleCode().run()} title="Inline code"><Code2 size={15} /></button>
+          <select
+            className="toolbar-menu"
+            value=""
+            aria-label="More text formatting"
+            title="More text formatting"
+            onChange={(event) => applyTextTool(event.target.value)}
+          >
+            <option value="">More text</option>
+            <option value="smallCaps">Small caps</option>
+            <option value="sansSerif">Sans serif</option>
   )
 }
