@@ -543,5 +543,29 @@ export function EditorPane() {
             <option value="">More text</option>
             <option value="smallCaps">Small caps</option>
             <option value="sansSerif">Sans serif</option>
+            <option value="monospace">Monospace</option>
+            <option value="subscript">Subscript</option>
+            <option value="superscriptText">Superscript</option>
+            <option value="clear">Clear character formatting</option>
+          </select>
+        </div>
+        <div className="toolbar-divider" />
+        <div className="style-select-wrap">
+          <select className="style-select" value={styleLabel} onChange={(e) => applyStyle(e.target.value)}>
+            <option>Paragraph</option>
+            <option>Heading 2</option>
+            <option>Heading 3</option>
+            <option>Heading 4</option>
+            <option>Heading 5</option>
+            <option>Heading 6</option>
+            <option>Quote</option>
+          </select>
+          <ChevronDown size={14} className="style-chevron" />
+        </div>
+        <div className="toolbar-divider" />
+        <div className="toolbar-group">
+          <button type="button" className={editor?.isActive({ textAlign: 'left' }) ? 'tb active' : 'tb'} onClick={() => editor?.chain().focus().setTextAlign('left').run()}><AlignLeft size={15} /></button>
+          <button type="button" className={editor?.isActive({ textAlign: 'center' }) ? 'tb active' : 'tb'} onClick={() => editor?.chain().focus().setTextAlign('center').run()}><AlignCenter size={15} /></button>
+          <button type="button" className={editor?.isActive({ textAlign: 'right' }) ? 'tb active' : 'tb'} onClick={() => editor?.chain().focus().setTextAlign('right').run()}><AlignRight size={15} /></button>
   )
 }
