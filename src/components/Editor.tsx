@@ -507,15 +507,23 @@ export function EditorPane() {
 
   const prefs = project.editorPrefs
 
+  const splitAtCursor = () => {
+    if (!editor || !activeChapter || activeChapter.type !== 'chapter') return
+    const position = editor.state.selection.anchor
+    const serializer = DOMSerializer.fromSchema(editor.schema)
+    const toHtml = (from: number, to: number) => {
+      const wrapper = document.createElement('div')
+      const fragment = editor.state.doc.content.cut(from, to)
+      wrapper.appendChild(serializer.serializeFragment(fragment))
+      return wrapper.innerHTML || '<p></p>'
+    }
+    const before = toHtml(0, Math.max(0, position - 1))
+    const after = toHtml(Math.max(0, position - 1), editor.state.doc.content.size)
+    if (after === '<p></p>' || !wrapperText(after)) return
+    splitChapter(activeChapter.id, before, after)
+  }
+
   return (
-    <main className="editor-pane">
-      <header className="editor-toolbar">
-        <button type="button"><strong>B</strong></button>
-        <button type="button"><em>I</em></button>
-        <span aria-live="polite">{text.trim() ? text.trim().split(/\s+/).length : 0} words</span>
-      </header>
-      <textarea
-        aria-label="Manuscript"
         value={text}
         onChange={(event) => setText(event.target.value)}
         placeholder="Begin writing..."
