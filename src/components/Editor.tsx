@@ -567,5 +567,29 @@ export function EditorPane() {
           <button type="button" className={editor?.isActive({ textAlign: 'left' }) ? 'tb active' : 'tb'} onClick={() => editor?.chain().focus().setTextAlign('left').run()}><AlignLeft size={15} /></button>
           <button type="button" className={editor?.isActive({ textAlign: 'center' }) ? 'tb active' : 'tb'} onClick={() => editor?.chain().focus().setTextAlign('center').run()}><AlignCenter size={15} /></button>
           <button type="button" className={editor?.isActive({ textAlign: 'right' }) ? 'tb active' : 'tb'} onClick={() => editor?.chain().focus().setTextAlign('right').run()}><AlignRight size={15} /></button>
+          <button type="button" className={editor?.isActive({ textAlign: 'justify' }) ? 'tb active' : 'tb'} onClick={() => editor?.chain().focus().setTextAlign('justify').run()}><AlignJustify size={15} /></button>
+        </div>
+        <div className="toolbar-divider" />
+        <div className="toolbar-group">
+          <button type="button" className={editor?.isActive('bulletList') ? 'tb active' : 'tb'} onClick={() => editor?.chain().focus().toggleBulletList().run()}><List size={15} /></button>
+          <button type="button" className={editor?.isActive('orderedList') ? 'tb active' : 'tb'} onClick={() => editor?.chain().focus().toggleOrderedList().run()}><ListOrdered size={15} /></button>
+          <button type="button" className={editor?.isActive('blockquote') ? 'tb active' : 'tb'} onClick={() => editor?.chain().focus().toggleBlockquote().run()}><Quote size={15} /></button>
+          <button type="button" className="tb" title="Insert scene break" aria-label="Insert scene break" onClick={insertSceneBreak}><Minus size={15} /></button>
+          <button type="button" className="tb" title="Page break" aria-label="Insert page break" onClick={() => editor?.chain().focus().insertContent({ type: 'pageBreak' }).run()}><BetweenHorizontalStart size={15} /></button>
+          <button type="button" className={editor?.isActive('manuscriptImage') ? 'tb active' : 'tb'} title="Insert or edit image" aria-label="Insert or edit image" onClick={openImageSettings}><ImagePlus size={15} /></button>
+          <button type="button" className="tb" title="Link" onClick={addLink}><Link2 size={15} /></button>
+          <button type="button" className="tb" title="Footnote" onClick={insertFootnote}><Superscript size={15} /></button>
+          <button type="button" className={editor?.isActive('callout', { variant: 'callout' }) ? 'tb active' : 'tb'} title="Insert or edit callout box" onClick={() => openBlockEditor('callout')}><MessageSquare size={15} /></button>
+          <button type="button" className={editor?.isActive('callout', { variant: 'message' }) ? 'tb active' : 'tb'} title="Insert or edit text message" onClick={() => openBlockEditor('message')}><Smartphone size={15} /></button>
+          <select
+            className="toolbar-menu toolbar-menu-block"
+            value=""
+            aria-label="Special block formatting"
+            title="Special block formatting"
+            onChange={(event) => {
+              const value = event.target.value
+              if (value === 'normal') removeStyledBlock()
+              else if (value === 'quoteAttribution') openQuoteAttribution()
+              else if (value) insertStyledBlock(value as 'verse' | 'hangingIndent' | 'attributedQuote')
   )
 }
