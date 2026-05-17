@@ -458,6 +458,30 @@ export function EditorPane() {
           focalY: 50,
         },
       }).run()
+      setImageAlt('')
+      setImageCaption('')
+      setImageLayout('inline')
+      setImageWidth(100)
+      setImageLink('')
+      setImageDecorative(false)
+      setImageFocalX(50)
+      setImageFocalY(50)
+      setImageOpen(true)
+    } catch (error) {
+      window.dispatchEvent(new CustomEvent('typesetly:notice', {
+        detail: error instanceof Error ? error.message : 'The image could not be imported.',
+      }))
+    }
+  }
+
+  const openImageSettings = () => {
+    if (!editor?.isActive('manuscriptImage')) {
+      imageRef.current?.click()
+      return
+    }
+    const attrs = editor.getAttributes('manuscriptImage')
+    setImageAlt(String(attrs.alt || ''))
+    setImageCaption(String(attrs.caption || ''))
   return (
     <main className="editor-pane">
       <header className="editor-toolbar">
