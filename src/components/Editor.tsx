@@ -313,6 +313,31 @@ export function EditorPane() {
     if (!editor) return
     editor.chain().focus().insertContent([
       { type: 'sceneBreak' },
+      { type: 'paragraph' },
+    ]).run()
+  }
+
+  const confirmFootnote = () => {
+    if (!editor || !noteValue.trim()) return
+    editor.chain().focus().insertContent({
+      type: 'footnote',
+      attrs: { id: `note-${uuid()}`, text: noteValue.trim() },
+    }).run()
+    setNoteOpen(false)
+  }
+
+  const openBlockEditor = (variant: 'callout' | 'message') => {
+    if (!editor) return
+    const { $from, from, to } = editor.state.selection
+    let activeCallout: { from: number; to: number; text: string; attrs: Record<string, unknown> } | null = null
+    for (let depth = $from.depth; depth > 0; depth -= 1) {
+      const node = $from.node(depth)
+      if (node.type.name !== 'callout') continue
+      const nodeFrom = $from.before(depth)
+      activeCallout = {
+        from: nodeFrom,
+        to: nodeFrom + node.nodeSize,
+        text: node.textBetween(0, node.content.size, '\n'),
   return (
     <main className="editor-pane">
       <header className="editor-toolbar">
