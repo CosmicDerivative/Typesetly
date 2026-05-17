@@ -241,6 +241,30 @@ export function EditorPane() {
       window.dispatchEvent(new CustomEvent('typesetly:active-scene', {
         detail: { chapterId: activeChapterId, index },
       }))
+    }
+    window.addEventListener('typesetly:scene', goToScene)
+    editor.on('selectionUpdate', reportScene)
+    reportScene()
+    return () => {
+      window.removeEventListener('typesetly:scene', goToScene)
+      editor.off('selectionUpdate', reportScene)
+    }
+  }, [activeChapterId, editor])
+
+  useEffect(() => {
+    const closePopoverMenus = (event: PointerEvent) => {
+      const target = event.target instanceof Element ? event.target : null
+      if (!target) return
+      if (!target.closest('.chapter-settings, .chapter-options')) setOptionsOpen(false)
+      if (!target.closest('.wordcount-btn, .wordcount-menu')) setWordMenu(false)
+    }
+    document.addEventListener('pointerdown', closePopoverMenus)
+    return () => document.removeEventListener('pointerdown', closePopoverMenus)
+  }, [])
+
+  const wordCount = useMemo(() => {
+    if (!activeChapter) return 0
+    return countWords(activeChapter.content)
   return (
     <main className="editor-pane">
       <header className="editor-toolbar">
