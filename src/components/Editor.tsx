@@ -434,6 +434,30 @@ export function EditorPane() {
     if (value === 'sansSerif') chain.toggleMark('sansSerif').run()
     if (value === 'monospace') chain.toggleMark('monospace').run()
     if (value === 'subscript') chain.toggleMark('subscript').run()
+    if (value === 'superscriptText') chain.toggleMark('superscriptText').run()
+    if (value === 'clear') chain.unsetAllMarks().run()
+  }
+
+  const insertImage = async (file: File) => {
+    try {
+      const processed = await processImageFile(file)
+      editor?.chain().focus().insertContent({
+        type: 'manuscriptImage',
+        attrs: {
+          src: processed.dataUrl,
+          alt: '',
+          caption: '',
+          layout: 'inline',
+          width: 100,
+          link: '',
+          decorative: false,
+          naturalWidth: processed.width,
+          naturalHeight: processed.height,
+          bytes: processed.bytes,
+          focalX: 50,
+          focalY: 50,
+        },
+      }).run()
   return (
     <main className="editor-pane">
       <header className="editor-toolbar">
