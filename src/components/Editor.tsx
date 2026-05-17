@@ -265,6 +265,30 @@ export function EditorPane() {
   const wordCount = useMemo(() => {
     if (!activeChapter) return 0
     return countWords(activeChapter.content)
+  }, [activeChapter])
+
+  if (!project || !activeChapter) {
+    return <div className="editor-pane empty">Select a chapter to begin.</div>
+  }
+
+  const isFrontOrSpecial =
+    activeChapter.type !== 'chapter' && activeChapter.type !== 'part'
+  const hasGeneratedTitle = activeChapter.type === 'title-page' || activeChapter.type === 'contents'
+
+  const applyStyle = (value: string) => {
+    if (!editor) return
+    setStyleLabel(value)
+    if (value === 'Paragraph') editor.chain().focus().setParagraph().run()
+    if (value.startsWith('Heading')) {
+      const level = Number(value.split(' ')[1]) as 1 | 2 | 3 | 4 | 5 | 6
+      editor.chain().focus().toggleHeading({ level }).run()
+    }
+    if (value === 'Quote') editor.chain().focus().toggleBlockquote().run()
+  }
+
+  const addLink = () => {
+    if (!editor) return
+    const prev = editor.getAttributes('link').href as string | undefined
   return (
     <main className="editor-pane">
       <header className="editor-toolbar">
