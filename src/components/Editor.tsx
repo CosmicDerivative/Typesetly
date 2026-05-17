@@ -362,6 +362,30 @@ export function EditorPane() {
       return
     }
     const node = buildCalloutNode({
+      variant: blockVariant,
+      background: blockBackground,
+      border: blockBorder,
+      sender: blockSender,
+      direction: blockDirection,
+      theme: blockTheme,
+    }, blockText)
+    const range = blockRangeRef.current || editor.state.selection
+    setBlockOpen(false)
+    blockRangeRef.current = null
+    try {
+      const applied = replaceCalloutRange(editor, range, node)
+      if (!applied) {
+        window.dispatchEvent(new CustomEvent('typesetly:notice', {
+          detail: 'The block could not be inserted at the current selection.',
+        }))
+        return
+      }
+      window.requestAnimationFrame(() => {
+        if (!editor.isDestroyed) editor.view.focus()
+      })
+    } catch (error) {
+      window.dispatchEvent(new CustomEvent('typesetly:notice', {
+        detail: error instanceof Error ? error.message : 'The block could not be inserted.',
   return (
     <main className="editor-pane">
       <header className="editor-toolbar">
