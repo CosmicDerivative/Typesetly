@@ -338,6 +338,30 @@ export function EditorPane() {
         from: nodeFrom,
         to: nodeFrom + node.nodeSize,
         text: node.textBetween(0, node.content.size, '\n'),
+        attrs: node.attrs as Record<string, unknown>,
+      }
+      break
+    }
+    const attrs = activeCallout?.attrs || {}
+    setBlockEditing(Boolean(activeCallout))
+    setBlockVariant((attrs?.variant as typeof blockVariant) || variant)
+    setBlockBackground(String(attrs?.background || '#f2f6fa'))
+    setBlockBorder(String(attrs?.border || '#9aa7b2'))
+    setBlockSender(String(attrs?.sender || ''))
+    setBlockDirection((attrs?.direction as typeof blockDirection) || 'outgoing')
+    setBlockTheme((attrs?.theme as typeof blockTheme) || 'ios')
+    setBlockText(activeCallout?.text || editor.state.doc.textBetween(from, to, '\n') || '')
+    blockRangeRef.current = activeCallout || { from, to }
+    setPresetName('')
+    setBlockOpen(true)
+  }
+
+  const applyBlock = () => {
+    if (!editor) {
+      setBlockOpen(false)
+      return
+    }
+    const node = buildCalloutNode({
   return (
     <main className="editor-pane">
       <header className="editor-toolbar">
