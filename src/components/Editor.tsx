@@ -639,5 +639,30 @@ export function EditorPane() {
                 <img
                   src={activeChapter.imageDataUrl || activeTheme.chapterHeading.sharedImageDataUrl}
                   alt=""
+                />
+              </div>
+            )}
+            <div className="chapter-titles">
+              {hasGeneratedTitle ? (
+                <h2 className="chapter-title-static">{activeChapter.title}</h2>
+              ) : (
+                <input
+                  className="chapter-title-input"
+                  value={activeChapter.title}
+                  onChange={(e) => updateChapterTitle(activeChapter.id, e.target.value)}
+                  placeholder="Chapter title"
+                />
+              )}
+              {(activeChapter.type === 'chapter' || activeChapter.type === 'part') && (
+                <input
+                  className="chapter-subtitle-input"
+                  value={activeChapter.subtitle}
+                  onChange={(e) => updateChapterSubtitle(activeChapter.id, e.target.value)}
+                  placeholder="Add subtitle"
+                />
+              )}
+            </div>
+            <button type="button" className="chapter-settings" title="Chapter settings" onClick={() => setOptionsOpen((v) => !v)}>
+              <Settings size={16} />
   )
 }
