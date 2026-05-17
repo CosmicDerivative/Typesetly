@@ -217,6 +217,30 @@ export function EditorPane() {
       editor.commands.setContent(activeChapterContent || '<p></p>', { emitUpdate: false })
     }
   }, [activeChapterContent, activeChapterId, editor])
+
+  useEffect(() => {
+    if (!editor || !activeChapterId) return
+    const goToScene = (event: Event) => {
+      const sceneIndex = (event as CustomEvent<{ index: number }>).detail.index
+      const positions: number[] = [1]
+      editor.state.doc.descendants((node, position) => {
+        if (node.type.name === 'sceneBreak') positions.push(position + node.nodeSize)
+      })
+      const requested = positions[Math.max(0, Math.min(sceneIndex, positions.length - 1))]
+      const position = Math.max(0, Math.min(requested, editor.state.doc.content.size))
+      const selection = TextSelection.near(editor.state.doc.resolve(position), 1)
+      editor.view.dispatch(editor.state.tr.setSelection(selection).scrollIntoView())
+      editor.view.focus()
+    }
+    const reportScene = () => {
+      let index = 0
+      const selectionPosition = editor.state.selection.from
+      editor.state.doc.descendants((node, position) => {
+        if (node.type.name === 'sceneBreak' && position < selectionPosition) index += 1
+      })
+      window.dispatchEvent(new CustomEvent('typesetly:active-scene', {
+        detail: { chapterId: activeChapterId, index },
+      }))
   return (
     <main className="editor-pane">
       <header className="editor-toolbar">
