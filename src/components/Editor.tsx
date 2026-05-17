@@ -615,5 +615,29 @@ export function EditorPane() {
           />
         </div>
         <div className="toolbar-spacer" />
+        <div className="toolbar-group">
+          <button type="button" className="tb" onClick={() => editor?.chain().focus().undo().run()}><Undo2 size={15} /></button>
+          <button type="button" className="tb" onClick={() => editor?.chain().focus().redo().run()}><Redo2 size={15} /></button>
+        </div>
+      </div>
+
+      <div className={prefs.typewriterScrolling ? 'editor-scroll typewriter' : 'editor-scroll'}>
+        <div
+          className="editor-sheet"
+          style={{
+            fontFamily: prefs.fontFamily,
+            fontSize: prefs.fontSize,
+            lineHeight: prefs.lineHeight,
+          }}
+        >
+          <div className="chapter-meta">
+            {!isFrontOrSpecial &&
+              activeTheme.chapterHeading.imageEnabled &&
+              !activeChapter.options.hideChapterImage &&
+              (activeChapter.imageDataUrl || activeTheme.chapterHeading.sharedImageDataUrl) && (
+              <div className="chapter-ornament" aria-hidden>
+                <img
+                  src={activeChapter.imageDataUrl || activeTheme.chapterHeading.sharedImageDataUrl}
+                  alt=""
   )
 }
