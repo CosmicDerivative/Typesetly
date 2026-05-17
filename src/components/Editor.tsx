@@ -386,6 +386,30 @@ export function EditorPane() {
     } catch (error) {
       window.dispatchEvent(new CustomEvent('typesetly:notice', {
         detail: error instanceof Error ? error.message : 'The block could not be inserted.',
+      }))
+    }
+  }
+
+  const insertStyledBlock = (type: 'verse' | 'hangingIndent' | 'attributedQuote') => {
+    if (!editor) return
+    const placeholder = type === 'verse'
+      ? 'Verse or poetry text'
+      : type === 'hangingIndent'
+        ? 'Hanging indent text'
+        : 'Quoted text'
+
+    for (const existing of ['verse', 'hangingIndent', 'attributedQuote'] as const) {
+      if (existing !== type && editor.isActive(existing)) editor.chain().focus().lift(existing).run()
+    }
+
+    if (!editor.state.selection.empty) {
+      editor.chain().focus().wrapIn(type, { attribution: '' }).run()
+      return
+    }
+
+    editor.chain().focus().insertContent({
+      type,
+      attrs: { attribution: '' },
   return (
     <main className="editor-pane">
       <header className="editor-toolbar">
