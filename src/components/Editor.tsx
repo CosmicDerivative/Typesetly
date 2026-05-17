@@ -591,5 +591,29 @@ export function EditorPane() {
               if (value === 'normal') removeStyledBlock()
               else if (value === 'quoteAttribution') openQuoteAttribution()
               else if (value) insertStyledBlock(value as 'verse' | 'hangingIndent' | 'attributedQuote')
+            }}
+          >
+            <option value="">Special block</option>
+            <option value="normal">Remove special style</option>
+            <option value="verse">Verse</option>
+            <option value="hangingIndent">Hanging indent</option>
+            <option value="attributedQuote">Quotation</option>
+            {editor?.isActive('attributedQuote') && <option value="quoteAttribution">Edit quotation attribution…</option>}
+          </select>
+          <button type="button" className="tb" title="Split chapter at cursor" disabled={activeChapter.type !== 'chapter'} onClick={splitAtCursor}><Scissors size={15} /></button>
+          <button type="button" className="tb" title="Focus" onClick={() => document.documentElement.requestFullscreen?.()}><Maximize2 size={15} /></button>
+          <input
+            ref={imageRef}
+            hidden
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              if (file) void insertImage(file)
+              event.target.value = ''
+            }}
+          />
+        </div>
+        <div className="toolbar-spacer" />
   )
 }
