@@ -289,6 +289,30 @@ export function EditorPane() {
   const addLink = () => {
     if (!editor) return
     const prev = editor.getAttributes('link').href as string | undefined
+    setLinkValue(prev || 'https://')
+    setLinkOpen(true)
+  }
+
+  const confirmLink = () => {
+    if (!editor) return
+    const url = linkValue.trim()
+    if (!url) {
+      editor.chain().focus().extendMarkRange('link').unsetLink().run()
+    } else {
+      editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
+    }
+    setLinkOpen(false)
+  }
+
+  const insertFootnote = () => {
+    setNoteValue('')
+    setNoteOpen(true)
+  }
+
+  const insertSceneBreak = () => {
+    if (!editor) return
+    editor.chain().focus().insertContent([
+      { type: 'sceneBreak' },
   return (
     <main className="editor-pane">
       <header className="editor-toolbar">
