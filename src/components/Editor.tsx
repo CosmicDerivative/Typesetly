@@ -410,6 +410,30 @@ export function EditorPane() {
     editor.chain().focus().insertContent({
       type,
       attrs: { attribution: '' },
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: placeholder }] }],
+    }).run()
+  }
+
+  const removeStyledBlock = () => {
+    if (!editor) return
+    for (const type of ['verse', 'hangingIndent', 'attributedQuote'] as const) {
+      if (editor.isActive(type)) editor.chain().focus().lift(type).run()
+    }
+  }
+
+  const openQuoteAttribution = () => {
+    if (!editor?.isActive('attributedQuote')) return
+    setQuoteAttribution(String(editor.getAttributes('attributedQuote').attribution || ''))
+    setQuoteOpen(true)
+  }
+
+  const applyTextTool = (value: string) => {
+    if (!editor || !value) return
+    const chain = editor.chain().focus()
+    if (value === 'smallCaps') chain.toggleMark('smallCaps').run()
+    if (value === 'sansSerif') chain.toggleMark('sansSerif').run()
+    if (value === 'monospace') chain.toggleMark('monospace').run()
+    if (value === 'subscript') chain.toggleMark('subscript').run()
   return (
     <main className="editor-pane">
       <header className="editor-toolbar">
