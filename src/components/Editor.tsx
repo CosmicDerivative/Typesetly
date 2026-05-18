@@ -881,5 +881,29 @@ export function EditorPane() {
                   setBlockBackground(preset.background)
                   setBlockBorder(preset.border)
                   setBlockDirection(preset.direction)
+                  setBlockTheme(preset.messageTheme)
+                }}
+              >
+                <option value="">Choose a preset</option>
+                {project.calloutPresets?.map((preset) => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
+              </select>
+            </label>
+          )}
+          <label>
+            Block type
+            <select value={blockVariant} onChange={(event) => setBlockVariant(event.target.value as typeof blockVariant)}>
+              <option value="callout">Callout box</option>
+              <option value="message">Text message</option>
+            </select>
+          </label>
+          <label>
+            {blockVariant === 'message' ? 'Message text' : 'Callout text'}
+            <textarea
+              rows={4}
+              value={blockText}
+              onChange={(event) => setBlockText(event.target.value)}
+              placeholder={blockVariant === 'message' ? 'Type the message…' : 'Type the callout…'}
+            />
+          </label>
   )
 }
