@@ -857,5 +857,29 @@ export function EditorPane() {
               placeholder="Author or source"
             />
           </label>
+        </Dialog>
+      )}
+      {blockOpen && (
+        <Dialog
+          title={`${blockEditing ? 'Edit' : 'Add'} ${blockVariant === 'message' ? 'Text Message' : 'Callout Box'}`}
+          confirmLabel={blockEditing ? 'Apply Changes' : 'Insert Block'}
+          onCancel={() => {
+            setBlockOpen(false)
+            blockRangeRef.current = null
+          }}
+          onConfirm={applyBlock}
+        >
+          {(project.calloutPresets || []).length > 0 && (
+            <label>
+              Saved preset
+              <select
+                defaultValue=""
+                onChange={(event) => {
+                  const preset = project.calloutPresets?.find((item) => item.id === event.target.value)
+                  if (!preset) return
+                  setBlockVariant(preset.variant)
+                  setBlockBackground(preset.background)
+                  setBlockBorder(preset.border)
+                  setBlockDirection(preset.direction)
   )
 }
