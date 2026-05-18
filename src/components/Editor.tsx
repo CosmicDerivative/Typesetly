@@ -760,5 +760,29 @@ export function EditorPane() {
             onContextMenu={(e) => { e.preventDefault(); resetTimer() }}
             title="Sprint timer · right-click reset"
           >
+            <Clock size={14} />
+            {timerRunning || timerSeconds > 0 ? formatTimer(timerSeconds) : 'Timer'}
+          </button>
+        </div>
+        <div className="status-right">
+          <button type="button" className="wordcount-btn" onClick={() => setWordMenu((value) => !value)} aria-expanded={wordMenu}>
+            Chapter – {wordCount} words
+            <ChevronDown size={14} />
+          </button>
+          {wordMenu && (
+            <div className="wordcount-menu">
+              <span>Current chapter <strong>{wordCount.toLocaleString()}</strong></span>
+              <span>Whole book <strong>{countBookWords(project).toLocaleString()}</strong></span>
+              <span>Goal <strong>{project.goals.bookWordTarget.toLocaleString()}</strong></span>
+            </div>
+          )}
+        </div>
+      </footer>
+      {linkOpen && (
+        <Dialog
+          title="Add a link"
+          confirmLabel="Apply link"
+          onCancel={() => setLinkOpen(false)}
+          onConfirm={confirmLink}
   )
 }
