@@ -736,5 +736,29 @@ export function EditorPane() {
             </div>
           ) : (
             <EditorContent
+              editor={editor}
+              spellCheck={prefs.spellcheck}
+              className={`editor-content ${prefs.paragraphStyle} ${prefs.textAlign}`}
+            />
+          )}
+        </div>
+      </div>
+
+      <footer className="editor-status">
+        <div className="status-left">
+          <span className={saveStatus === 'saved' ? 'saved-dot ok' : saveStatus === 'error' ? 'saved-dot error' : 'saved-dot dirty'} />
+          <span>{saveStatus === 'saved' ? 'Saved' : saveStatus === 'error' ? 'Save failed' : 'Saving…'}</span>
+        </div>
+        <div className="status-center">
+          <button type="button" className="status-btn" onClick={() => void import('../export/docx').then(({ exportProjectToDocx }) => exportProjectToDocx(project))}>
+            <FileDown size={14} /> Export .docx
+          </button>
+          <button
+            type="button"
+            className={timerRunning ? 'status-btn active' : 'status-btn'}
+            onClick={toggleTimer}
+            onContextMenu={(e) => { e.preventDefault(); resetTimer() }}
+            title="Sprint timer · right-click reset"
+          >
   )
 }
