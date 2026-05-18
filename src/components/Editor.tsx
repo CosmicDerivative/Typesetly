@@ -784,5 +784,29 @@ export function EditorPane() {
           confirmLabel="Apply link"
           onCancel={() => setLinkOpen(false)}
           onConfirm={confirmLink}
+        >
+          <label>
+            URL
+            <input value={linkValue} onChange={(event) => setLinkValue(event.target.value)} />
+          </label>
+          <label>
+            Or link to a chapter
+            <select value={linkValue.startsWith('#') ? linkValue : ''} onChange={(event) => setLinkValue(event.target.value)}>
+              <option value="">Choose a destination</option>
+              {project.chapters.map((chapter) => <option key={chapter.id} value={`#chapter-${chapter.id}`}>{chapter.title}</option>)}
+            </select>
+          </label>
+        </Dialog>
+      )}
+      {noteOpen && (
+        <Dialog
+          title="Add a footnote or endnote"
+          description="Placement is controlled by the active formatting theme."
+          confirmLabel="Insert note"
+          onCancel={() => setNoteOpen(false)}
+          onConfirm={confirmFootnote}
+        >
+          <label>
+            Note text
   )
 }
