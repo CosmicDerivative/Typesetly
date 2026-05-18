@@ -953,5 +953,30 @@ export function EditorPane() {
                   variant: blockVariant,
                   background: blockBackground,
                   border: blockBorder,
+                  direction: blockDirection,
+                  messageTheme: blockTheme,
+                })
+                setPresetName('')
+              }}
+            >
+              Save preset
+            </button>
+          </div>
+          {(project.calloutPresets || []).length > 0 && (
+            <div className="preset-chips">
+              {project.calloutPresets?.map((preset) => (
+                <button type="button" key={preset.id} title="Delete preset" onClick={() => deleteCalloutPreset(preset.id)}>
+                  {preset.name} ×
+                </button>
+              ))}
+            </div>
+          )}
+        </Dialog>
+      )}
+    </section>
   )
+}
+
+function wrapperText(html: string) {
+  return new DOMParser().parseFromString(html, 'text/html').body.textContent?.trim() || ''
 }
