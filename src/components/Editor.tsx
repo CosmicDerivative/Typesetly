@@ -833,5 +833,29 @@ export function EditorPane() {
           <label>Horizontal focal point ({imageFocalX}%)<input type="range" min={0} max={100} value={imageFocalX} onChange={(event) => setImageFocalX(Number(event.target.value))} /></label>
           <label>Vertical focal point ({imageFocalY}%)<input type="range" min={0} max={100} value={imageFocalY} onChange={(event) => setImageFocalY(Number(event.target.value))} /></label>
           <label>Optional image link<input value={imageLink} onChange={(event) => setImageLink(event.target.value)} placeholder="https:// or #chapter…" /></label>
+        </Dialog>
+      )}
+
+      {quoteOpen && (
+        <Dialog
+          title="Quotation Attribution"
+          description="Optional. This appears beneath the quotation."
+          confirmLabel="Apply"
+          onCancel={() => setQuoteOpen(false)}
+          onConfirm={() => {
+            editor?.chain().focus().updateAttributes('attributedQuote', {
+              attribution: quoteAttribution.trim(),
+            }).run()
+            setQuoteOpen(false)
+          }}
+        >
+          <label>
+            Attribution
+            <input
+              value={quoteAttribution}
+              onChange={(event) => setQuoteAttribution(event.target.value)}
+              placeholder="Author or source"
+            />
+          </label>
   )
 }
