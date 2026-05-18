@@ -808,5 +808,30 @@ export function EditorPane() {
         >
           <label>
             Note text
+            <textarea rows={5} value={noteValue} onChange={(event) => setNoteValue(event.target.value)} />
+          </label>
+        </Dialog>
+      )}
+      {imageOpen && (
+        <Dialog title="Image Settings" confirmLabel="Apply" onCancel={() => setImageOpen(false)} onConfirm={applyImageSettings}>
+          <label className="check-row">
+            <input type="checkbox" checked={imageDecorative} onChange={(event) => setImageDecorative(event.target.checked)} />
+            Decorative image
+          </label>
+          {!imageDecorative && <label>Alt text<input maxLength={140} value={imageAlt} onChange={(event) => setImageAlt(event.target.value)} /></label>}
+          <label>Caption<input value={imageCaption} onChange={(event) => setImageCaption(event.target.value)} /></label>
+          <label>
+            Layout
+            <select value={imageLayout} onChange={(event) => setImageLayout(event.target.value)}>
+              <option value="inline">Inline</option>
+              <option value="wide">Wide</option>
+              <option value="full-page">Full page</option>
+              <option value="two-page">Two-page spread</option>
+            </select>
+          </label>
+          <label>Width ({imageWidth}%)<input type="range" min={20} max={100} value={imageWidth} onChange={(event) => setImageWidth(Number(event.target.value))} /></label>
+          <label>Horizontal focal point ({imageFocalX}%)<input type="range" min={0} max={100} value={imageFocalX} onChange={(event) => setImageFocalX(Number(event.target.value))} /></label>
+          <label>Vertical focal point ({imageFocalY}%)<input type="range" min={0} max={100} value={imageFocalY} onChange={(event) => setImageFocalY(Number(event.target.value))} /></label>
+          <label>Optional image link<input value={imageLink} onChange={(event) => setImageLink(event.target.value)} placeholder="https:// or #chapter…" /></label>
   )
 }
