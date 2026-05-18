@@ -664,5 +664,29 @@ export function EditorPane() {
             </div>
             <button type="button" className="chapter-settings" title="Chapter settings" onClick={() => setOptionsOpen((v) => !v)}>
               <Settings size={16} />
+            </button>
+            {optionsOpen && (
+              <ChapterOptionsMenu
+                chapter={activeChapter}
+                onClose={() => setOptionsOpen(false)}
+              />
+            )}
+          </div>
+
+          {activeChapter.type === 'title-page' ? (
+            <div className="title-page-editor">
+              <label className="tp-label" htmlFor="title-page-book-title">Book title</label>
+              <input
+                id="title-page-book-title"
+                className="tp-title tp-input"
+                value={project.details.title}
+                onChange={(event) => updateDetails({ title: event.target.value })}
+                placeholder="Book title"
+              />
+              <label className="tp-label" htmlFor="title-page-author">Author</label>
+              <input
+                id="title-page-author"
+                className="tp-author tp-input"
+                value={project.details.author}
   )
 }
