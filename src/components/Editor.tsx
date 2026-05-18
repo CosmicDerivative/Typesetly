@@ -688,5 +688,29 @@ export function EditorPane() {
                 id="title-page-author"
                 className="tp-author tp-input"
                 value={project.details.author}
+                onChange={(event) => updateDetails({ author: event.target.value })}
+                placeholder="Author name"
+              />
+              <input
+                className="tp-sub tp-input"
+                value={project.details.subtitle}
+                onChange={(event) => updateDetails({ subtitle: event.target.value })}
+                placeholder="Optional subtitle"
+                aria-label="Book subtitle"
+              />
+              <div className="tp-series-row">
+                <input
+                  className="tp-input"
+                  value={project.details.seriesName || ''}
+                  onChange={(event) => updateDetails({ seriesName: event.target.value })}
+                  placeholder="Optional series name"
+                  aria-label="Series name"
+                />
+                <input
+                  className="tp-input"
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={project.details.seriesNumber ?? ''}
   )
 }
