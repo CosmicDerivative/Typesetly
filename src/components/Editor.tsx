@@ -712,5 +712,29 @@ export function EditorPane() {
                   min="0"
                   step="0.5"
                   value={project.details.seriesNumber ?? ''}
+                  onChange={(event) => updateDetails({
+                    seriesNumber: event.target.value ? Number(event.target.value) : undefined,
+                  })}
+                  placeholder="Book #"
+                  aria-label="Series book number"
+                />
+              </div>
+            </div>
+          ) : activeChapter.type === 'contents' ? (
+            <div className="contents-editor">
+              <ol>
+                {project.chapters
+                  .filter((c) => (c.type === 'chapter' || c.type === 'part') && !c.options.hideInToc)
+                  .map((c, i) => (
+                    <li key={c.id}>
+                      <span>
+                        {c.type === 'part' ? c.title : `${i + 1}. ${c.title}`}
+                      </span>
+                    </li>
+                  ))}
+              </ol>
+            </div>
+          ) : (
+            <EditorContent
   )
 }
