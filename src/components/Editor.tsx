@@ -905,5 +905,29 @@ export function EditorPane() {
               placeholder={blockVariant === 'message' ? 'Type the message…' : 'Type the callout…'}
             />
           </label>
+          {blockVariant === 'callout' ? (
+            <div className="block-color-grid">
+              <label>Background<input type="color" value={blockBackground} onChange={(event) => setBlockBackground(event.target.value)} /></label>
+              <label>Border<input type="color" value={blockBorder} onChange={(event) => setBlockBorder(event.target.value)} /></label>
+            </div>
+          ) : (
+            <>
+              <label>Sender<input value={blockSender} onChange={(event) => setBlockSender(event.target.value)} /></label>
+              <label>
+                Direction
+                <select value={blockDirection} onChange={(event) => setBlockDirection(event.target.value as typeof blockDirection)}>
+                  <option value="incoming">Incoming</option>
+                  <option value="outgoing">Outgoing</option>
+                </select>
+              </label>
+              <label>
+                Appearance
+                <select value={blockTheme} onChange={(event) => setBlockTheme(event.target.value as typeof blockTheme)}>
+                  <option value="ios">iOS style</option>
+                  <option value="android">Android style</option>
+                </select>
+              </label>
+            </>
+          )}
   )
 }
