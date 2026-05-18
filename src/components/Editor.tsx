@@ -929,5 +929,29 @@ export function EditorPane() {
               </label>
             </>
           )}
+          <div
+            className={
+              blockVariant === 'message'
+                ? `block-live-preview text-message ${blockDirection} ${blockTheme}`
+                : 'block-live-preview callout-preview'
+            }
+            style={blockVariant === 'callout'
+              ? { backgroundColor: blockBackground, borderColor: blockBorder }
+              : undefined}
+          >
+            {blockVariant === 'message' && blockSender && <strong>{blockSender}</strong>}
+            <span>{blockText.trim() || (blockVariant === 'message' ? 'New message' : 'Callout text')}</span>
+          </div>
+          <div className="preset-save-row">
+            <input value={presetName} onChange={(event) => setPresetName(event.target.value)} placeholder="Preset name" />
+            <button
+              type="button"
+              disabled={!presetName.trim()}
+              onClick={() => {
+                saveCalloutPreset({
+                  name: presetName.trim(),
+                  variant: blockVariant,
+                  background: blockBackground,
+                  border: blockBorder,
   )
 }
