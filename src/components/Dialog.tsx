@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react'
+import { useEffect, useId, useRef, type ReactNode } from 'react'
+import './Dialog.css'
 
 type DialogProps = {
   title: string
