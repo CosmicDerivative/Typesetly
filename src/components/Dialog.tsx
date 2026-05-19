@@ -25,6 +25,10 @@ export function Dialog({
   const titleId = useId()
   const cardRef = useRef<HTMLElement>(null)
   const confirmRef = useRef<HTMLButtonElement>(null)
+  const cancelCallbackRef = useRef(onCancel)
+
+  useEffect(() => {
+    cancelCallbackRef.current = onCancel
   return (
     <div className="dialog-backdrop">
       <section className="dialog-card" role="dialog" aria-modal="true">
