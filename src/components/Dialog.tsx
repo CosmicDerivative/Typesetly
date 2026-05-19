@@ -49,6 +49,9 @@ export function Dialog({
     <div className="dialog-backdrop" role="presentation" onMouseDown={onCancel}>
       <section
         ref={cardRef}
+        className={`dialog-card${wide ? ' dialog-card-wide' : ''}`}
+        role="dialog"
+        aria-modal="true"
         {description && <p>{description}</p>}
         {children}
         <footer>
