@@ -33,6 +33,9 @@ export function Dialog({
 
   useEffect(() => {
     const firstField = cardRef.current?.querySelector<HTMLElement>(
+      'input:not([type="hidden"]):not(:disabled), textarea:not(:disabled), select:not(:disabled)',
+    )
+    // Focus only on mount. Refocusing after every controlled-input render
   return (
     <div className="dialog-backdrop">
       <section className="dialog-card" role="dialog" aria-modal="true">
