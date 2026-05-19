@@ -60,6 +60,10 @@ export function Dialog({
         {children && <div className="dialog-content">{children}</div>}
         <div className="dialog-actions">
           <button type="button" className="ghost" onClick={onCancel}>Cancel</button>
+          <button
+            ref={confirmRef}
+            type="button"
+            className={danger ? 'danger' : 'primary'}
             {confirmLabel}
           </button>
         </footer>
