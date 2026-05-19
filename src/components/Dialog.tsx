@@ -52,6 +52,10 @@ export function Dialog({
         className={`dialog-card${wide ? ' dialog-card-wide' : ''}`}
         role="dialog"
         aria-modal="true"
+        aria-labelledby={titleId}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <h2 id={titleId}>{title}</h2>
         {description && <p>{description}</p>}
         {children}
         <footer>
