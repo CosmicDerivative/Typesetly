@@ -22,6 +22,9 @@ export function Dialog({
   onCancel,
   onConfirm,
 }: DialogProps) {
+  const titleId = useId()
+  const cardRef = useRef<HTMLElement>(null)
+  const confirmRef = useRef<HTMLButtonElement>(null)
   return (
     <div className="dialog-backdrop">
       <section className="dialog-card" role="dialog" aria-modal="true">
