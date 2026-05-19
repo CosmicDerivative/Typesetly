@@ -46,7 +46,9 @@ export function Dialog({
   }, [])
 
   return (
-        <h2>{title}</h2>
+    <div className="dialog-backdrop" role="presentation" onMouseDown={onCancel}>
+      <section
+        ref={cardRef}
         {description && <p>{description}</p>}
         {children}
         <footer>
