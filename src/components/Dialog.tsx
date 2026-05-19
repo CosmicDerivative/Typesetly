@@ -1,12 +1,13 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react'
 import './Dialog.css'
 
-type DialogProps = {
+interface DialogProps {
   title: string
   description?: string
   children?: ReactNode
   confirmLabel?: string
   danger?: boolean
+  wide?: boolean
   onCancel: () => void
   onConfirm: () => void
 }
@@ -17,6 +18,7 @@ export function Dialog({
   children,
   confirmLabel = 'Continue',
   danger,
+  wide = false,
   onCancel,
   onConfirm,
 }: DialogProps) {
