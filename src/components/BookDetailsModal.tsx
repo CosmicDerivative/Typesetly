@@ -1,14 +1,10 @@
-import { useState } from 'react'
-import { Dialog } from './Dialog'
+import { FolderSync, RefreshCw, Unplug } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { useApp } from '../BookContext'
+import './BookDetailsModal.css'
+import { processImageFile } from '../images/process'
 
 export function BookDetailsModal({ onClose }: { onClose: () => void }) {
-  const [title, setTitle] = useState('')
-  const [author, setAuthor] = useState('')
-  const [language, setLanguage] = useState('en')
-
-  const save = () => {
-    if (!title.trim()) return
-    onClose()
   }
 
   return (
