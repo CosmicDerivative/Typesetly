@@ -40,6 +40,10 @@ export function Dialog({
     ;(firstField || confirmRef.current)?.focus()
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') cancelCallbackRef.current()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
   return (
     <div className="dialog-backdrop">
       <section className="dialog-card" role="dialog" aria-modal="true">
