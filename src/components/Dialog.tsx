@@ -57,6 +57,9 @@ export function Dialog({
       >
         <h2 id={titleId}>{title}</h2>
         {description && <p>{description}</p>}
+        {children && <div className="dialog-content">{children}</div>}
+        <div className="dialog-actions">
+          <button type="button" className="ghost" onClick={onCancel}>Cancel</button>
             {confirmLabel}
           </button>
         </footer>
