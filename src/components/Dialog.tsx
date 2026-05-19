@@ -44,9 +44,8 @@ export function Dialog({
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
+
   return (
-    <div className="dialog-backdrop">
-      <section className="dialog-card" role="dialog" aria-modal="true">
         <h2>{title}</h2>
         {description && <p>{description}</p>}
         {children}
