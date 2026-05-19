@@ -36,6 +36,10 @@ export function Dialog({
       'input:not([type="hidden"]):not(:disabled), textarea:not(:disabled), select:not(:disabled)',
     )
     // Focus only on mount. Refocusing after every controlled-input render
+    // would make modal fields lose focus after the first character.
+    ;(firstField || confirmRef.current)?.focus()
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') cancelCallbackRef.current()
   return (
     <div className="dialog-backdrop">
       <section className="dialog-card" role="dialog" aria-modal="true">
