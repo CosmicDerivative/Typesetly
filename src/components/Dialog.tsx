@@ -29,6 +29,10 @@ export function Dialog({
 
   useEffect(() => {
     cancelCallbackRef.current = onCancel
+  }, [onCancel])
+
+  useEffect(() => {
+    const firstField = cardRef.current?.querySelector<HTMLElement>(
   return (
     <div className="dialog-backdrop">
       <section className="dialog-card" role="dialog" aria-modal="true">
