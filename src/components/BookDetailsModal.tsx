@@ -158,5 +158,19 @@ export function BookDetailsModal({ onClose }: { onClose: () => void }) {
               <button type="button" className="linkish" onClick={() => updateDetails({ coverDataUrl: undefined })}>
                 Remove cover
               </button>
+            )}
+            <input
+              ref={coverRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={async (e) => {
+                const file = e.target.files?.[0]
+                if (!file) return
+                const processed = await processImageFile(file, 3000)
+                updateDetails({ coverDataUrl: processed.dataUrl })
+              }}
+            />
+          </div>
   )
 }
