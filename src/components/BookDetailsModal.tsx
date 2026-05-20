@@ -41,5 +41,19 @@ export function BookDetailsModal({ onClose }: { onClose: () => void }) {
             Title
             <input
               value={d.title}
+              onChange={(e) => updateDetails({ title: e.target.value })}
+            />
+          </label>
+          <label>
+            Subtitle
+            <input
+              value={d.subtitle}
+              onChange={(e) => updateDetails({ subtitle: e.target.value })}
+            />
+          </label>
+          <label>
+            Author
+            <input
+              value={d.author}
   )
 }
