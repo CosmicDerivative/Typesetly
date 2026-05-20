@@ -143,5 +143,20 @@ export function BookDetailsModal({ onClose }: { onClose: () => void }) {
           <div className="integration-actions">
             {d.universalBookLink && <button type="button" onClick={() => window.open(d.universalBookLink, '_blank', 'noopener,noreferrer')}>Open universal link</button>}
             {d.bookBrushProjectUrl && <button type="button" onClick={() => window.open(d.bookBrushProjectUrl, '_blank', 'noopener,noreferrer')}>Open Book Brush</button>}
+          </div>
+        )}
+        <div className="cover-row">
+          <div
+            className="cover-preview"
+            style={d.coverDataUrl ? { backgroundImage: `url(${d.coverDataUrl})` } : undefined}
+          />
+          <div>
+            <button type="button" onClick={() => coverRef.current?.click()}>
+              Upload ebook cover
+            </button>
+            {d.coverDataUrl && (
+              <button type="button" className="linkish" onClick={() => updateDetails({ coverDataUrl: undefined })}>
+                Remove cover
+              </button>
   )
 }
