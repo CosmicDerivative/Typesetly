@@ -187,5 +187,19 @@ export function BookDetailsModal({ onClose }: { onClose: () => void }) {
                 <div className="scrivener-sync-status">
                   <span>Connected</span>
                   <strong>{project.scrivenerSync.folderName}</strong>
+                  <small>
+                    {project.scrivenerSync.files.length} linked chapter(s) · Last synced{' '}
+                    {new Date(project.scrivenerSync.lastSyncedAt).toLocaleString()}
+                  </small>
+                </div>
+                <div className="scrivener-sync-actions">
+                  <button
+                    type="button"
+                    disabled={syncBusy}
+                    onClick={async () => {
+                      setSyncBusy(true)
+                      try {
+                        await syncScrivener()
+                      } finally {
   )
 }
