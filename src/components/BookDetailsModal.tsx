@@ -84,5 +84,20 @@ export function BookDetailsModal({ onClose }: { onClose: () => void }) {
             Language
             <input
               value={d.language}
+              onChange={(e) => updateDetails({ language: e.target.value })}
+            />
+          </label>
+          <label>
+            Series name
+            <input
+              value={d.seriesName || ''}
+              placeholder="Leave blank for a standalone"
+              onChange={(e) => updateDetails({ seriesName: e.target.value })}
+            />
+          </label>
+          <label>
+            Book number
+            <input
+              type="number"
   )
 }
