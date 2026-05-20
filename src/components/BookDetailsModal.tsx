@@ -172,5 +172,20 @@ export function BookDetailsModal({ onClose }: { onClose: () => void }) {
               }}
             />
           </div>
+        </div>
+        <div className="details-export">
+          <div className="scrivener-sync">
+            <div className="scrivener-sync-heading">
+              <span><FolderSync size={17} /></span>
+              <div>
+                <strong>Scrivener round-trip</strong>
+                <p>Uses Scrivener’s External Folder Sync. Typesetly never writes inside the .scriv project.</p>
+              </div>
+            </div>
+            {project.scrivenerSync ? (
+              <>
+                <div className="scrivener-sync-status">
+                  <span>Connected</span>
+                  <strong>{project.scrivenerSync.folderName}</strong>
   )
 }
