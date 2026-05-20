@@ -201,5 +201,20 @@ export function BookDetailsModal({ onClose }: { onClose: () => void }) {
                       try {
                         await syncScrivener()
                       } finally {
+                        setSyncBusy(false)
+                      }
+                    }}
+                  >
+                    <RefreshCw size={14} /> {syncBusy ? 'Syncing…' : 'Sync now'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={syncBusy}
+                    onClick={async () => {
+                      setSyncBusy(true)
+                      try {
+                        await connectScrivenerSync(project.scrivenerSync?.format)
+                      } finally {
+                        setSyncBusy(false)
   )
 }
