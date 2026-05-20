@@ -28,7 +28,18 @@ export function BookDetailsModal({ onClose }: { onClose: () => void }) {
   const d = project.details
 
   return (
-      </label>
-    </Dialog>
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-card" role="dialog" aria-modal="true" aria-labelledby="book-details-title" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <h2 id="book-details-title">Book details</h2>
+          <button type="button" onClick={onClose}>
+            Close
+          </button>
+        </div>
+        <div className="modal-grid">
+          <label>
+            Title
+            <input
+              value={d.title}
   )
 }
