@@ -128,5 +128,20 @@ export function BookDetailsModal({ onClose }: { onClose: () => void }) {
               placeholder="https://books2read.com/…"
               onChange={(e) => updateDetails({ universalBookLink: e.target.value })}
             />
+          </label>
+          <label>
+            Book Brush project
+            <input
+              type="url"
+              value={d.bookBrushProjectUrl || ''}
+              placeholder="https://bookbrush.com/…"
+              onChange={(e) => updateDetails({ bookBrushProjectUrl: e.target.value })}
+            />
+          </label>
+        </div>
+        {(d.universalBookLink || d.bookBrushProjectUrl) && (
+          <div className="integration-actions">
+            {d.universalBookLink && <button type="button" onClick={() => window.open(d.universalBookLink, '_blank', 'noopener,noreferrer')}>Open universal link</button>}
+            {d.bookBrushProjectUrl && <button type="button" onClick={() => window.open(d.bookBrushProjectUrl, '_blank', 'noopener,noreferrer')}>Open Book Brush</button>}
   )
 }
