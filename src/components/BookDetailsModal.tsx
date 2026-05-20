@@ -19,15 +19,15 @@ export function BookDetailsModal({ onClose }: { onClose: () => void }) {
     project?.scrivenerSync?.format || 'rtf',
   )
   const [syncBusy, setSyncBusy] = useState(false)
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
+  if (!project) return null
+  const d = project.details
 
   return (
-    <Dialog
-      title="Book details"
-      description="Add the metadata readers will see."
-      confirmLabel="Save details"
-      onCancel={onClose}
-      onConfirm={save}
-    >
       <label>
         Title
         <input value={title} onChange={(event) => setTitle(event.target.value)} />
