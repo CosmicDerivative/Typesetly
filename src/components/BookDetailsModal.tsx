@@ -28,21 +28,6 @@ export function BookDetailsModal({ onClose }: { onClose: () => void }) {
   const d = project.details
 
   return (
-      <label>
-        Title
-        <input value={title} onChange={(event) => setTitle(event.target.value)} />
-      </label>
-      <label>
-        Author
-        <input value={author} onChange={(event) => setAuthor(event.target.value)} />
-      </label>
-      <label>
-        Language
-        <select value={language} onChange={(event) => setLanguage(event.target.value)}>
-          <option value="en">English</option>
-          <option value="es">Spanish</option>
-          <option value="fr">French</option>
-        </select>
       </label>
     </Dialog>
   )
