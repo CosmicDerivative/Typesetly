@@ -114,5 +114,19 @@ export function BookDetailsModal({ onClose }: { onClose: () => void }) {
               type="number"
               min="1"
               value={d.seriesTotal ?? ''}
+              placeholder="Optional"
+              onChange={(e) => updateDetails({
+                seriesTotal: e.target.value ? Number(e.target.value) : undefined,
+              })}
+            />
+          </label>
+          <label>
+            Universal book link
+            <input
+              type="url"
+              value={d.universalBookLink || ''}
+              placeholder="https://books2read.com/…"
+              onChange={(e) => updateDetails({ universalBookLink: e.target.value })}
+            />
   )
 }
