@@ -216,5 +216,20 @@ export function BookDetailsModal({ onClose }: { onClose: () => void }) {
                         await connectScrivenerSync(project.scrivenerSync?.format)
                       } finally {
                         setSyncBusy(false)
+                      }
+                    }}
+                  >
+                    Change folder
+                  </button>
+                  <button type="button" className="disconnect" onClick={disconnectScrivenerSync}>
+                    <Unplug size={14} /> Disconnect
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="scrivener-sync-setup">
+                  <label>
+                    Sync format
   )
 }
