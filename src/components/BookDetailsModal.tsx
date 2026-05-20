@@ -99,5 +99,20 @@ export function BookDetailsModal({ onClose }: { onClose: () => void }) {
             Book number
             <input
               type="number"
+              min="0"
+              step="0.5"
+              value={d.seriesNumber ?? ''}
+              placeholder="1"
+              onChange={(e) => updateDetails({
+                seriesNumber: e.target.value ? Number(e.target.value) : undefined,
+              })}
+            />
+          </label>
+          <label>
+            Planned books in series
+            <input
+              type="number"
+              min="1"
+              value={d.seriesTotal ?? ''}
   )
 }
