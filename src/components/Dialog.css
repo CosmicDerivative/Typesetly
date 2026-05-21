@@ -1,0 +1,275 @@
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(16, 26, 38, 0.48);
+  backdrop-filter: blur(3px);
+}
+
+.dialog-card {
+  width: min(440px, 100%);
+  padding: 24px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.25);
+}
+
+.dialog-card h2 {
+  margin: 0 0 8px;
+  color: #1d2733;
+  font-size: 20px;
+}
+
+.dialog-card p {
+  margin: 0;
+  color: #667483;
+  line-height: 1.55;
+}
+
+.dialog-content {
+  margin-top: 18px;
+}
+
+.dialog-content input,
+.dialog-content textarea,
+.dialog-content select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 11px;
+  border: 1px solid #cad3dc;
+  border-radius: 6px;
+  font: inherit;
+}
+
+.dialog-content input:is([type="checkbox"], [type="radio"]) {
+  width: auto;
+  padding: 0;
+}
+
+.dialog-content label {
+  display: grid;
+  gap: 5px;
+  margin-bottom: 12px;
+  color: #566574;
+  font-size: 12px;
+}
+
+.block-color-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.block-color-grid input[type="color"] {
+  height: 38px;
+  padding: 3px;
+}
+
+.block-live-preview {
+  display: grid;
+  gap: 3px;
+  width: fit-content;
+  max-width: 82%;
+  margin: 5px 0 14px;
+  padding: 10px 13px;
+  border-radius: 8px;
+  color: #263543;
+  background: #f2f6fa;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+
+.block-live-preview strong {
+  font-size: 10px;
+  opacity: .68;
+}
+
+.block-live-preview.text-message {
+  margin-left: auto;
+  border-radius: 16px 16px 5px 16px;
+  color: #fff;
+  background: #1677d2;
+}
+
+.block-live-preview.text-message.incoming {
+  margin-right: auto;
+  margin-left: 0;
+  border-radius: 16px 16px 16px 5px;
+  color: #20262d;
+  background: #e9edf2;
+}
+
+.block-live-preview.text-message.android {
+  border: 1px solid #c7d7c5;
+  border-radius: 7px;
+  color: #243423;
+  background: #dff0dc;
+}
+
+.block-live-preview.callout-preview {
+  width: 100%;
+  max-width: none;
+  border: 1px solid #9aa7b2;
+}
+
+.preset-save-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 7px;
+}
+
+.preset-save-row button,
+.preset-chips button {
+  border: 1px solid #cbd5de;
+  border-radius: 5px;
+  color: #37617e;
+  background: #f7fafc;
+  cursor: pointer;
+}
+
+.preset-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.preset-chips button {
+  padding: 4px 7px;
+  font-size: 10px;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-top: 22px;
+}
+
+.dialog-actions button {
+  padding: 9px 15px;
+  border: 1px solid #cbd4dd;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.dialog-actions .ghost {
+  background: #fff;
+}
+
+.dialog-actions .primary {
+  border-color: #246fce;
+  color: #fff;
+  background: #246fce;
+}
+
+.dialog-actions .danger {
+  border-color: #bd3333;
+  color: #fff;
+  background: #bd3333;
+}
+
+.dialog-backdrop {
+  background: rgba(39, 20, 29, .58);
+  backdrop-filter: blur(8px) saturate(.8);
+}
+
+.dialog-card {
+  position: relative;
+  width: min(470px, 100%);
+  padding: 28px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 6px 24px 24px 24px;
+  background:
+    linear-gradient(135deg, rgba(216, 170, 88, .09), transparent 36%),
+    var(--paper-50);
+  box-shadow: 0 28px 80px rgba(28, 11, 19, .38);
+}
+
+.dialog-card-wide {
+  width: min(680px, 100%);
+  max-height: calc(100dvh - 48px);
+  display: flex;
+  flex-direction: column;
+}
+
+.dialog-card-wide .dialog-content {
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-gutter: stable;
+}
+
+.dialog-card-wide .dialog-actions {
+  flex: 0 0 auto;
+}
+
+.dialog-card::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 78px;
+  height: 6px;
+  border-radius: 0 0 6px 0;
+  background: var(--coral-500);
+  content: "";
+}
+
+.dialog-card h2 {
+  color: var(--ink-900);
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 23px;
+  letter-spacing: -.02em;
+}
+
+.dialog-card p,
+.dialog-content label {
+  color: var(--text-700);
+}
+
+.dialog-content input,
+.dialog-content textarea,
+.dialog-content select {
+  border-color: var(--line);
+  border-radius: 10px;
+  color: var(--text-900);
+  background: var(--paper-100);
+}
+
+.preset-save-row button,
+.preset-chips button {
+  border-color: var(--line);
+  border-radius: 9px;
+  color: var(--sage-600);
+  background: var(--paper-100);
+}
+
+.dialog-actions {
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.dialog-actions button {
+  border-radius: 11px;
+}
+
+.dialog-actions .ghost {
+  border-color: var(--line);
+  color: var(--text-700);
+  background: var(--paper-100);
+}
+
+.dialog-actions .primary {
+  border-color: var(--coral-500);
+  background: var(--coral-500);
+}
+
+.dialog-actions .primary:hover {
+  border-color: var(--coral-600);
+  background: var(--coral-600);
+}

@@ -64,9 +64,11 @@ export function Dialog({
             ref={confirmRef}
             type="button"
             className={danger ? 'danger' : 'primary'}
+            onClick={onConfirm}
+          >
             {confirmLabel}
           </button>
-        </footer>
+        </div>
       </section>
     </div>
   )

@@ -260,5 +260,20 @@ export function BookDetailsModal({ onClose }: { onClose: () => void }) {
               In Scrivener, configure File → Sync → with External Folder first. Alternate between apps and run Sync in both before switching.
             </p>
           </div>
+        </div>
+        <div className="details-export">
+          <div>
+            <strong>Backup and export</strong>
+            <p>DOCX is for editing. EPUB and PDF use the active formatting theme.</p>
+          </div>
+          <div className="details-export-actions">
+            <button type="button" onClick={downloadSnapshot}>Snapshot</button>
+            <button type="button" onClick={() => void import('../export/docx').then(({ exportProjectToDocx }) => exportProjectToDocx(project))}>DOCX</button>
+            <button type="button" onClick={() => void import('../export/epub').then(({ exportProjectToEpub }) => exportProjectToEpub(project, activeTheme))}>EPUB</button>
+            <button type="button" onClick={() => void import('../export/pdf').then(({ exportProjectToPdf }) => exportProjectToPdf(project, activeTheme))}>PDF</button>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
