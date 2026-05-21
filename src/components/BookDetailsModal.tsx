@@ -231,5 +231,19 @@ export function BookDetailsModal({ onClose }: { onClose: () => void }) {
                 <div className="scrivener-sync-setup">
                   <label>
                     Sync format
+                    <select value={syncFormat} onChange={(event) => setSyncFormat(event.target.value as 'rtf' | 'txt')}>
+                      <option value="rtf">Rich Text Format (.rtf)</option>
+                      <option value="txt">Plain text (.txt)</option>
+                    </select>
+                  </label>
+                  <button
+                    type="button"
+                    disabled={syncBusy || !window.typesetly?.chooseScrivenerSyncFolder}
+                    onClick={async () => {
+                      setSyncBusy(true)
+                      try {
+                        await connectScrivenerSync(syncFormat)
+                      } finally {
+                        setSyncBusy(false)
   )
 }
