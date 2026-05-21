@@ -245,5 +245,20 @@ export function BookDetailsModal({ onClose }: { onClose: () => void }) {
                         await connectScrivenerSync(syncFormat)
                       } finally {
                         setSyncBusy(false)
+                      }
+                    }}
+                  >
+                    <FolderSync size={14} /> {syncBusy ? 'Connecting…' : 'Connect sync folder'}
+                  </button>
+                </div>
+                {!window.typesetly?.chooseScrivenerSyncFolder && (
+                  <p className="scrivener-desktop-note">Live folder sync requires the Typesetly desktop app. Scrivener project import still works in the browser.</p>
+                )}
+              </>
+            )}
+            <p className="scrivener-sync-caution">
+              In Scrivener, configure File → Sync → with External Folder first. Alternate between apps and run Sync in both before switching.
+            </p>
+          </div>
   )
 }
