@@ -30,8 +30,15 @@ export function ChapterOptionsMenu({
     { key: 'hideChapterHeading', label: 'Hide Chapter Heading' },
     { key: 'hidePageNumber', label: 'Hide Page Number' },
     { key: 'hideHeaderFooter', label: 'Hide Header/Footer' },
+    { key: 'hideFirstSentenceFormatting', label: 'Hide First Sentence Formatting' },
+    { key: 'hideInToc', label: 'Hide in Table of Contents' },
+    { key: 'useSmallerChapterTitle', label: 'Use Smaller Chapter Title' },
+    { key: 'invertTextColor', label: 'Invert Text Color' },
+    { key: 'numbered', label: 'Include in Chapter Numbering' },
+    { key: 'includeSubheadingsInToc', label: 'Include Subheadings in Contents' },
+  ]
+
   return (
-    <aside className="chapter-options">
       <header>
         <strong>{chapter.title}</strong>
         <button type="button" onClick={onClose}>Close</button>
