@@ -1,5 +1,9 @@
-import { useState } from 'react'
+import { useApp } from '../BookContext'
+import { REQUIRED_PAGE_TYPES } from '../manuscript/pageTypes'
 import type { Chapter } from '../types'
+import './ChapterOptionsMenu.css'
+import { processImageFile } from '../images/process'
+import { PageTypeSelect } from './PageTypeSelect'
 
 export function ChapterOptionsMenu({
   chapter,
@@ -8,8 +12,6 @@ export function ChapterOptionsMenu({
   chapter: Chapter
   onClose: () => void
 }) {
-  const [hideHeading, setHideHeading] = useState(false)
-  const [beginOn, setBeginOn] = useState('next')
 
   return (
     <aside className="chapter-options">
