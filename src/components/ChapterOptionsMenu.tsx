@@ -21,7 +21,15 @@ export function ChapterOptionsMenu({
     setEpubStartChapter,
   } = useApp()
   const o = chapter.options
+  type BooleanOption = Exclude<keyof typeof o, 'beginOn' | 'includeIn'>
+  const toggle = (key: BooleanOption) =>
+    updateChapterOptions(chapter.id, { [key]: !o[key] })
 
+  const items: { key: BooleanOption; label: string }[] = [
+    { key: 'hideChapterImage', label: 'Hide Chapter Image' },
+    { key: 'hideChapterHeading', label: 'Hide Chapter Heading' },
+    { key: 'hidePageNumber', label: 'Hide Page Number' },
+    { key: 'hideHeaderFooter', label: 'Hide Header/Footer' },
   return (
     <aside className="chapter-options">
       <header>
