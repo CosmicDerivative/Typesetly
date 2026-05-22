@@ -12,6 +12,15 @@ export function ChapterOptionsMenu({
   chapter: Chapter
   onClose: () => void
 }) {
+  const {
+    project,
+    updateChapterOptions,
+    updateChapterType,
+    updateChapterImage,
+    updateChapterImageDetails,
+    setEpubStartChapter,
+  } = useApp()
+  const o = chapter.options
 
   return (
     <aside className="chapter-options">
