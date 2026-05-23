@@ -83,6 +83,15 @@ export function ChapterOptionsMenu({
         </button>
       </label>
       <label className="co-select">
+        Begin on
+        <select
+          value={o.beginOn}
+          onChange={(event) =>
+            updateChapterOptions(chapter.id, {
+              beginOn: event.target.value as typeof o.beginOn,
+            })
+          }
+        >
         </select>
       </label>
     </aside>
