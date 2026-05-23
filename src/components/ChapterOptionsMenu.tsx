@@ -45,6 +45,15 @@ export function ChapterOptionsMenu({
         <button type="button" onClick={onClose}>
           ×
         </button>
+      </div>
+      {!REQUIRED_PAGE_TYPES.includes(chapter.type) && (
+        <label className="co-select">
+          Page type
+          <PageTypeSelect
+            value={chapter.type}
+            onChange={(type) => updateChapterType(chapter.id, type)}
+          />
+        </label>
       </label>
       <label>
         Begin chapter on
