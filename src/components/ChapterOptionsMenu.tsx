@@ -39,15 +39,6 @@ export function ChapterOptionsMenu({
   ]
 
   return (
-      <header>
-        <strong>{chapter.title}</strong>
-        <button type="button" onClick={onClose}>Close</button>
-      </header>
-      <label>
-        <input
-          type="checkbox"
-          checked={hideHeading}
-          onChange={(event) => setHideHeading(event.target.checked)}
         />
         Hide chapter heading
       </label>
