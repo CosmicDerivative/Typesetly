@@ -71,13 +71,10 @@ export function ChapterOptionsMenu({
           <option value="ebook">Ebook only</option>
           <option value="print">Print only</option>
           <option value="none">Do not export</option>
+        </select>
       </label>
-      <label>
-        Begin chapter on
-        <select value={beginOn} onChange={(event) => setBeginOn(event.target.value)}>
-          <option value="next">Next page</option>
-          <option value="right">Right-hand page</option>
-          <option value="left">Left-hand page</option>
+      <label className="co-select">
+        EPUB opening location
         </select>
       </label>
     </aside>
