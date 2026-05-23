@@ -92,8 +92,15 @@ export function ChapterOptionsMenu({
             })
           }
         >
+          <option value="either">Either side</option>
+          <option value="right">Right side</option>
+          <option value="left">Left side</option>
         </select>
       </label>
-    </aside>
+      <label className="co-select">
+        Individual chapter image
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
   )
 }
