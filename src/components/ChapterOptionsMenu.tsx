@@ -54,6 +54,15 @@ export function ChapterOptionsMenu({
             onChange={(type) => updateChapterType(chapter.id, type)}
           />
         </label>
+      )}
+      {items.map((item) => (
+        <label key={item.key} className="co-row">
+          <input type="checkbox" checked={o[item.key]} onChange={() => toggle(item.key)} />
+          {item.label}
+        </label>
+      ))}
+      <label className="co-select">
+        Include in
       </label>
       <label>
         Begin chapter on
