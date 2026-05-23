@@ -75,6 +75,14 @@ export function ChapterOptionsMenu({
       </label>
       <label className="co-select">
         EPUB opening location
+        <button
+          type="button"
+          onClick={() => setEpubStartChapter(project?.epubStartChapterId === chapter.id ? undefined : chapter.id)}
+        >
+          {project?.epubStartChapterId === chapter.id ? 'Use normal book order' : 'Start EPUB at this page'}
+        </button>
+      </label>
+      <label className="co-select">
         </select>
       </label>
     </aside>
