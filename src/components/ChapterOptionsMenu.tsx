@@ -63,6 +63,14 @@ export function ChapterOptionsMenu({
       ))}
       <label className="co-select">
         Include in
+        <select
+          value={o.includeIn}
+          onChange={(event) => updateChapterOptions(chapter.id, { includeIn: event.target.value as typeof o.includeIn })}
+        >
+          <option value="all">Ebook and print</option>
+          <option value="ebook">Ebook only</option>
+          <option value="print">Print only</option>
+          <option value="none">Do not export</option>
       </label>
       <label>
         Begin chapter on
