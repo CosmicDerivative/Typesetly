@@ -39,8 +39,12 @@ export function ChapterOptionsMenu({
   ]
 
   return (
-        />
-        Hide chapter heading
+    <div className="chapter-options">
+      <div className="co-head">
+        <strong>Chapter options</strong>
+        <button type="button" onClick={onClose}>
+          ×
+        </button>
       </label>
       <label>
         Begin chapter on
