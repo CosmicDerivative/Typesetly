@@ -119,5 +119,14 @@ export function ChapterOptionsMenu({
           <>
             <input
               value={chapter.imageAlt || ''}
+              maxLength={140}
+              placeholder="Alt text (leave blank if decorative)"
+              onChange={(event) => updateChapterImageDetails(chapter.id, {
+                imageAlt: event.target.value,
+                imageCaption: chapter.imageCaption,
+                imageLayout: chapter.imageLayout,
+              })}
+            />
+            <input
   )
 }
