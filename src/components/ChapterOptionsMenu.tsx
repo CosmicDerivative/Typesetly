@@ -145,5 +145,14 @@ export function ChapterOptionsMenu({
               })}
             >
               <option value="inline">Inline chapter image</option>
+              <option value="wide">Wide image</option>
+              <option value="full-page">Full page</option>
+              <option value="two-page">Two-page spread</option>
+            </select>
+            <button type="button" onClick={() => updateChapterImage(chapter.id, undefined)}>Remove image</button>
+          </>
+        )}
+      </label>
+    </div>
   )
 }
