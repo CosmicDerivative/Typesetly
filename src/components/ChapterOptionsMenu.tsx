@@ -102,5 +102,13 @@ export function ChapterOptionsMenu({
         <input
           type="file"
           accept="image/png,image/jpeg,image/webp"
+          onChange={async (event) => {
+            const file = event.target.files?.[0]
+            if (!file) return
+            try {
+              const processed = await processImageFile(file)
+              updateChapterImage(chapter.id, processed.dataUrl, processed)
+            } catch (error) {
+              window.dispatchEvent(new CustomEvent('typesetly:notice', {
   )
 }
