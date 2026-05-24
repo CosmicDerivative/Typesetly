@@ -110,5 +110,14 @@ export function ChapterOptionsMenu({
               updateChapterImage(chapter.id, processed.dataUrl, processed)
             } catch (error) {
               window.dispatchEvent(new CustomEvent('typesetly:notice', {
+                detail: error instanceof Error ? error.message : 'The image could not be imported.',
+              }))
+            }
+          }}
+        />
+        {chapter.imageDataUrl && (
+          <>
+            <input
+              value={chapter.imageAlt || ''}
   )
 }
