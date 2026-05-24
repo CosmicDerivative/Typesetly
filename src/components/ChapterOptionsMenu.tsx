@@ -136,5 +136,14 @@ export function ChapterOptionsMenu({
                 imageLayout: chapter.imageLayout,
               })}
             />
+            <select
+              value={chapter.imageLayout || 'inline'}
+              onChange={(event) => updateChapterImageDetails(chapter.id, {
+                imageAlt: chapter.imageAlt,
+                imageCaption: chapter.imageCaption,
+                imageLayout: event.target.value as NonNullable<typeof chapter.imageLayout>,
+              })}
+            >
+              <option value="inline">Inline chapter image</option>
   )
 }
