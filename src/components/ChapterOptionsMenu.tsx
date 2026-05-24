@@ -128,5 +128,13 @@ export function ChapterOptionsMenu({
               })}
             />
             <input
+              value={chapter.imageCaption || ''}
+              placeholder="Visible caption"
+              onChange={(event) => updateChapterImageDetails(chapter.id, {
+                imageAlt: chapter.imageAlt,
+                imageCaption: event.target.value,
+                imageLayout: chapter.imageLayout,
+              })}
+            />
   )
 }
