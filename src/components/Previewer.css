@@ -1,0 +1,33 @@
+.previewer {
+  display: flex;
+  width: 460px;
+  flex-direction: column;
+  padding: 18px;
+  background: #dedbd4;
+}
+
+.previewer header,
+.previewer footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.preview-page {
+  flex: 1;
+  margin: 20px 0;
+  padding: 72px 54px;
+  background: #fff;
+  box-shadow: 0 8px 28px #40392c26;
+  font: 15px/1.6 Georgia, serif;
+}
+
+.preview-page h1 {
+  text-align: center;
+}
+
+.chapter-number {
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
