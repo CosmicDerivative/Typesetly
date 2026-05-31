@@ -1,8 +1,23 @@
-import { useState } from 'react'
+import { ChevronLeft, ChevronRight, FileDown, Info, RotateCw } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useApp } from '../BookContext'
+import type { PreviewDevice } from '../types'
 import './Previewer.css'
+import { decorateFirstSentenceHtml, headingParts, parseManuscript, type ManuscriptBlock } from '../layout/manuscript'
+import { preflightBook } from '../export/preflight'
+import { DEVICE_PROFILES, profileDescription, renderedDeviceWidth } from '../preview/devices'
+import { estimateBookPages, readingTimeMinutes } from '../layout/pagination'
+import { DrawerControls } from './DrawerControls'
 
 export function Previewer() {
-  const [page, setPage] = useState(1)
+  const {
+    rightPanel,
+    setRightPanel,
+    setMode,
+    previewDevice,
+    setPreviewDevice,
+    activeChapter,
+    bodyChapters,
 
   return (
     <aside className="previewer">
