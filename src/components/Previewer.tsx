@@ -38,6 +38,26 @@ export function Previewer() {
     const source = activeTheme.typography.embeddedFontDataUrl
     if (!name || !source) return
     void new FontFace(name, `url(${source})`).load().then((font) => document.fonts.add(font))
+  }, [activeTheme.typography.embeddedFontDataUrl, activeTheme.typography.embeddedFontName])
+
+  const previewContent = useMemo(() => {
+    if (!activeChapter || !project) return { blocks: [] as ManuscriptBlock[], notes: [] }
+    if (activeChapter.type === 'title-page') {
+      return { notes: [], blocks: [] as ManuscriptBlock[] }
+    }
+    if (activeChapter.type === 'contents') {
+      return {
+        notes: [],
+        blocks: project.chapters
+          .filter((chapter) => (chapter.type === 'chapter' || chapter.type === 'part') && !chapter.options.hideInToc)
+          .map((chapter) => ({ type: 'paragraph' as const, text: chapter.title, html: chapter.title })),
+      }
+    }
+    return parseManuscript(activeChapter.content)
+  }, [activeChapter, project])
+
+  const profile = DEVICE_PROFILES[previewDevice]
+  const portraitWidth = previewDevice === 'Print' ? activeTheme.print.trimWidthIn * 72 : profile.logicalWidth
   return (
     <aside className="previewer">
       <header>
