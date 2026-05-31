@@ -77,6 +77,25 @@ export function Previewer() {
       // scaling and device aspect ratios affect the navigation count.
       const pages = Math.max(1, Math.ceil(screen.scrollHeight / Math.max(1, screen.clientHeight)))
       setScreenPages(pages)
+    }
+    const observer = new ResizeObserver(measure)
+    observer.observe(screen)
+    const frame = window.requestAnimationFrame(measure)
+    return () => {
+      observer.disconnect()
+      window.cancelAnimationFrame(frame)
+    }
+  }, [activeChapter?.id, activeChapter?.content, landscape, previewDevice, activeTheme])
+
+  if ((mode !== 'publish' && rightPanel !== 'preview') || !project) return null
+
+  const chapterIndex = bodyChapters.findIndex((c) => c.id === activeChapter?.id)
+  const canPrev = chapterIndex > 0
+  const canNext = chapterIndex >= 0 && chapterIndex < bodyChapters.length - 1
+  const theme = activeTheme
+  const deviceClass = `device ${profile.family} ${profile.color ? 'color-screen' : 'eink-screen'}`
+
+  let firstPara = true
   return (
     <aside className="previewer">
       <header>
