@@ -96,16 +96,18 @@ export function Previewer() {
   const deviceClass = `device ${profile.family} ${profile.color ? 'color-screen' : 'eink-screen'}`
 
   let firstPara = true
+  const heading = activeChapter ? headingParts(project, activeChapter, theme) : null
+
   return (
-    <aside className="previewer">
-      <header>
-        <strong>Book preview</strong>
-        <span>Page {page}</span>
-      </header>
-      <div className="preview-page">
-        <p className="chapter-number">Chapter One</p>
-        <h1>Untitled Chapter</h1>
-        <p>Your formatted manuscript will appear here.</p>
+    <aside className={`previewer ${mode === 'publish' ? 'publish-preview' : 'preview-drawer'}`}>
+      <div className="previewer-header">
+        <div className="previewer-title">
+          <div>
+            <small>Proofing desk</small>
+            <span>Reader preview</span>
+          </div>
+          <Info size={14} className="info-icon" />
+        </div>
       </div>
       <footer>
         <button type="button" onClick={() => setPage((value) => Math.max(1, value - 1))}>Previous</button>
