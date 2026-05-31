@@ -58,6 +58,25 @@ export function Previewer() {
 
   const profile = DEVICE_PROFILES[previewDevice]
   const portraitWidth = previewDevice === 'Print' ? activeTheme.print.trimWidthIn * 72 : profile.logicalWidth
+  const portraitHeight = previewDevice === 'Print' ? activeTheme.print.trimHeightIn * 72 : profile.logicalHeight
+  const profileWidth = landscape ? portraitHeight : portraitWidth
+  const profileHeight = landscape ? portraitWidth : portraitHeight
+  const renderedWidth = renderedDeviceWidth(profile, activeTheme.print.trimWidthIn, landscape)
+  const bookPages = useMemo(
+    () => project ? estimateBookPages(project, activeTheme, profile) : 1,
+    [activeTheme, profile, project],
+  )
+
+  useEffect(() => {
+    const screen = screenRef.current
+    if (!screen) return
+    screen.scrollTop = 0
+    setScreenPage(1)
+    const measure = () => {
+      // Screen previews paginate from measured rendered height, so font
+      // scaling and device aspect ratios affect the navigation count.
+      const pages = Math.max(1, Math.ceil(screen.scrollHeight / Math.max(1, screen.clientHeight)))
+      setScreenPages(pages)
   return (
     <aside className="previewer">
       <header>
