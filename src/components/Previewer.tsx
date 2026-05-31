@@ -18,7 +18,26 @@ export function Previewer() {
     setPreviewDevice,
     activeChapter,
     bodyChapters,
+    setActiveChapter,
+    project,
+    activeTheme,
+    mode,
+  } = useApp()
+  const [exporting, setExporting] = useState<'epub' | 'pdf' | null>(null)
+  const [exportMessage, setExportMessage] = useState('')
+  const [landscape, setLandscape] = useState(false)
+  const [screenPage, setScreenPage] = useState(1)
+  const [screenPages, setScreenPages] = useState(1)
+  const [readerFontScale, setReaderFontScale] = useState(1)
+  const [readerAppearance, setReaderAppearance] = useState<'light' | 'sepia' | 'dark'>('light')
+  const screenRef = useRef<HTMLDivElement>(null)
+  const preflight = useMemo(() => project ? preflightBook(project, activeTheme) : [], [activeTheme, project])
 
+  useEffect(() => {
+    const name = activeTheme.typography.embeddedFontName
+    const source = activeTheme.typography.embeddedFontDataUrl
+    if (!name || !source) return
+    void new FontFace(name, `url(${source})`).load().then((font) => document.fonts.add(font))
   return (
     <aside className="previewer">
       <header>
