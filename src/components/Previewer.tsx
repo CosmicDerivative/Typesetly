@@ -201,6 +201,26 @@ export function Previewer() {
                   }
                 : {}),
             } as CSSProperties}
+          >
+            {previewDevice === 'Print' &&
+              activeChapter &&
+              !activeChapter.options.hideHeaderFooter &&
+              theme.headerFooter.layout !== 'none' && (
+                <>
+                  {theme.headerFooter.layout !== 'page-center' && (
+                    <div className="preview-print-header" style={{ fontFamily: theme.headerFooter.font, fontSize: theme.headerFooter.size }}>
+                      {theme.headerFooter.layout === 'chapter-page'
+                        ? activeChapter.title
+                        : project.details.title}
+                    </div>
+                  )}
+                  {!activeChapter.options.hidePageNumber && (
+                    <div className="preview-print-footer" style={{ fontFamily: theme.headerFooter.font, fontSize: theme.headerFooter.size }}>
+                      1
+                    </div>
+                  )}
+                </>
+              )}
     </aside>
   )
 }
