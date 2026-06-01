@@ -298,6 +298,25 @@ export function Previewer() {
                       <img
                         className="preview-image"
                         src={b.src}
+                        alt={b.decorative ? '' : b.alt}
+                        style={{
+                          width: `${Math.min(100, Math.max(20, b.width))}%`,
+                          objectPosition: `${b.focalX}% ${b.focalY}%`,
+                        }}
+                      />
+                    )
+                    return (
+                      <figure key={i} className={`preview-figure ${b.layout}`}>
+                        {b.link ? <a href={b.link} onClick={(event) => event.preventDefault()}>{image}</a> : image}
+                        {b.caption && <figcaption>{b.caption}</figcaption>}
+                      </figure>
+                    )
+                  }
+                  if (b.type === 'callout') {
+                    return (
+                      <div key={i} className={`preview-callout ${b.variant === 'message' ? `text-message ${b.direction} ${b.theme}` : ''}`}>
+                        {b.sender && <span className="preview-sender">{b.sender}</span>}
+                        {b.text}
     </aside>
   )
 }
