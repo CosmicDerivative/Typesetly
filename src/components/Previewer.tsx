@@ -143,6 +143,26 @@ export function Previewer() {
         </div>
         <button
           type="button"
+          className="rotate-device"
+          onClick={() => setLandscape((value) => !value)}
+          disabled={previewDevice === 'Print'}
+          title="Rotate preview"
+        >
+          <RotateCw size={13} /> {landscape ? 'Portrait' : 'Landscape'}
+        </button>
+        {previewDevice !== 'Print' && (
+          <div className="reader-controls" aria-label="Reader preferences">
+            <button type="button" onClick={() => setReaderFontScale((value) => Math.max(.8, Number((value - .1).toFixed(1))))}>A−</button>
+            <span>{Math.round(readerFontScale * 100)}%</span>
+            <button type="button" onClick={() => setReaderFontScale((value) => Math.min(1.5, Number((value + .1).toFixed(1))))}>A+</button>
+            <select value={readerAppearance} onChange={(event) => setReaderAppearance(event.target.value as typeof readerAppearance)}>
+              <option value="light">Light</option>
+              <option value="sepia">Sepia</option>
+              <option value="dark">Dark</option>
+            </select>
+          </div>
+        )}
+      </div>
     </aside>
   )
 }
