@@ -240,6 +240,25 @@ export function Previewer() {
                 {project.details.seriesName && (
                   <span className="preview-series">
                     {project.details.seriesName}
+                    {project.details.seriesNumber != null ? ` · Book ${project.details.seriesNumber}` : ''}
+                  </span>
+                )}
+                <strong>{project.details.author || 'Author'}</strong>
+              </div>
+            ) : activeChapter && !activeChapter.options.hideChapterHeading && (
+              <>
+                {heading?.number && (
+                  <p className="preview-number" style={{ textAlign: theme.chapterHeading.titleAlign }}>
+                    Chapter {heading.number}
+                  </p>
+                )}
+                {heading?.title && <h2
+                  className="preview-title"
+                  style={{
+                    textAlign: theme.chapterHeading.titleAlign,
+                    fontFamily: theme.chapterHeading.titleFont,
+                    fontSize: previewDevice === 'Print'
+                      ? `${activeChapter.options.useSmallerChapterTitle ? theme.chapterHeading.titleSize * .75 : theme.chapterHeading.titleSize}pt`
     </aside>
   )
 }
