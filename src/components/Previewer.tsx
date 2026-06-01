@@ -163,6 +163,25 @@ export function Previewer() {
           </div>
         )}
       </div>
+
+      <div className="preview-stage">
+        <div
+          className={deviceClass}
+          style={{
+            '--device-width': `${renderedWidth}px`,
+            '--device-ratio': `${profileWidth} / ${profileHeight}`,
+            '--device-bezel': `${profile.bezel}px`,
+            '--device-radius': `${profile.cornerRadius}px`,
+          } as CSSProperties}
+        >
+          <div
+            ref={screenRef}
+            className={`device-screen reader-${readerAppearance} ${activeChapter?.options.invertTextColor ? 'light-text' : ''}`}
+            onScroll={(event) => {
+              const screen = event.currentTarget
+              setScreenPage(Math.min(screenPages, Math.floor(screen.scrollTop / Math.max(1, screen.clientHeight)) + 1))
+            }}
+            style={{
     </aside>
   )
 }
