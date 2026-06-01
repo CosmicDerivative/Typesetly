@@ -108,11 +108,22 @@ export function Previewer() {
           </div>
           <Info size={14} className="info-icon" />
         </div>
+        <DrawerControls
+          panel="preview"
+          hidePin={mode === 'publish'}
+          onClose={mode === 'publish' ? () => {
+            setMode('draft')
+            setRightPanel('none')
+          } : undefined}
+        />
       </div>
-      <footer>
-        <button type="button" onClick={() => setPage((value) => Math.max(1, value - 1))}>Previous</button>
-        <button type="button" onClick={() => setPage((value) => value + 1)}>Next</button>
-      </footer>
+
+      <div className="preview-controls">
+        <select
+          value={previewDevice}
+          onChange={(e) => setPreviewDevice(e.target.value as PreviewDevice)}
+        >
+          <option>iPad</option>
     </aside>
   )
 }
