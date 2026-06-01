@@ -317,6 +317,26 @@ export function Previewer() {
                       <div key={i} className={`preview-callout ${b.variant === 'message' ? `text-message ${b.direction} ${b.theme}` : ''}`}>
                         {b.sender && <span className="preview-sender">{b.sender}</span>}
                         {b.text}
+                      </div>
+                    )
+                  }
+                  if (b.type === 'styled-block') {
+                    return (
+                      <div key={i} className={`preview-styled ${b.variant}`}>
+                        {b.text}
+                        {b.attribution && <cite>— {b.attribution}</cite>}
+                      </div>
+                    )
+                  }
+                  if (b.type === 'heading') {
+                    return (
+                      <h3
+                        key={i}
+                        style={{
+                          fontSize: previewDevice === 'Print'
+                            ? `${(theme.subheading[`h${Math.min(Math.max(b.level || 2, 2), 6)}` as 'h2Size'] || 1.15) * theme.typography.bodySize}pt`
+                            : `${(theme.subheading[`h${Math.min(Math.max(b.level || 2, 2), 6)}` as 'h2Size'] || 1.15) * 16 * readerFontScale}px`,
+                          textAlign: theme.subheading.align,
     </aside>
   )
 }
