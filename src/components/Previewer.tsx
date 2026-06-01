@@ -279,6 +279,25 @@ export function Previewer() {
                   if (b.type === 'scene-break') {
                     firstPara = true
                     if (theme.sceneBreak.style === 'none') return <div key={i} className="scene-none" />
+                    if (theme.sceneBreak.style === 'space') return <div key={i} className="scene-space" />
+                    if (theme.sceneBreak.customImageDataUrl) {
+                      return <img key={i} className="scene-image" src={theme.sceneBreak.customImageDataUrl} alt="" />
+                    }
+                    return (
+                      <p key={i} className="scene-ornament" style={{ fontSize: theme.sceneBreak.size }}>
+                        {theme.sceneBreak.ornament || '* * *'}
+                      </p>
+                    )
+                  }
+                  if (b.type === 'page-break') {
+                    firstPara = true
+                    return <div key={i} className="preview-page-break"><span>Page break</span></div>
+                  }
+                  if (b.type === 'image') {
+                    const image = (
+                      <img
+                        className="preview-image"
+                        src={b.src}
     </aside>
   )
 }
