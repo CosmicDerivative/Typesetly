@@ -221,6 +221,25 @@ export function Previewer() {
                   )}
                 </>
               )}
+            {activeChapter?.type === 'chapter' &&
+              theme.chapterHeading.imageEnabled &&
+              !activeChapter.options.hideChapterImage &&
+              (activeChapter.imageDataUrl || theme.chapterHeading.sharedImageDataUrl) && (
+                <div className="preview-ornament" aria-hidden>
+                  <img
+                    src={activeChapter.imageDataUrl || theme.chapterHeading.sharedImageDataUrl}
+                    alt=""
+                  />
+                </div>
+              )}
+
+            {activeChapter?.type === 'title-page' ? (
+              <div className="preview-title-page">
+                <h1>{project.details.title || 'Untitled Book'}</h1>
+                {project.details.subtitle && <p>{project.details.subtitle}</p>}
+                {project.details.seriesName && (
+                  <span className="preview-series">
+                    {project.details.seriesName}
     </aside>
   )
 }
