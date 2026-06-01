@@ -124,6 +124,25 @@ export function Previewer() {
           onChange={(e) => setPreviewDevice(e.target.value as PreviewDevice)}
         >
           <option>iPad</option>
+          <option>iPhone</option>
+          <option>Galaxy</option>
+          <option>Paperwhite</option>
+          <option>Oasis</option>
+          <option>Kindle</option>
+          <option>Fire</option>
+          <option>Glowlight 3</option>
+          <option>Forma</option>
+          <option>Print</option>
+        </select>
+        <div className="theme-chip">{theme.name}</div>
+        <div className="device-facts">
+          <strong>{profile.label}</strong>
+          <span>{previewDevice === 'Print'
+            ? `${theme.print.trimWidthIn} × ${theme.print.trimHeightIn}" trim`
+            : profileDescription(profile)}</span>
+        </div>
+        <button
+          type="button"
     </aside>
   )
 }
