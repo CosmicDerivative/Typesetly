@@ -182,6 +182,25 @@ export function Previewer() {
               setScreenPage(Math.min(screenPages, Math.floor(screen.scrollTop / Math.max(1, screen.clientHeight)) + 1))
             }}
             style={{
+              fontFamily: theme.typography.bodyFont,
+              fontSize: previewDevice === 'Print'
+                ? `${theme.print.largePrint ? Math.max(14, theme.typography.bodySize) : theme.typography.bodySize}pt`
+                : `${16 * readerFontScale}px`,
+              lineHeight: theme.typography.lineSpacing,
+              textAlign: theme.paragraph.bodyAlign,
+              '--verse-indent': `${theme.specialBlocks.verseIndentEm}em`,
+              '--verse-spacing': theme.specialBlocks.verseLineSpacing,
+              '--hanging-indent': `${theme.specialBlocks.hangingIndentEm}em`,
+              '--quote-indent': `${theme.specialBlocks.quoteIndentEm}em`,
+              '--quote-border': `${theme.specialBlocks.quoteBorderWidth}px`,
+              '--quote-style': theme.specialBlocks.quoteItalic ? 'italic' : 'normal',
+              ...(previewDevice === 'Print'
+                ? {
+                    aspectRatio: `${theme.print.trimWidthIn} / ${theme.print.trimHeightIn}`,
+                    padding: `${theme.print.marginTop * 18}px ${theme.print.marginOutside * 18}px ${theme.print.marginBottom * 18}px ${theme.print.marginInside * 18}px`,
+                  }
+                : {}),
+            } as CSSProperties}
     </aside>
   )
 }
