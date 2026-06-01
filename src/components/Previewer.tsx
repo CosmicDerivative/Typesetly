@@ -259,6 +259,26 @@ export function Previewer() {
                     fontFamily: theme.chapterHeading.titleFont,
                     fontSize: previewDevice === 'Print'
                       ? `${activeChapter.options.useSmallerChapterTitle ? theme.chapterHeading.titleSize * .75 : theme.chapterHeading.titleSize}pt`
+                      : `${Math.max(18, Math.min(34, theme.chapterHeading.titleSize * .82)) * readerFontScale}px`,
+                    fontWeight: theme.chapterHeading.titleWeight,
+                  }}
+                >
+                  {heading.title}
+                </h2>}
+                {heading?.subtitle ? (
+                  <p className="preview-subtitle">{heading.subtitle}</p>
+                ) : null}
+              </>
+            )}
+
+            <div className="preview-body">
+              {previewContent.blocks.length === 0 ? (
+                <p className="preview-para muted">Nothing to preview yet.</p>
+              ) : (
+                previewContent.blocks.map((b, i) => {
+                  if (b.type === 'scene-break') {
+                    firstPara = true
+                    if (theme.sceneBreak.style === 'none') return <div key={i} className="scene-none" />
     </aside>
   )
 }
