@@ -337,6 +337,25 @@ export function Previewer() {
                             ? `${(theme.subheading[`h${Math.min(Math.max(b.level || 2, 2), 6)}` as 'h2Size'] || 1.15) * theme.typography.bodySize}pt`
                             : `${(theme.subheading[`h${Math.min(Math.max(b.level || 2, 2), 6)}` as 'h2Size'] || 1.15) * 16 * readerFontScale}px`,
                           textAlign: theme.subheading.align,
+                          fontFamily: theme.subheading.font,
+                        }}
+                      >
+                        {b.text}
+                      </h3>
+                    )
+                  }
+                  if (b.type === 'list-item') {
+                    return <p key={i} className="preview-list-item">{b.ordered ? `${b.ordinal}.` : '•'} {b.text}</p>
+                  }
+                  const useDrop =
+                    firstPara &&
+                    activeChapter?.type === 'chapter' &&
+                    theme.paragraph.dropCaps &&
+                    !activeChapter.options.hideFirstSentenceFormatting
+                  const useLeadIn =
+                    firstPara &&
+                    activeChapter?.type === 'chapter' &&
+                    theme.paragraph.leadInSmallCaps &&
     </aside>
   )
 }
