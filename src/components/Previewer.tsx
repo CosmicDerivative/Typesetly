@@ -375,6 +375,26 @@ export function Previewer() {
                 })
               )}
               {previewContent.notes.length > 0 && theme.notes.epubPlacement === 'chapter-end' && (
+                <section className="preview-notes">
+                  <h4>Notes</h4>
+                  {previewContent.notes.map((note) => (
+                    <p key={note.id}><sup>{note.number}</sup> {note.text}</p>
+                  ))}
+                </section>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {mode === 'publish' && (
+        <div className="export-row">
+          {preflight.length > 0 && (
+            <details className="export-preflight">
+              <summary>{preflight.filter((issue) => issue.level === 'error').length ? 'Export needs attention' : `${preflight.length} preflight suggestion(s)`}</summary>
+              {preflight.map((issue, index) => (
+                <button type="button" key={`${issue.message}-${index}`} className={issue.level} onClick={() => issue.chapterId && setActiveChapter(issue.chapterId)}>
+                  {issue.level === 'error' ? 'Error' : 'Check'} · {issue.message}
     </aside>
   )
 }
