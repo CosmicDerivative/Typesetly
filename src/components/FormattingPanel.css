@@ -1,0 +1,27 @@
+.formatting-panel {
+  width: 320px;
+  padding: 24px;
+  overflow-y: auto;
+  border-right: 1px solid #ddd6ca;
+  background: #fff;
+}
+
+.formatting-panel h2 {
+  margin: 0 0 24px;
+  font: 600 22px/1.2 Georgia, serif;
+}
+
+.formatting-panel label {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 18px;
+  color: #514c44;
+}
+
+.formatting-panel select,
+.formatting-panel input {
+  padding: 9px 10px;
+  border: 1px solid #cfc7ba;
+  border-radius: 6px;
+  background: #fff;
+}

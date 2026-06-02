@@ -472,6 +472,26 @@ export function Previewer() {
         >
           <ChevronRight size={13} />
         </button>
+      </div>
+
+      <div className="preview-nav">
+        <button
+          type="button"
+          className="chapter-nav"
+          disabled={!canPrev}
+          onClick={() => canPrev && setActiveChapter(bodyChapters[chapterIndex - 1].id)}
+        >
+          <ChevronLeft size={14} /> Chapter
+        </button>
+        <button
+          type="button"
+          className="chapter-nav"
+          disabled={!canNext}
+          onClick={() => canNext && setActiveChapter(bodyChapters[chapterIndex + 1].id)}
+        >
+          Chapter <ChevronRight size={14} />
+        </button>
+      </div>
     </aside>
   )
 }
