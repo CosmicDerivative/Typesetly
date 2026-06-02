@@ -414,6 +414,25 @@ export function Previewer() {
               } finally {
                 setExporting(null)
               }
+            }}
+          >
+            <FileDown size={14} /> {exporting === 'epub' ? 'Exporting…' : 'EPUB'}
+          </button>
+          <button
+            type="button"
+            disabled={Boolean(exporting)}
+            onClick={async () => {
+              setExporting('pdf')
+              setExportMessage('')
+              try {
+                const { exportProjectToPdf } = await import('../export/pdf')
+                const result = await exportProjectToPdf(project, theme)
+                setExportMessage(result.warnings?.join(' ') || 'PDF exported.')
+              } catch (error) {
+                setExportMessage(error instanceof Error ? error.message : 'PDF export failed.')
+              } finally {
+                setExporting(null)
+              }
     </aside>
   )
 }
