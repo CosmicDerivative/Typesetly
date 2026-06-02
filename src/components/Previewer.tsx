@@ -453,6 +453,25 @@ export function Previewer() {
           }}
         >
           <ChevronLeft size={13} />
+        </button>
+        <div>
+          <strong>Screen {screenPage} of {screenPages}</strong>
+          <span>
+            {previewDevice === 'Print' ? `About ${bookPages} book pages` : `${activeChapter ? readingTimeMinutes(activeChapter) : 1} min chapter read`}
+          </span>
+        </div>
+        <button
+          type="button"
+          aria-label="Next preview screen"
+          disabled={screenPage >= screenPages}
+          onClick={() => {
+            const screen = screenRef.current
+            if (!screen) return
+            screen.scrollTo({ top: screenPage * screen.clientHeight, behavior: 'smooth' })
+          }}
+        >
+          <ChevronRight size={13} />
+        </button>
     </aside>
   )
 }
