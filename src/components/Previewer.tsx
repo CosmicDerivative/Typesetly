@@ -356,6 +356,25 @@ export function Previewer() {
                     firstPara &&
                     activeChapter?.type === 'chapter' &&
                     theme.paragraph.leadInSmallCaps &&
+                    !activeChapter.options.hideFirstSentenceFormatting
+                  firstPara = false
+                  if ((useDrop || useLeadIn) && b.text) return (
+                    <p
+                      key={i}
+                      className={`preview-para first-formatted ${theme.paragraph.paragraphStyle}`}
+                      dangerouslySetInnerHTML={{ __html: decorateFirstSentenceHtml(b.html, useDrop, useLeadIn) }}
+                    />
+                  )
+                  return (
+                    <p
+                      key={i}
+                      className={`preview-para ${theme.paragraph.paragraphStyle}`}
+                      dangerouslySetInnerHTML={{ __html: b.html }}
+                    />
+                  )
+                })
+              )}
+              {previewContent.notes.length > 0 && theme.notes.epubPlacement === 'chapter-end' && (
     </aside>
   )
 }
