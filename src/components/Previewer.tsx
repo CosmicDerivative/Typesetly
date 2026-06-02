@@ -395,6 +395,25 @@ export function Previewer() {
               {preflight.map((issue, index) => (
                 <button type="button" key={`${issue.message}-${index}`} className={issue.level} onClick={() => issue.chapterId && setActiveChapter(issue.chapterId)}>
                   {issue.level === 'error' ? 'Error' : 'Check'} · {issue.message}
+                </button>
+              ))}
+            </details>
+          )}
+          <button
+            type="button"
+            disabled={Boolean(exporting)}
+            onClick={async () => {
+              setExporting('epub')
+              setExportMessage('')
+              try {
+                const { exportProjectToEpub } = await import('../export/epub')
+                const result = await exportProjectToEpub(project, theme)
+                setExportMessage(result.warnings?.join(' ') || 'EPUB exported.')
+              } catch (error) {
+                setExportMessage(error instanceof Error ? error.message : 'EPUB export failed.')
+              } finally {
+                setExporting(null)
+              }
     </aside>
   )
 }
