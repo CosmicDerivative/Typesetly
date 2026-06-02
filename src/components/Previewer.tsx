@@ -433,6 +433,26 @@ export function Previewer() {
               } finally {
                 setExporting(null)
               }
+            }}
+          >
+            <FileDown size={14} /> {exporting === 'pdf' ? 'Exporting…' : 'PDF'}
+          </button>
+          {exportMessage && <p className="export-message" role="status">{exportMessage}</p>}
+        </div>
+      )}
+
+      <div className="preview-page-nav">
+        <button
+          type="button"
+          aria-label="Previous preview screen"
+          disabled={screenPage <= 1}
+          onClick={() => {
+            const screen = screenRef.current
+            if (!screen) return
+            screen.scrollTo({ top: Math.max(0, (screenPage - 2) * screen.clientHeight), behavior: 'smooth' })
+          }}
+        >
+          <ChevronLeft size={13} />
     </aside>
   )
 }
