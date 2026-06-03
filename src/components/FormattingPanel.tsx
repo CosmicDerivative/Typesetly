@@ -95,6 +95,30 @@ export function FormattingPanel() {
             </label>
             <label className="check">
               <input
+                type="checkbox"
+                checked={t.chapterHeading.showSubtitle}
+                onChange={(e) =>
+                  updateEditingTheme({
+                    chapterHeading: { ...t.chapterHeading, showSubtitle: e.target.checked },
+                  })
+                }
+              />
+              Show subtitle
+            </label>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={t.chapterHeading.imageEnabled}
+                onChange={(e) =>
+                  updateEditingTheme({
+                    chapterHeading: { ...t.chapterHeading, imageEnabled: e.target.checked },
+                  })
+                }
+              />
+              Chapter image / ornament
+            </label>
+            {t.chapterHeading.imageEnabled && (
+              <label>
   return (
     <aside className="formatting-panel">
       <h2>Formatting</h2>
