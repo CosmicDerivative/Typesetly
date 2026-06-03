@@ -143,6 +143,29 @@ export function FormattingPanel() {
                 value={t.chapterHeading.titleAlign}
                 onChange={(e) =>
                   updateEditingTheme({
+                    chapterHeading: {
+                      ...t.chapterHeading,
+                      titleAlign: e.target.value as typeof t.chapterHeading.titleAlign,
+                    },
+                  })
+                }
+              >
+                <option value="left">Left</option>
+                <option value="center">Center</option>
+                <option value="right">Right</option>
+              </select>
+            </label>
+            <label>
+              Number style
+              <select
+                value={t.chapterHeading.numberView}
+                onChange={(e) =>
+                  updateEditingTheme({
+                    chapterHeading: {
+                      ...t.chapterHeading,
+                      numberView: e.target.value as typeof t.chapterHeading.numberView,
+                    },
+                  })
   return (
     <aside className="formatting-panel">
       <h2>Formatting</h2>
