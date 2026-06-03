@@ -24,10 +24,30 @@ function previewChapterNumber(theme: BookTheme) {
   if (theme.chapterHeading.numberView === 'words') return 'CHAPTER ONE'
   return 'CHAPTER 1'
 }
-export function FormattingPanel() {
-  const [theme, setTheme] = useState(themes[0])
-  const [fontSize, setFontSize] = useState(11)
 
+export function FormattingPanel() {
+  const {
+    mode,
+    themes,
+    project,
+    activeTheme,
+    editingTheme,
+    applyTheme,
+    startThemeEdit,
+    updateEditingTheme,
+    saveEditingTheme,
+    cancelThemeEdit,
+    toggleThemeFavorite,
+    deleteCustomTheme,
+    setRightPanel,
+  } = useApp()
+  const [nameDialog, setNameDialog] = useState(false)
+  const [themeName, setThemeName] = useState('')
+  const [themeQuery, setThemeQuery] = useState('')
+
+  if (mode !== 'design' || !project) return null
+
+  const sorted = [...themes]
   return (
     <aside className="formatting-panel">
       <h2>Formatting</h2>
