@@ -72,6 +72,29 @@ export function FormattingPanel() {
                 setThemeName(t.name)
                 setNameDialog(true)
               }}
+            >
+              Save as New Theme
+            </button>
+          </div>
+        </div>
+
+        <div className="fv-grid">
+          <section className="fv-card">
+            <h3>Chapter Heading</h3>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={t.chapterHeading.showNumber}
+                onChange={(e) =>
+                  updateEditingTheme({
+                    chapterHeading: { ...t.chapterHeading, showNumber: e.target.checked },
+                  })
+                }
+              />
+              Show chapter number
+            </label>
+            <label className="check">
+              <input
   return (
     <aside className="formatting-panel">
       <h2>Formatting</h2>
