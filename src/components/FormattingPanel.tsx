@@ -119,6 +119,30 @@ export function FormattingPanel() {
             </label>
             {t.chapterHeading.imageEnabled && (
               <label>
+                Shared chapter image
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={async (event) => {
+                    const file = event.target.files?.[0]
+                    if (!file) return
+                    const processed = await processImageFile(file)
+                    updateEditingTheme({
+                      chapterHeading: {
+                        ...t.chapterHeading,
+                        sharedImageDataUrl: processed.dataUrl,
+                      },
+                    })
+                  }}
+                />
+              </label>
+            )}
+            <label>
+              Title align
+              <select
+                value={t.chapterHeading.titleAlign}
+                onChange={(e) =>
+                  updateEditingTheme({
   return (
     <aside className="formatting-panel">
       <h2>Formatting</h2>
