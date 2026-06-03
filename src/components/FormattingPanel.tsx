@@ -48,6 +48,30 @@ export function FormattingPanel() {
   if (mode !== 'design' || !project) return null
 
   const sorted = [...themes]
+    .filter((theme) => theme.name.toLowerCase().includes(themeQuery.trim().toLowerCase()))
+    .sort((a, b) => Number(b.favorite) - Number(a.favorite))
+
+  if (editingTheme) {
+    const t = editingTheme
+    return (
+      <>
+      <div className="formatting-view">
+        <div className="fv-head">
+          <div>
+            <h2>Book lab</h2>
+            <p>Shape a distinct reading system and watch the proof update live.</p>
+          </div>
+          <div className="fv-actions">
+            <button type="button" className="ghost" onClick={cancelThemeEdit}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="primary"
+              onClick={() => {
+                setThemeName(t.name)
+                setNameDialog(true)
+              }}
   return (
     <aside className="formatting-panel">
       <h2>Formatting</h2>
