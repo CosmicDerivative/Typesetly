@@ -498,6 +498,29 @@ export function FormattingPanel() {
                 >
                   Remove embedded font
                 </button>
+              )}
+            </label>
+            <label>
+              Body size (pt)
+              <input
+                type="number"
+                min={9}
+                max={20}
+                step={0.5}
+                value={t.typography.bodySize}
+                onChange={(e) =>
+                  updateEditingTheme({
+                    typography: { ...t.typography, bodySize: Number(e.target.value) },
+                  })
+                }
+              />
+            </label>
+            <label>
+              Line spacing
+              <input
+                type="number"
+                min={1}
+                max={2.5}
   return (
     <aside className="formatting-panel">
       <h2>Formatting</h2>
