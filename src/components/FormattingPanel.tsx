@@ -332,6 +332,30 @@ export function FormattingPanel() {
           </section>
 
           <section className="fv-card">
+            <h3>Scene Break</h3>
+            <label>
+              Style
+              <select
+                value={t.sceneBreak.style}
+                onChange={(e) =>
+                  updateEditingTheme({
+                    sceneBreak: {
+                      ...t.sceneBreak,
+                      style: e.target.value as typeof t.sceneBreak.style,
+                    },
+                  })
+                }
+              >
+                <option value="ornament">Ornament</option>
+                <option value="space">Extra space</option>
+                <option value="none">None</option>
+              </select>
+            </label>
+            {t.sceneBreak.style === 'ornament' && (
+              <>
+                <label>
+                  Text ornament
+                  <input
   return (
     <aside className="formatting-panel">
       <h2>Formatting</h2>
