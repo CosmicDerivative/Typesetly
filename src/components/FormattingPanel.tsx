@@ -237,6 +237,30 @@ export function FormattingPanel() {
               Body align
               <select
                 value={t.paragraph.bodyAlign}
+                onChange={(e) =>
+                  updateEditingTheme({
+                    paragraph: {
+                      ...t.paragraph,
+                      bodyAlign: e.target.value as typeof t.paragraph.bodyAlign,
+                    },
+                  })
+                }
+              >
+                <option value="justify">Justify</option>
+                <option value="left">Left</option>
+              </select>
+            </label>
+          </section>
+
+          <section className="fv-card">
+            <h3>Special Paragraphs</h3>
+            <label>
+              Verse indent
+              <input
+                type="range"
+                min={0}
+                max={4}
+                step={0.25}
   return (
     <aside className="formatting-panel">
       <h2>Formatting</h2>
