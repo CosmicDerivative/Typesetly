@@ -450,6 +450,30 @@ export function FormattingPanel() {
                 <option>OpenDyslexic</option>
                 <option>Verdana</option>
               </select>
+            </label>
+            <label>
+              Custom installed font
+              <input
+                value={t.typography.bodyFont}
+                onChange={(event) => updateEditingTheme({ typography: { ...t.typography, bodyFont: event.target.value } })}
+                placeholder="Enter any font installed on this computer"
+              />
+            </label>
+            <label>
+              Embed font for EPUB
+              <input
+                type="file"
+                accept=".woff,.woff2,.ttf,.otf,font/woff,font/woff2,font/ttf,font/otf"
+                onChange={(event) => {
+                  const file = event.target.files?.[0]
+                  if (!file) return
+                  const reader = new FileReader()
+                  reader.onload = () => {
+                    const name = file.name.replace(/\.[^.]+$/, '') || 'Embedded Book Font'
+                    const source = String(reader.result)
+                    void new FontFace(name, `url(${source})`).load().then((font) => document.fonts.add(font))
+                    updateEditingTheme({
+                      typography: {
   return (
     <aside className="formatting-panel">
       <h2>Formatting</h2>
