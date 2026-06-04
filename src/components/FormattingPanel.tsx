@@ -356,6 +356,29 @@ export function FormattingPanel() {
                 <label>
                   Text ornament
                   <input
+                    value={t.sceneBreak.ornament}
+                    placeholder="* * *"
+                    onChange={(event) =>
+                      updateEditingTheme({
+                        sceneBreak: {
+                          ...t.sceneBreak,
+                          ornament: event.target.value,
+                          customImageDataUrl: undefined,
+                        },
+                      })
+                    }
+                  />
+                </label>
+                <label>
+                  Ornament size ({t.sceneBreak.size}px)
+                  <input
+                    type="range"
+                    min={8}
+                    max={48}
+                    value={t.sceneBreak.size}
+                    onChange={(event) =>
+                      updateEditingTheme({
+                        sceneBreak: { ...t.sceneBreak, size: Number(event.target.value) },
   return (
     <aside className="formatting-panel">
       <h2>Formatting</h2>
