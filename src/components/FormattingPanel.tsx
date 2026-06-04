@@ -261,6 +261,30 @@ export function FormattingPanel() {
                 min={0}
                 max={4}
                 step={0.25}
+                value={t.specialBlocks.verseIndentEm}
+                onChange={(event) => updateEditingTheme({
+                  specialBlocks: { ...t.specialBlocks, verseIndentEm: Number(event.target.value) },
+                })}
+              />
+            </label>
+            <label>
+              Verse line spacing
+              <input
+                type="range"
+                min={1}
+                max={2}
+                step={0.05}
+                value={t.specialBlocks.verseLineSpacing}
+                onChange={(event) => updateEditingTheme({
+                  specialBlocks: { ...t.specialBlocks, verseLineSpacing: Number(event.target.value) },
+                })}
+              />
+            </label>
+            <label>
+              Hanging indent
+              <input
+                type="range"
+                min={0.5}
   return (
     <aside className="formatting-panel">
       <h2>Formatting</h2>
