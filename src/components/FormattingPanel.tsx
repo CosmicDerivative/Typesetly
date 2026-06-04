@@ -521,6 +521,30 @@ export function FormattingPanel() {
                 type="number"
                 min={1}
                 max={2.5}
+                step={0.05}
+                value={t.typography.lineSpacing}
+                onChange={(e) =>
+                  updateEditingTheme({
+                    typography: { ...t.typography, lineSpacing: Number(e.target.value) },
+                  })
+                }
+              />
+            </label>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={t.print.largePrint}
+                onChange={(e) =>
+                  updateEditingTheme({
+                    print: { ...t.print, largePrint: e.target.checked },
+                  })
+                }
+              />
+              Large print
+            </label>
+          </section>
+
+          <section className="fv-card">
   return (
     <aside className="formatting-panel">
       <h2>Formatting</h2>
