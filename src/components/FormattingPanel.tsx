@@ -214,6 +214,29 @@ export function FormattingPanel() {
                   })
                 }
               />
+              Lead-in small caps
+            </label>
+            <label>
+              Paragraph style
+              <select
+                value={t.paragraph.paragraphStyle}
+                onChange={(e) =>
+                  updateEditingTheme({
+                    paragraph: {
+                      ...t.paragraph,
+                      paragraphStyle: e.target.value as typeof t.paragraph.paragraphStyle,
+                    },
+                  })
+                }
+              >
+                <option value="indent">Indent</option>
+                <option value="space">Space between</option>
+              </select>
+            </label>
+            <label>
+              Body align
+              <select
+                value={t.paragraph.bodyAlign}
   return (
     <aside className="formatting-panel">
       <h2>Formatting</h2>
