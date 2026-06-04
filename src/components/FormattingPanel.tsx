@@ -474,6 +474,30 @@ export function FormattingPanel() {
                     void new FontFace(name, `url(${source})`).load().then((font) => document.fonts.add(font))
                     updateEditingTheme({
                       typography: {
+                        ...t.typography,
+                        bodyFont: name,
+                        embeddedFontName: name,
+                        embeddedFontDataUrl: source,
+                      },
+                    })
+                  }
+                  reader.readAsDataURL(file)
+                }}
+              />
+              {t.typography.embeddedFontDataUrl && (
+                <button
+                  type="button"
+                  onClick={() => updateEditingTheme({
+                    typography: {
+                      ...t.typography,
+                      bodyFont: 'Palatino Linotype',
+                      embeddedFontName: undefined,
+                      embeddedFontDataUrl: undefined,
+                    },
+                  })}
+                >
+                  Remove embedded font
+                </button>
   return (
     <aside className="formatting-panel">
       <h2>Formatting</h2>
