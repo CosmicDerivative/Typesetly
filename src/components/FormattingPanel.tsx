@@ -403,6 +403,30 @@ export function FormattingPanel() {
                   <div className="scene-image-setting">
                     <img src={t.sceneBreak.customImageDataUrl} alt="Current scene ornament" />
                     <button
+                      type="button"
+                      onClick={() =>
+                        updateEditingTheme({
+                          sceneBreak: { ...t.sceneBreak, customImageDataUrl: undefined },
+                        })
+                      }
+                    >
+                      Remove custom image
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+            {t.sceneBreak.style === 'space' && (
+              <p className="setting-hint">Scenes are separated by a clean blank line with no ornament.</p>
+            )}
+            {t.sceneBreak.style === 'none' && (
+              <p className="setting-hint">The scene boundary remains in the manuscript but adds no visible mark or spacing.</p>
+            )}
+          </section>
+
+          <section className="fv-card">
+            <h3>Typography</h3>
+            <label>
   return (
     <aside className="formatting-panel">
       <h2>Formatting</h2>
