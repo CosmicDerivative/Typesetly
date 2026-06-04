@@ -427,6 +427,29 @@ export function FormattingPanel() {
           <section className="fv-card">
             <h3>Typography</h3>
             <label>
+              Body font
+              <select
+                value={t.typography.bodyFont}
+                onChange={(e) =>
+                  updateEditingTheme({
+                    typography: { ...t.typography, bodyFont: e.target.value },
+                  })
+                }
+              >
+                <option>Palatino Linotype</option>
+                <option>Garamond</option>
+                <option>Georgia</option>
+                <option>Times New Roman</option>
+                <option>Libre Baskerville</option>
+                <option>Source Sans 3</option>
+                <option>Arial</option>
+                <option>Book Antiqua</option>
+                <option>Cambria</option>
+                <option>Charter</option>
+                <option>Courier New</option>
+                <option>OpenDyslexic</option>
+                <option>Verdana</option>
+              </select>
   return (
     <aside className="formatting-panel">
       <h2>Formatting</h2>
