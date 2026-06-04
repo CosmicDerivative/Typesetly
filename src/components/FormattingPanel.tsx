@@ -166,6 +166,30 @@ export function FormattingPanel() {
                       numberView: e.target.value as typeof t.chapterHeading.numberView,
                     },
                   })
+                }
+              >
+                <option value="arabic">Arabic</option>
+                <option value="roman">Roman</option>
+                <option value="words">Words</option>
+                <option value="none">None</option>
+              </select>
+            </label>
+            <label>
+              Title size
+              <input
+                type="number"
+                min={14}
+                max={48}
+                value={t.chapterHeading.titleSize}
+                onChange={(event) =>
+                  updateEditingTheme({
+                    chapterHeading: { ...t.chapterHeading, titleSize: Number(event.target.value) },
+                  })
+                }
+              />
+            </label>
+          </section>
+
   return (
     <aside className="formatting-panel">
       <h2>Formatting</h2>
