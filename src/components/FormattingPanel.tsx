@@ -285,6 +285,29 @@ export function FormattingPanel() {
               <input
                 type="range"
                 min={0.5}
+                max={4}
+                step={0.25}
+                value={t.specialBlocks.hangingIndentEm}
+                onChange={(event) => updateEditingTheme({
+                  specialBlocks: { ...t.specialBlocks, hangingIndentEm: Number(event.target.value) },
+                })}
+              />
+            </label>
+            <label>
+              Quotation indent
+              <input
+                type="range"
+                min={0}
+                max={4}
+                step={0.25}
+                value={t.specialBlocks.quoteIndentEm}
+                onChange={(event) => updateEditingTheme({
+                  specialBlocks: { ...t.specialBlocks, quoteIndentEm: Number(event.target.value) },
+                })}
+              />
+            </label>
+            <label>
+              Quotation rule
   return (
     <aside className="formatting-panel">
       <h2>Formatting</h2>
