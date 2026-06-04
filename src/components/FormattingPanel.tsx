@@ -190,6 +190,30 @@ export function FormattingPanel() {
             </label>
           </section>
 
+          <section className="fv-card">
+            <h3>Paragraph</h3>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={t.paragraph.dropCaps}
+                onChange={(e) =>
+                  updateEditingTheme({
+                    paragraph: { ...t.paragraph, dropCaps: e.target.checked },
+                  })
+                }
+              />
+              Drop caps
+            </label>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={t.paragraph.leadInSmallCaps}
+                onChange={(e) =>
+                  updateEditingTheme({
+                    paragraph: { ...t.paragraph, leadInSmallCaps: e.target.checked },
+                  })
+                }
+              />
   return (
     <aside className="formatting-panel">
       <h2>Formatting</h2>
