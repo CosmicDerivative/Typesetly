@@ -379,6 +379,30 @@ export function FormattingPanel() {
                     onChange={(event) =>
                       updateEditingTheme({
                         sceneBreak: { ...t.sceneBreak, size: Number(event.target.value) },
+                      })
+                    }
+                  />
+                </label>
+                <label>
+                  Custom ornament image
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={async (event) => {
+                      const file = event.target.files?.[0]
+                      if (!file) return
+                      const processed = await processImageFile(file, 1200)
+                      updateEditingTheme({
+                        sceneBreak: { ...t.sceneBreak, customImageDataUrl: processed.dataUrl },
+                      })
+                      event.target.value = ''
+                    }}
+                  />
+                </label>
+                {t.sceneBreak.customImageDataUrl && (
+                  <div className="scene-image-setting">
+                    <img src={t.sceneBreak.customImageDataUrl} alt="Current scene ornament" />
+                    <button
   return (
     <aside className="formatting-panel">
       <h2>Formatting</h2>
