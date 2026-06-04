@@ -308,6 +308,30 @@ export function FormattingPanel() {
             </label>
             <label>
               Quotation rule
+              <input
+                type="range"
+                min={0}
+                max={6}
+                step={1}
+                value={t.specialBlocks.quoteBorderWidth}
+                onChange={(event) => updateEditingTheme({
+                  specialBlocks: { ...t.specialBlocks, quoteBorderWidth: Number(event.target.value) },
+                })}
+              />
+            </label>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={t.specialBlocks.quoteItalic}
+                onChange={(event) => updateEditingTheme({
+                  specialBlocks: { ...t.specialBlocks, quoteItalic: event.target.checked },
+                })}
+              />
+              Italicize quotations
+            </label>
+          </section>
+
+          <section className="fv-card">
   return (
     <aside className="formatting-panel">
       <h2>Formatting</h2>
