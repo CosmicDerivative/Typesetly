@@ -545,6 +545,30 @@ export function FormattingPanel() {
           </section>
 
           <section className="fv-card">
+            <h3>Notes</h3>
+            <label>
+              ePub placement
+              <select
+                value={t.notes.epubPlacement}
+                onChange={(e) =>
+                  updateEditingTheme({
+                    notes: {
+                      ...t.notes,
+                      epubPlacement: e.target.value as typeof t.notes.epubPlacement,
+                    },
+                  })
+                }
+              >
+                <option value="chapter-end">End of chapter</option>
+                <option value="book-end">End of book</option>
+              </select>
+            </label>
+            <label>
+              Print placement
+              <select
+                value={t.notes.printPlacement}
+                onChange={(e) =>
+                  updateEditingTheme({
   return (
     <aside className="formatting-panel">
       <h2>Formatting</h2>
