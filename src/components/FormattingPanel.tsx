@@ -765,5 +765,28 @@ export function FormattingPanel() {
                   style={{
                     fontFamily: previewFontStack(theme.typography.bodyFont),
                     fontSize: `${Math.max(9.5, Math.min(13, theme.typography.bodySize * .96))}px`,
+                  }}
+                >
+                  {(theme.chapterHeading.imageEnabled || chapterNumber) && (
+                    <div
+                      className="ts-kicker"
+                      style={{
+                        fontFamily: previewFontStack(theme.chapterHeading.numberFont),
+                        textAlign: theme.chapterHeading.imageAlign,
+                      }}
+                    >
+                      {theme.chapterHeading.imageEnabled ? '❧' : ''}
+                      {theme.chapterHeading.imageEnabled && chapterNumber ? '  ' : ''}
+                      {chapterNumber}
+                    </div>
+                  )}
+                  {theme.chapterHeading.showTitle && (
+                    <div
+                      className="ts-title"
+                      style={{
+                        fontFamily: previewFontStack(theme.chapterHeading.titleFont),
+                        fontSize: `${Math.max(13, Math.min(18, theme.chapterHeading.titleSize * .55))}px`,
+                        fontWeight: theme.chapterHeading.titleWeight === 'bold' ? 700 : 400,
+                        textAlign: theme.chapterHeading.titleAlign,
   )
 }
