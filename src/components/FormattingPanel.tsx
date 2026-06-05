@@ -569,6 +569,29 @@ export function FormattingPanel() {
                 value={t.notes.printPlacement}
                 onChange={(e) =>
                   updateEditingTheme({
+                    notes: {
+                      ...t.notes,
+                      printPlacement: e.target.value as typeof t.notes.printPlacement,
+                    },
+                  })
+                }
+              >
+                <option value="footnotes">Footnotes</option>
+                <option value="chapter-end">End of chapter</option>
+                <option value="book-end">End of book</option>
+              </select>
+            </label>
+          </section>
+
+          <section className="fv-card">
+            <h3>Print / Trim</h3>
+            <label>
+              Trim size
+              <select
+                value={`${t.print.trimWidthIn}x${t.print.trimHeightIn}`}
+                onChange={(e) => {
+                  const trim = TRIM_SIZES.find(
+                    (x) => `${x.width}x${x.height}` === e.target.value,
   return (
     <aside className="formatting-panel">
       <h2>Formatting</h2>
