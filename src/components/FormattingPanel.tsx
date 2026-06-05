@@ -592,6 +592,30 @@ export function FormattingPanel() {
                 onChange={(e) => {
                   const trim = TRIM_SIZES.find(
                     (x) => `${x.width}x${x.height}` === e.target.value,
+                  )
+                  if (!trim) return
+                  updateEditingTheme({
+                    print: {
+                      ...t.print,
+                      trimWidthIn: trim.width,
+                      trimHeightIn: trim.height,
+                    },
+                  })
+                }}
+              >
+                {TRIM_SIZES.map((trim) => (
+                  <option key={trim.label} value={`${trim.width}x${trim.height}`}>
+                    {trim.label}
+                    {trim.kdp ? ' · KDP' : ''}
+                    {trim.ingram ? ' · Ingram' : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="compact-grid">
+              {([
+                ['marginInside', 'Inside'],
+                ['marginOutside', 'Outside'],
   return (
     <aside className="formatting-panel">
       <h2>Formatting</h2>
