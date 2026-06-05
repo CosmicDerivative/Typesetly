@@ -742,8 +742,28 @@ export function FormattingPanel() {
           >
             Open previewer
           </button>
+          <button type="button" className="primary" onClick={() => startThemeEdit()}>
+            <Plus size={14} /> Create New Theme
+          </button>
+        </div>
+      </div>
+      <label className="theme-search">
+        <input value={themeQuery} onChange={(event) => setThemeQuery(event.target.value)} placeholder="Search themes…" />
       </label>
-      <p>Previewing {theme} at {fontSize} pt.</p>
-    </aside>
+
+      <div className="theme-grid">
+        {sorted.map((theme) => {
+          const active = project.themeId === theme.id
+          const chapterNumber = previewChapterNumber(theme)
+          const dropCap = theme.paragraph.dropCaps
+          const leadInSmallCaps = theme.paragraph.leadInSmallCaps
+          return (
+            <article key={theme.id} className={active ? 'theme-card active' : 'theme-card'}>
+              <button type="button" className="theme-preview" onClick={() => applyTheme(theme.id)}>
+                <div
+                  className="theme-sample"
+                  style={{
+                    fontFamily: previewFontStack(theme.typography.bodyFont),
+                    fontSize: `${Math.max(9.5, Math.min(13, theme.typography.bodySize * .96))}px`,
   )
 }
