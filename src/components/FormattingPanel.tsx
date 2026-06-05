@@ -616,6 +616,30 @@ export function FormattingPanel() {
               {([
                 ['marginInside', 'Inside'],
                 ['marginOutside', 'Outside'],
+                ['marginTop', 'Top'],
+                ['marginBottom', 'Bottom'],
+              ] as const).map(([key, label]) => (
+                <label key={key}>
+                  {label} margin
+                  <input
+                    type="number"
+                    min={0.25}
+                    max={2}
+                    step={0.05}
+                    value={t.print[key]}
+                    onChange={(event) =>
+                      updateEditingTheme({
+                        print: { ...t.print, [key]: Number(event.target.value) },
+                      })
+                    }
+                  />
+                </label>
+              ))}
+            </div>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={t.print.hyphens}
   return (
     <aside className="formatting-panel">
       <h2>Formatting</h2>
