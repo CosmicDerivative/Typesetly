@@ -663,6 +663,30 @@ export function FormattingPanel() {
                 onChange={(event) =>
                   updateEditingTheme({ print: { ...t.print, keepSceneBreaks: event.target.checked } })
                 }
+              />
+              Keep scene breaks with surrounding text
+            </label>
+            <label>
+              Header / Footer
+              <select
+                value={t.headerFooter.layout}
+                onChange={(e) =>
+                  updateEditingTheme({
+                    headerFooter: {
+                      ...t.headerFooter,
+                      layout: e.target.value as typeof t.headerFooter.layout,
+                    },
+                  })
+                }
+              >
+                <option value="none">None</option>
+                <option value="page-center">Page number center</option>
+                <option value="title-author">Title / Author</option>
+                <option value="chapter-page">Chapter / Page</option>
+                <option value="author-title-page">Author / Title / Page</option>
+              </select>
+            </label>
+            <label>
   return (
     <aside className="formatting-panel">
       <h2>Formatting</h2>
