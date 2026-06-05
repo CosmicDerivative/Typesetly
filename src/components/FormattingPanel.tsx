@@ -687,6 +687,30 @@ export function FormattingPanel() {
               </select>
             </label>
             <label>
+              Layout priority
+              <select
+                value={t.print.layoutPriority}
+                onChange={(e) =>
+                  updateEditingTheme({
+                    print: {
+                      ...t.print,
+                      layoutPriority: e.target.value as typeof t.print.layoutPriority,
+                    },
+                  })
+                }
+              >
+                <option value="widows-orphans">Widows and Orphans</option>
+                <option value="balanced">Balanced Page Spread</option>
+                <option value="best-of-both">Best of Both</option>
+              </select>
+            </label>
+          </section>
+        </div>
+      </div>
+      {nameDialog && (
+        <Dialog
+          title="Save custom theme"
+          confirmLabel="Save theme"
   return (
     <aside className="formatting-panel">
       <h2>Formatting</h2>
