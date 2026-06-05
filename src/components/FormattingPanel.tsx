@@ -640,6 +640,29 @@ export function FormattingPanel() {
               <input
                 type="checkbox"
                 checked={t.print.hyphens}
+                onChange={(event) =>
+                  updateEditingTheme({ print: { ...t.print, hyphens: event.target.checked } })
+                }
+              />
+              Automatic hyphenation
+            </label>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={t.print.keepSubheadings}
+                onChange={(event) =>
+                  updateEditingTheme({ print: { ...t.print, keepSubheadings: event.target.checked } })
+                }
+              />
+              Keep subheadings with following text
+            </label>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={t.print.keepSceneBreaks}
+                onChange={(event) =>
+                  updateEditingTheme({ print: { ...t.print, keepSceneBreaks: event.target.checked } })
+                }
   return (
     <aside className="formatting-panel">
       <h2>Formatting</h2>
