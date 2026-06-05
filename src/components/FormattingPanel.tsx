@@ -728,16 +728,20 @@ export function FormattingPanel() {
   }
 
   return (
-      </label>
-      <label>
-        Body size
-        <input
-          type="number"
-          min="8"
-          max="18"
-          value={fontSize}
-          onChange={(event) => setFontSize(Number(event.target.value))}
-        />
+    <div className="formatting-view library">
+      <div className="fv-head">
+        <div>
+          <h2>Design recipes</h2>
+          <p>Choose a reading recipe or build one from scratch. The proof updates instantly.</p>
+        </div>
+        <div className="fv-actions">
+          <button
+            type="button"
+            className="ghost"
+            onClick={() => setRightPanel('preview')}
+          >
+            Open previewer
+          </button>
       </label>
       <p>Previewing {theme} at {fontSize} pt.</p>
     </aside>
