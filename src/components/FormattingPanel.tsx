@@ -711,14 +711,23 @@ export function FormattingPanel() {
         <Dialog
           title="Save custom theme"
           confirmLabel="Save theme"
+          onCancel={() => setNameDialog(false)}
+          onConfirm={() => {
+            saveEditingTheme(themeName.trim() || t.name)
+            setNameDialog(false)
+          }}
+        >
+          <label>
+            Theme name
+            <input value={themeName} onChange={(event) => setThemeName(event.target.value)} />
+          </label>
+        </Dialog>
+      )}
+      </>
+    )
+  }
+
   return (
-    <aside className="formatting-panel">
-      <h2>Formatting</h2>
-      <label>
-        Theme
-        <select value={theme} onChange={(event) => setTheme(event.target.value)}>
-          {themes.map((name) => <option key={name}>{name}</option>)}
-        </select>
       </label>
       <label>
         Body size
