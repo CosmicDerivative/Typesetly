@@ -788,5 +788,29 @@ export function FormattingPanel() {
                         fontSize: `${Math.max(13, Math.min(18, theme.chapterHeading.titleSize * .55))}px`,
                         fontWeight: theme.chapterHeading.titleWeight === 'bold' ? 700 : 400,
                         textAlign: theme.chapterHeading.titleAlign,
+                      }}
+                    >
+                      Chapter Title
+                    </div>
+                  )}
+                  <p
+                    className={dropCap ? 'ts-drop' : ''}
+                    style={{
+                      lineHeight: Math.max(1.25, Math.min(1.7, theme.typography.lineSpacing)),
+                      textAlign: theme.paragraph.bodyAlign,
+                    }}
+                  >
+                    {dropCap && <span className="ts-dropcap">W</span>}
+                    {leadInSmallCaps ? (
+                      <>
+                        <span className="ts-small-caps">{dropCap ? 'hen' : 'When'} the story begins,</span>
+                        {' the theme shapes every page.'}
+                      </>
+                    ) : (
+                      <>{dropCap ? 'hen' : 'When'} the story begins, the theme shapes every page.</>
+                    )}
+                  </p>
+                </div>
+              </button>
   )
 }
