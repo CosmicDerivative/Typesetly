@@ -1,0 +1,32 @@
+.left-sidebar {
+  width: 260px;
+  border-right: 1px solid #ddd6ca;
+  background: #fbfaf7;
+}
+
+.left-sidebar header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px;
+  border-bottom: 1px solid #e5dfd5;
+}
+
+.left-sidebar ol {
+  margin: 0;
+  padding: 12px;
+  list-style: none;
+}
+
+.left-sidebar li button {
+  width: 100%;
+  padding: 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  text-align: left;
+}
+
+.left-sidebar li button:hover {
+  background: #eee8dd;
+}

@@ -812,5 +812,29 @@ export function FormattingPanel() {
                   </p>
                 </div>
               </button>
+              <div className="theme-meta">
+                <strong>{theme.name}</strong>
+                <div className="theme-tools">
+                  <button type="button" title="Favorite" onClick={() => toggleThemeFavorite(theme.id)}>
+                    <Heart size={14} fill={theme.favorite ? '#d76443' : 'none'} />
+                  </button>
+                  <button type="button" title="Edit as new" onClick={() => startThemeEdit(theme)}>
+                    <Pencil size={14} />
+                  </button>
+                  {!theme.preset && (
+                    <button type="button" title="Delete" onClick={() => deleteCustomTheme(theme.id)}>
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
+              </div>
+              {active && <span className="applied">Applied</span>}
+            </article>
+          )
+        })}
+      </div>
+      {!sorted.length && <p className="fv-note">No themes match “{themeQuery}”.</p>}
+      <p className="fv-note">Active theme: <strong>{activeTheme.name}</strong></p>
+    </div>
   )
 }
