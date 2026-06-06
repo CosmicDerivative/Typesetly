@@ -35,13 +35,44 @@ import { Dialog } from './Dialog'
 import { DrawerControls } from './DrawerControls'
 import { PageTypeSelect } from './PageTypeSelect'
 
-  title: string
+const frontIcons: Partial<Record<PageType, typeof FileText>> = {
+  'title-page': FileText,
+  copyright: Copyright,
+  contents: List,
 }
 
+type DragItem =
+  | { kind: 'page'; pageId: string }
+  | { kind: 'scene'; chapterId: string; sceneIndex: number }
+
+type DropHint =
+  | { kind: 'page'; targetId: string; placement: 'before' | 'after' | 'inside' }
+  | { kind: 'scene'; chapterId: string; sceneIndex: number; placement: 'before' | 'after' }
+
+type InlineRename =
+  | { kind: 'page'; id: string; value: string }
+  | { kind: 'scene'; chapterId: string; index: number; value: string }
+  | { kind: 'folder'; id: string; value: string }
+
 export function LeftSidebar() {
-  const [chapters, setChapters] = useState<DraftChapter[]>([
-    { id: 1, title: 'Chapter One' },
-  ])
+  const {
+    project,
+    frontMatter,
+    bodyChapters,
+    backMatter,
+    setActiveChapter,
+    addChapter,
+    addChapterToPart,
+    addChapterToFolder,
+    addPage,
+    addPart,
+    addManuscriptFolder,
+    renameManuscriptFolder,
+    deleteManuscriptFolder,
+    toggleManuscriptFolder,
+    moveChapterToFolder,
+    deleteChapter,
+    duplicateChapter,
 
   return (
     <aside className="left-sidebar">
