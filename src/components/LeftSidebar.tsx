@@ -264,6 +264,44 @@ export function LeftSidebar() {
     focusSceneAfterChange(chapter.id, newIndex)
   }
 
+  const openNotes = (focus: {
+    target: 'chapter' | 'scene'
+    chapterId: string
+    sceneIndex?: number
+    noteId?: string
+  }) => {
+    if (pinnedRightPanel !== 'none') setPinnedRightPanel('notes')
+    setRightPanel('notes')
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        window.dispatchEvent(new CustomEvent('typesetly:notes-focus', { detail: focus }))
+      })
+    })
+  }
+
+  const createContextNote = (
+    focus: { target: 'chapter' | 'scene'; chapterId: string; sceneIndex?: number },
+    title: string,
+  ) => {
+    const noteId = addStickyNote({
+      ...focus,
+      title,
+      color: focus.target === 'scene' ? 'blue' : 'gold',
+    })
+    openNotes({ ...focus, noteId })
+  }
+
+  const addableFront = FRONT_MATTER_TYPES.filter(
+    (type) => !REQUIRED_PAGE_TYPES.includes(type),
+  )
+  const addableBack = BACK_MATTER_TYPES
+  const parts = bodyChapters.filter((chapter) => chapter.type === 'part')
+  const manuscriptFolders = project.manuscriptFolders || []
+  const partBody = [
+    ...bodyChapters.flatMap((chapter) =>
+      chapter.type === 'part'
+        ? [chapter, ...bodyChapters.filter((candidate) => candidate.partId === chapter.id)]
+        : [],
         <button
           type="button"
           onClick={() => setChapters((items) => [
