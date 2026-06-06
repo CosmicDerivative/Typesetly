@@ -112,11 +112,41 @@ export function LeftSidebar() {
   const [renameSceneTarget, setRenameSceneTarget] = useState<{ chapterId: string; index: number } | null>(null)
   const [sceneName, setSceneName] = useState('')
   const [activeScene, setActiveScene] = useState<{ chapterId: string; index: number } | null>(null)
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+  const [bodyMenu, setBodyMenu] = useState(false)
+  const [folderDropTarget, setFolderDropTarget] = useState<string | null>(null)
+  const [folderEditor, setFolderEditor] = useState<{ mode: 'create' | 'rename'; id?: string } | null>(null)
+  const [folderName, setFolderName] = useState('')
+  const [folderDeleteTarget, setFolderDeleteTarget] = useState<string | null>(null)
+  const [masterQuery, setMasterQuery] = useState('')
+  const [inlineRename, setInlineRename] = useState<InlineRename | null>(null)
+  const cancelInlineRenameRef = useRef(false)
+  const importRef = useRef<HTMLInputElement>(null)
+  const sidebarRef = useRef<HTMLElement>(null)
 
-  return (
-    <aside className="left-sidebar">
-      <header>
-        <strong>Book</strong>
+  useEffect(() => {
+    const updateActiveScene = (event: Event) => {
+      setActiveScene((event as CustomEvent<{ chapterId: string; index: number }>).detail)
+    }
+    window.addEventListener('typesetly:active-scene', updateActiveScene)
+    return () => window.removeEventListener('typesetly:active-scene', updateActiveScene)
+  }, [])
+
+  useEffect(() => {
+    const closeTransientMenus = (event: PointerEvent) => {
+      const target = event.target instanceof Element ? event.target : null
+      if (target?.closest(
+        '.page-actions-menu, .scene-actions-menu, .body-options-menu, .add-menu, .trash-panel, [data-sidebar-menu-trigger]',
+      )) return
+      setMenuOpen(false)
+      setTrashOpen(false)
+      setBodyMenu(false)
+      setPageMenuId(null)
+      setSceneMenu(null)
+    }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      setMenuOpen(false)
         <button
           type="button"
           onClick={() => setChapters((items) => [
