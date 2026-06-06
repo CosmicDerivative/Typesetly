@@ -147,6 +147,45 @@ export function LeftSidebar() {
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
       setMenuOpen(false)
+      setTrashOpen(false)
+      setBodyMenu(false)
+      setPageMenuId(null)
+      setSceneMenu(null)
+    }
+    document.addEventListener('pointerdown', closeTransientMenus)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('pointerdown', closeTransientMenus)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [])
+
+  if (!project) return null
+
+  const beginInlineRename = (target: InlineRename) => {
+    cancelInlineRenameRef.current = false
+    setInlineRename(target)
+    setPageMenuId(null)
+    setSceneMenu(null)
+  }
+
+  const finishInlineRename = (target: InlineRename) => {
+    if (cancelInlineRenameRef.current) {
+      cancelInlineRenameRef.current = false
+      setInlineRename(null)
+      return
+    }
+    const name = target.value.trim()
+    if (name) {
+      if (target.kind === 'page') updateChapterTitle(target.id, name)
+      else if (target.kind === 'scene') updateSceneTitle(target.chapterId, target.index, name)
+      else renameManuscriptFolder(target.id, name)
+    }
+    setInlineRename(null)
+  }
+
+  const handleInlineRenameKey = (
+    event: ReactKeyboardEvent<HTMLInputElement>,
         <button
           type="button"
           onClick={() => setChapters((items) => [
