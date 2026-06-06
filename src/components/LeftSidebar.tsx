@@ -1,8 +1,40 @@
-import { useState } from 'react'
+import {
+  ChevronRight,
+  Copyright,
+  FileText,
+  Folder,
+  FolderOpen,
+  FolderPlus,
+  List,
+  MoreVertical,
+  Pencil,
+  Plus,
+  RotateCcw,
+  StickyNote,
+  Trash2,
+  X,
+} from 'lucide-react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type DragEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react'
+import { useApp } from '../BookContext'
+import {
+  BACK_MATTER_TYPES,
+  FRONT_MATTER_TYPES,
+  PAGE_TYPE_LABELS,
+} from '../data'
+import { normalizedSceneTitles, sceneCount } from '../editor/scenes'
+import { numberedChapterOrdinal, REQUIRED_PAGE_TYPES } from '../manuscript/pageTypes'
+import type { Chapter, ManuscriptFolder, PageType } from '../types'
 import './LeftSidebar.css'
+import { Dialog } from './Dialog'
+import { DrawerControls } from './DrawerControls'
+import { PageTypeSelect } from './PageTypeSelect'
 
-type DraftChapter = {
-  id: number
   title: string
 }
 
