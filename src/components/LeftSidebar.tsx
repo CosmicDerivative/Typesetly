@@ -225,6 +225,45 @@ export function LeftSidebar() {
     // section, protected pages stay fixed, and only chapters can enter parts.
     if (source.id === target.id || sectionForPage(source) !== sectionForPage(target)) return false
     if (REQUIRED_PAGE_TYPES.includes(source.type)) return false
+    if (sectionForPage(source) === 'front' && REQUIRED_PAGE_TYPES.includes(target.type)) return false
+    if (placement === 'inside') return source.type === 'chapter' && target.type === 'part'
+    if (sectionForPage(source) === 'body') return (source.type === 'part') === (target.type === 'part')
+    return true
+  }
+
+  const canMoveDragItemToTrash = (item: DragItem) => {
+    if (item.kind === 'page') {
+      const page = project.chapters.find((chapter) => chapter.id === item.pageId)
+      return Boolean(page && !REQUIRED_PAGE_TYPES.includes(page.type))
+    }
+    const chapter = project.chapters.find((candidate) => candidate.id === item.chapterId)
+    return Boolean(chapter?.type === 'chapter' && sceneCount(chapter.content) > 1)
+  }
+
+  const openScene = (chapterId: string, index: number) => {
+    setActiveScene({ chapterId, index })
+    window.dispatchEvent(new CustomEvent('typesetly:scene', { detail: { index } }))
+  }
+
+  const focusSceneAfterChange = (chapterId: string, index: number) => {
+    setActiveScene({ chapterId, index })
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        window.dispatchEvent(new CustomEvent('typesetly:scene', { detail: { index } }))
+      })
+    })
+  }
+
+  const addSceneFromMap = (chapter: Chapter, afterIndex: number) => {
+    const newIndex = Math.max(0, afterIndex + 1)
+    setActiveChapter(chapter.id)
+    addScene(chapter.id, afterIndex)
+    setMenuOpen(false)
+    setPageMenuId(null)
+    setSceneMenu(null)
+    focusSceneAfterChange(chapter.id, newIndex)
+  }
+
         <button
           type="button"
           onClick={() => setChapters((items) => [
