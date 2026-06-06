@@ -73,6 +73,45 @@ export function LeftSidebar() {
     moveChapterToFolder,
     deleteChapter,
     duplicateChapter,
+    moveChapterBy,
+    moveChapterRelative,
+    moveChapterToPart,
+    addScene,
+    duplicateScene,
+    moveScene,
+    moveSceneToChapter,
+    deleteScene,
+    updateSceneTitle,
+    importChaptersFromDocx,
+    updateBodyChapterOptions,
+    updateChapterOptions,
+    updateChapterTitle,
+    updateChapterType,
+    activeChapter,
+    saveActiveAsMasterPage,
+    savePageAsMaster,
+    addMasterPage,
+    restoreTrashItem,
+    permanentlyDeleteTrashItem,
+    emptyTrash,
+    addStickyNote,
+    setRightPanel,
+    pinnedRightPanel,
+    setPinnedRightPanel,
+  } = useApp()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [pageMenuId, setPageMenuId] = useState<string | null>(null)
+  const [sceneMenu, setSceneMenu] = useState<{ chapterId: string; index: number } | null>(null)
+  const [dragItem, setDragItem] = useState<DragItem | null>(null)
+  const [dropHint, setDropHint] = useState<DropHint | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+  const [permanentDeleteTarget, setPermanentDeleteTarget] = useState<string | null>(null)
+  const [confirmEmptyTrash, setConfirmEmptyTrash] = useState(false)
+  const [trashOpen, setTrashOpen] = useState(false)
+  const [trashDragActive, setTrashDragActive] = useState(false)
+  const [renameSceneTarget, setRenameSceneTarget] = useState<{ chapterId: string; index: number } | null>(null)
+  const [sceneName, setSceneName] = useState('')
+  const [activeScene, setActiveScene] = useState<{ chapterId: string; index: number } | null>(null)
 
   return (
     <aside className="left-sidebar">
