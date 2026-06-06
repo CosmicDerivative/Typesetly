@@ -186,6 +186,45 @@ export function LeftSidebar() {
 
   const handleInlineRenameKey = (
     event: ReactKeyboardEvent<HTMLInputElement>,
+  ) => {
+    if (event.key === 'Enter') event.currentTarget.blur()
+    if (event.key === 'Escape') {
+      cancelInlineRenameRef.current = true
+      event.currentTarget.blur()
+    }
+  }
+
+  const beginDrag = (event: DragEvent, item: DragItem) => {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('application/x-typesetly-sidebar-item', JSON.stringify(item))
+    setDragItem(item)
+    setMenuOpen(false)
+    setTrashOpen(false)
+    setBodyMenu(false)
+    setPageMenuId(null)
+    setSceneMenu(null)
+  }
+
+  const endDrag = () => {
+    setDragItem(null)
+    setDropHint(null)
+    setTrashDragActive(false)
+    setFolderDropTarget(null)
+  }
+
+  const sectionForPage = (page: Chapter) => (
+    FRONT_MATTER_TYPES.includes(page.type)
+      ? 'front'
+      : BACK_MATTER_TYPES.includes(page.type)
+        ? 'back'
+        : 'body'
+  )
+
+  const canDropPage = (source: Chapter, target: Chapter, placement: 'before' | 'after' | 'inside') => {
+    // Enforce manuscript semantics at the UI boundary: matter stays in its
+    // section, protected pages stay fixed, and only chapters can enter parts.
+    if (source.id === target.id || sectionForPage(source) !== sectionForPage(target)) return false
+    if (REQUIRED_PAGE_TYPES.includes(source.type)) return false
         <button
           type="button"
           onClick={() => setChapters((items) => [
