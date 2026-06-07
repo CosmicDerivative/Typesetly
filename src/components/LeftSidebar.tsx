@@ -332,6 +332,45 @@ export function LeftSidebar() {
           }}
         >
           Add sticky note
+        </button>
+        <button type="button" disabled={required} onClick={() => { duplicateChapter(page.id); setPageMenuId(null) }}>
+          Duplicate page
+        </button>
+        {!required && (
+          <label className="action-menu-select">
+            Page type
+            <PageTypeSelect
+              value={page.type}
+              onChange={(type) => {
+                updateChapterType(page.id, type)
+                setPageMenuId(null)
+              }}
+            />
+          </label>
+        )}
+        <div className="action-menu-pair">
+          <button type="button" disabled={required} onClick={() => moveChapterBy(page.id, -1)}>Move up</button>
+          <button type="button" disabled={required} onClick={() => moveChapterBy(page.id, 1)}>Move down</button>
+        </div>
+        {page.type === 'part' && (
+          <button type="button" onClick={() => { addChapterToPart(page.id); setPageMenuId(null) }}>
+            Add chapter to this part
+          </button>
+        )}
+        {page.type === 'chapter' && parts.length > 0 && (
+          <label className="action-menu-select">
+            Publishing Part
+            <select
+              value={page.partId || ''}
+              onChange={(event) => {
+                moveChapterToPart(page.id, event.target.value || undefined)
+                setPageMenuId(null)
+              }}
+            >
+              <option value="">Main text (no section)</option>
+              {parts.map((part) => <option key={part.id} value={part.id}>{part.title}</option>)}
+            </select>
+          </label>
     </aside>
   )
 }
