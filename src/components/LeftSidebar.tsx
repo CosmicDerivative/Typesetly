@@ -603,6 +603,45 @@ export function LeftSidebar() {
             </div>
           )
           return (
+            <div className="scene-list">
+              <div className="scene-list-header">
+                <span>Scenes <strong>{count}</strong></span>
+                <button
+                  type="button"
+                  title={`Add a scene to the end of ${page.title}`}
+                  onClick={() => addSceneFromMap(page, count - 1)}
+                >
+                  <Plus size={11} />
+                  Add scene
+                </button>
+              </div>
+              {renderSceneInsertControl(-1, `Add scene before ${titles[0]}`)}
+              {titles.map((title, sceneIndex) => {
+                const sceneActive = activeScene?.chapterId === page.id && activeScene.index === sceneIndex
+                const menuActive = sceneMenu?.chapterId === page.id && sceneMenu.index === sceneIndex
+                const sceneHint =
+                  dropHint?.kind === 'scene' &&
+                  dropHint.chapterId === page.id &&
+                  dropHint.sceneIndex === sceneIndex
+                    ? dropHint
+                    : null
+                const sceneNoteCount = (project.stickyNotes || []).filter(
+                  (note) =>
+                    note.target === 'scene' &&
+                    note.chapterId === page.id &&
+                    note.sceneIndex === sceneIndex,
+                ).length
+                const sceneRenameActive =
+                  inlineRename?.kind === 'scene' &&
+                  inlineRename.chapterId === page.id &&
+                  inlineRename.index === sceneIndex
+                return (
+                  <div className="scene-map-entry" key={`${page.id}-scene-${sceneIndex}`}>
+                    <div
+                      data-chapter-id={page.id}
+                      data-scene-index={sceneIndex}
+                      className={`scene-row ${sceneHint ? `drop-${sceneHint.placement}` : ''}`}
+                      draggable={!sceneRenameActive}
     </aside>
   )
 }
