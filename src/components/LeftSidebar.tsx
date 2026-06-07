@@ -681,6 +681,44 @@ export function LeftSidebar() {
                           className="scene-inline-rename"
                           aria-label={`Rename ${title}`}
                           value={inlineRename.value}
+                          onClick={(event) => event.stopPropagation()}
+                          onChange={(event) => setInlineRename({ ...inlineRename, value: event.target.value })}
+                          onKeyDown={handleInlineRenameKey}
+                          onBlur={() => finishInlineRename(inlineRename)}
+                        />
+                      ) : (
+                        <button
+                          data-chapter-id={page.id}
+                          data-scene-index={sceneIndex}
+                          className={sceneActive ? 'scene-jump active' : 'scene-jump'}
+                          type="button"
+                          onClick={() => openScene(page.id, sceneIndex)}
+                          onDoubleClick={(event) => {
+                            event.preventDefault()
+                            event.stopPropagation()
+                            beginInlineRename({
+                              kind: 'scene',
+                              chapterId: page.id,
+                              index: sceneIndex,
+                              value: title,
+                            })
+                          }}
+                        >
+                          {title}
+                        </button>
+                      )}
+                      {sceneNoteCount > 0 && (
+                        <button
+                          type="button"
+                          className="sidebar-note-count scene-note-count"
+                          title={`${sceneNoteCount} ${sceneNoteCount === 1 ? 'note' : 'notes'} for ${title}`}
+                          aria-label={`Open ${sceneNoteCount} ${sceneNoteCount === 1 ? 'note' : 'notes'} for ${title}`}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            openNotes({ target: 'scene', chapterId: page.id, sceneIndex })
+                          }}
+                        >
+                          <StickyNote size={10} />
     </aside>
   )
 }
