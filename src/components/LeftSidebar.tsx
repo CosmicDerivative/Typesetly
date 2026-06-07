@@ -797,6 +797,44 @@ export function LeftSidebar() {
                             </button>
                             <button
                               type="button"
+                              disabled={sceneIndex === count - 1}
+                              onClick={() => {
+                                moveScene(page.id, sceneIndex, 1)
+                                focusSceneAfterChange(page.id, sceneIndex + 1)
+                                setSceneMenu(null)
+                              }}
+                            >
+                              Move down
+                            </button>
+                          </div>
+                          <div className="action-menu-divider" />
+                          <button
+                            type="button"
+                            className="danger-action"
+                            disabled={count <= 1}
+                            onClick={() => {
+                              deleteScene(page.id, sceneIndex)
+                              focusSceneAfterChange(page.id, Math.min(sceneIndex, count - 2))
+                              setSceneMenu(null)
+                            }}
+                          >
+                            Move scene to Trash
+                          </button>
+                          {count <= 1 && <small>A chapter must keep at least one scene.</small>}
+                        </div>
+                      )}
+                    </div>
+                    {renderSceneInsertControl(
+                      sceneIndex,
+                      sceneIndex === count - 1
+                        ? `Add scene at the end of ${page.title}`
+                        : `Add scene between ${title} and ${titles[sceneIndex + 1]}`,
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )
     </aside>
   )
 }
