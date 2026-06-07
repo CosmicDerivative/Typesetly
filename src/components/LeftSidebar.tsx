@@ -758,6 +758,45 @@ export function LeftSidebar() {
                               setSceneName(title)
                               setSceneMenu(null)
                             }}
+                          >
+                            Rename scene
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => addSceneFromMap(page, sceneIndex - 1)}
+                          >
+                            Add scene before
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => addSceneFromMap(page, sceneIndex)}
+                          >
+                            Add scene after
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              duplicateScene(page.id, sceneIndex)
+                              focusSceneAfterChange(page.id, sceneIndex + 1)
+                              setSceneMenu(null)
+                            }}
+                          >
+                            Duplicate scene
+                          </button>
+                          <div className="action-menu-pair">
+                            <button
+                              type="button"
+                              disabled={sceneIndex === 0}
+                              onClick={() => {
+                                moveScene(page.id, sceneIndex, -1)
+                                focusSceneAfterChange(page.id, sceneIndex - 1)
+                                setSceneMenu(null)
+                              }}
+                            >
+                              Move up
+                            </button>
+                            <button
+                              type="button"
     </aside>
   )
 }
