@@ -302,23 +302,36 @@ export function LeftSidebar() {
       chapter.type === 'part'
         ? [chapter, ...bodyChapters.filter((candidate) => candidate.partId === chapter.id)]
         : [],
+    ),
+  ]
+  const unfiledBody = bodyChapters.filter(
+    (chapter) => chapter.type !== 'part' && !chapter.partId && !chapter.folderId,
+  )
+
+  const pageActions = (page: Chapter) => {
+    const required = REQUIRED_PAGE_TYPES.includes(page.type)
+    const canContainScenes = page.type === 'chapter'
+    const excluded = page.options.includeIn === 'none'
+    return (
+      <div className="page-actions-menu" onClick={(event) => event.stopPropagation()}>
+        <div className="action-menu-title">{page.title || PAGE_TYPE_LABELS[page.type]}</div>
+        <button type="button" onClick={() => { setActiveChapter(page.id); setPageMenuId(null) }}>
+          Open page
+        </button>
         <button
           type="button"
-          onClick={() => setChapters((items) => [
-            ...items,
-            { id: Date.now(), title: `Chapter ${items.length + 1}` },
-          ])}
+          onClick={() => beginInlineRename({ kind: 'page', id: page.id, value: page.title })}
         >
-          Add
+          Rename page
         </button>
-      </header>
-      <ol>
-        {chapters.map((chapter) => (
-          <li key={chapter.id}>
-            <button type="button">{chapter.title}</button>
-          </li>
-        ))}
-      </ol>
+        <button
+          type="button"
+          onClick={() => {
+            createContextNote({ target: 'chapter', chapterId: page.id }, `${page.title} note`)
+            setPageMenuId(null)
+          }}
+        >
+          Add sticky note
     </aside>
   )
 }
