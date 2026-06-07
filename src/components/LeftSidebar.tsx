@@ -874,6 +874,45 @@ export function LeftSidebar() {
     const folderRenameActive =
       inlineRename?.kind === 'folder' && inlineRename.id === folder.id
 
+    return (
+      <section
+        className={`manuscript-folder${dropActive ? ' drop-active' : ''}`}
+        key={folder.id}
+        onDragOver={(event) => {
+          const target = event.target instanceof Element ? event.target : null
+          if (target?.closest('.chapter-row')) return
+          if (!canAcceptDrop) return
+          event.preventDefault()
+          event.stopPropagation()
+          event.dataTransfer.dropEffect = 'move'
+          setFolderDropTarget(folder.id)
+        }}
+        onDragLeave={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+            setFolderDropTarget(null)
+          }
+        }}
+        onDrop={(event) => {
+          const target = event.target instanceof Element ? event.target : null
+          if (target?.closest('.chapter-row')) return
+          event.preventDefault()
+          event.stopPropagation()
+          const item = dragItem
+          if (item?.kind !== 'page' || !canAcceptDrop) return endDrag()
+          moveChapterToFolder(item.pageId, folder.id)
+          endDrag()
+        }}
+      >
+        <div className="manuscript-folder-row">
+          {/* A folder is intentionally a map-only target; exporting still
+              follows the underlying chapter sequence. */}
+          {folderRenameActive ? (
+            <div className="folder-inline-editor">
+              {folder.collapsed ? <Folder size={15} /> : <FolderOpen size={15} />}
+              <input
+                autoFocus
+                aria-label={`Rename ${folder.name}`}
+                value={inlineRename.value}
     </aside>
   )
 }
