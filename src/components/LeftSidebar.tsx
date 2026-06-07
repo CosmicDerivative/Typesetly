@@ -409,6 +409,45 @@ export function LeftSidebar() {
         {!required && page.type !== 'part' && (
           <button
             type="button"
+            onClick={() => {
+              updateChapterOptions(page.id, { includeIn: excluded ? 'all' : 'none' })
+              setPageMenuId(null)
+            }}
+          >
+            {excluded ? 'Include in exports' : 'Exclude from exports'}
+          </button>
+        )}
+        <div className="action-menu-divider" />
+        <button
+          type="button"
+          className="danger-action"
+          disabled={required}
+          onClick={() => {
+            setDeleteTarget(page.id)
+            setPageMenuId(null)
+          }}
+        >
+          Move to Trash
+        </button>
+        {required && <small>Required book pages cannot be removed or reordered.</small>}
+      </div>
+    )
+  }
+
+  const renderPageRow = (
+    page: Chapter,
+    label: string,
+    options: { nested?: boolean; draggable?: boolean; icon?: typeof FileText } = {},
+  ) => {
+    const active = project.activeId === page.id
+    const Icon = options.icon || FileText
+    const canDrag = options.draggable ?? !REQUIRED_PAGE_TYPES.includes(page.type)
+    const pageHint = dropHint?.kind === 'page' && dropHint.targetId === page.id ? dropHint : null
+    const pageNoteCount = (project.stickyNotes || []).filter((note) => note.chapterId === page.id).length
+    return (
+      <div className={`sidebar-item ${options.nested ? 'nested-item' : ''}`} key={page.id}>
+        <div
+          data-page-id={page.id}
     </aside>
   )
 }
