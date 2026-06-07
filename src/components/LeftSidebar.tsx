@@ -835,6 +835,45 @@ export function LeftSidebar() {
               })}
             </div>
           )
+        })()}
+      </div>
+    )
+  }
+
+  const bodyPageLabel = (chapter: Chapter) => {
+    if (chapter.type === 'part') {
+      return `${expanded[chapter.id] === false ? '▸' : '▾'} ${chapter.title}`
+    }
+    if (chapter.type === 'chapter') {
+      const title = chapter.title || 'Untitled'
+      return chapter.options.numbered
+        ? `${numberedChapterOrdinal(project.chapters, chapter.id)}. ${title}`
+        : title
+    }
+    return chapter.title || PAGE_TYPE_LABELS[chapter.type]
+  }
+
+  const renderBodyPage = (chapter: Chapter, nested = Boolean(chapter.partId)) =>
+    renderPageRow(chapter, bodyPageLabel(chapter), {
+      nested,
+      draggable: true,
+    })
+
+  const renderFolder = (folder: ManuscriptFolder) => {
+    const pages = bodyChapters.filter((chapter) => chapter.folderId === folder.id)
+    const draggedPage = dragItem?.kind === 'page'
+      ? project.chapters.find((chapter) => chapter.id === dragItem.pageId)
+      : undefined
+    const canAcceptDrop = Boolean(
+      draggedPage &&
+      draggedPage.type !== 'part' &&
+      sectionForPage(draggedPage) === 'body' &&
+      draggedPage.folderId !== folder.id,
+    )
+    const dropActive = folderDropTarget === folder.id
+    const folderRenameActive =
+      inlineRename?.kind === 'folder' && inlineRename.id === folder.id
+
     </aside>
   )
 }
