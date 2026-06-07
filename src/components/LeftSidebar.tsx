@@ -564,6 +564,45 @@ export function LeftSidebar() {
                 addSceneFromMap(page, sceneCount(page.content) - 1)
               }}
             >
+              <Plus size={13} />
+            </button>
+          )}
+          <button
+            type="button"
+            className="chapter-menu"
+            data-sidebar-menu-trigger
+            title={`Options for ${page.title}`}
+            aria-label={`Options for ${page.title}`}
+            onClick={(event) => {
+              event.stopPropagation()
+              setMenuOpen(false)
+              setTrashOpen(false)
+              setBodyMenu(false)
+              setSceneMenu(null)
+              setPageMenuId((current) => current === page.id ? null : page.id)
+            }}
+          >
+            <MoreVertical size={13} />
+          </button>
+        </div>
+        {pageMenuId === page.id && pageActions(page)}
+        {active && page.type === 'chapter' && (() => {
+          const count = sceneCount(page.content)
+          const titles = normalizedSceneTitles(page.sceneTitles, count)
+          const renderSceneInsertControl = (afterIndex: number, label: string) => (
+            <div className="scene-insert-control" key={`insert-${page.id}-${afterIndex}`}>
+              <button
+                type="button"
+                title={label}
+                aria-label={label}
+                onClick={() => addSceneFromMap(page, afterIndex)}
+              >
+                <Plus size={10} />
+                <span>{label}</span>
+              </button>
+            </div>
+          )
+          return (
     </aside>
   )
 }
