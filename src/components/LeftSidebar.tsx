@@ -487,6 +487,45 @@ export function LeftSidebar() {
             } else if (page.type === 'chapter') {
               const targetCount = sceneCount(page.content)
               moveSceneToChapter(
+                dragItem.chapterId,
+                dragItem.sceneIndex,
+                page.id,
+                targetCount - 1,
+                'after',
+              )
+              const newIndex = dragItem.chapterId === page.id ? targetCount - 1 : targetCount
+              setActiveChapter(page.id)
+              focusSceneAfterChange(page.id, newIndex)
+            }
+            endDrag()
+          }}
+        >
+          {inlineRename?.kind === 'page' && inlineRename.id === page.id ? (
+            <div className="chapter-inline-editor">
+              <Icon size={14} strokeWidth={1.75} className="chapter-icon" />
+              <input
+                autoFocus
+                aria-label={`Rename ${page.title}`}
+                value={inlineRename.value}
+                onClick={(event) => event.stopPropagation()}
+                onChange={(event) => setInlineRename({ ...inlineRename, value: event.target.value })}
+                onKeyDown={handleInlineRenameKey}
+                onBlur={() => finishInlineRename(inlineRename)}
+              />
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="chapter-btn"
+              onClick={() => setActiveChapter(page.id)}
+              onDoubleClick={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                beginInlineRename({ kind: 'page', id: page.id, value: page.title })
+              }}
+            >
+              <Icon size={14} strokeWidth={1.75} className="chapter-icon" />
+              <span className="chapter-label">{label}</span>
     </aside>
   )
 }
