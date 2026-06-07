@@ -448,6 +448,45 @@ export function LeftSidebar() {
       <div className={`sidebar-item ${options.nested ? 'nested-item' : ''}`} key={page.id}>
         <div
           data-page-id={page.id}
+          className={`${active ? 'chapter-row active' : 'chapter-row'} ${options.nested ? 'nested' : ''} ${pageHint ? `drop-${pageHint.placement}` : ''}`}
+          draggable={canDrag && !(inlineRename?.kind === 'page' && inlineRename.id === page.id)}
+          onDragStart={(event) => beginDrag(event, { kind: 'page', pageId: page.id })}
+          onDragEnd={endDrag}
+          onDragOver={(event) => {
+            if (!dragItem) return
+            if (dragItem.kind === 'scene') {
+              if (page.type !== 'chapter') return
+              event.preventDefault()
+              event.dataTransfer.dropEffect = 'move'
+              setDropHint({ kind: 'page', targetId: page.id, placement: 'inside' })
+              return
+            }
+            const source = project.chapters.find((chapter) => chapter.id === dragItem.pageId)
+            if (!source) return
+            const bounds = event.currentTarget.getBoundingClientRect()
+            const ratio = (event.clientY - bounds.top) / Math.max(bounds.height, 1)
+            const placement =
+              page.type === 'part' && source.type === 'chapter' && ratio > .25 && ratio < .75
+                ? 'inside'
+                : ratio < .5
+                  ? 'before'
+                  : 'after'
+            if (!canDropPage(source, page, placement)) return
+            event.preventDefault()
+            event.dataTransfer.dropEffect = 'move'
+            setDropHint({ kind: 'page', targetId: page.id, placement })
+          }}
+          onDragLeave={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropHint(null)
+          }}
+          onDrop={(event) => {
+            event.preventDefault()
+            if (!dragItem || !pageHint) return endDrag()
+            if (dragItem.kind === 'page') {
+              moveChapterRelative(dragItem.pageId, page.id, pageHint.placement)
+            } else if (page.type === 'chapter') {
+              const targetCount = sceneCount(page.content)
+              moveSceneToChapter(
     </aside>
   )
 }
