@@ -526,6 +526,44 @@ export function LeftSidebar() {
             >
               <Icon size={14} strokeWidth={1.75} className="chapter-icon" />
               <span className="chapter-label">{label}</span>
+            </button>
+          )}
+          {page.type === 'part' && (
+            <button
+              type="button"
+              className="chapter-expand"
+              aria-label={expanded[page.id] === false ? 'Expand part' : 'Collapse part'}
+              onClick={() => setExpanded((value) => ({ ...value, [page.id]: value[page.id] === false }))}
+            >
+              {bodyChapters.filter((item) => item.partId === page.id).length}
+            </button>
+          )}
+          {pageNoteCount > 0 && (
+            <button
+              type="button"
+              className="sidebar-note-count"
+              title={`${pageNoteCount} ${pageNoteCount === 1 ? 'note' : 'notes'} for ${page.title}`}
+              aria-label={`Open ${pageNoteCount} ${pageNoteCount === 1 ? 'note' : 'notes'} for ${page.title}`}
+              onClick={(event) => {
+                event.stopPropagation()
+                openNotes({ target: 'chapter', chapterId: page.id })
+              }}
+            >
+              <StickyNote size={11} />
+              <span>{pageNoteCount}</span>
+            </button>
+          )}
+          {page.type === 'chapter' && (
+            <button
+              type="button"
+              className="chapter-add-scene"
+              title={`Add a scene to ${page.title}`}
+              aria-label={`Add a scene to ${page.title}`}
+              onClick={(event) => {
+                event.stopPropagation()
+                addSceneFromMap(page, sceneCount(page.content) - 1)
+              }}
+            >
     </aside>
   )
 }
