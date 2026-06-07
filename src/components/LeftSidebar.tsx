@@ -371,6 +371,44 @@ export function LeftSidebar() {
               {parts.map((part) => <option key={part.id} value={part.id}>{part.title}</option>)}
             </select>
           </label>
+        )}
+        {sectionForPage(page) === 'body' && page.type !== 'part' && manuscriptFolders.length > 0 && (
+          <label className="action-menu-select">
+            Manuscript folder
+            <select
+              value={page.folderId || ''}
+              onChange={(event) => {
+                moveChapterToFolder(page.id, event.target.value || undefined)
+                setPageMenuId(null)
+              }}
+            >
+              <option value="">Unfiled</option>
+              {manuscriptFolders.map((folder) => (
+                <option key={folder.id} value={folder.id}>{folder.name}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        {canContainScenes && (
+          <button
+            type="button"
+            onClick={() => {
+              const newIndex = sceneCount(page.content)
+              setActiveChapter(page.id)
+              addScene(page.id, newIndex - 1)
+              focusSceneAfterChange(page.id, newIndex)
+              setPageMenuId(null)
+            }}
+          >
+            Add scene at end
+          </button>
+        )}
+        <button type="button" onClick={() => { savePageAsMaster(page.id); setPageMenuId(null) }}>
+          Save as master page
+        </button>
+        {!required && page.type !== 'part' && (
+          <button
+            type="button"
     </aside>
   )
 }
