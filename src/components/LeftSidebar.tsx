@@ -642,6 +642,45 @@ export function LeftSidebar() {
                       data-scene-index={sceneIndex}
                       className={`scene-row ${sceneHint ? `drop-${sceneHint.placement}` : ''}`}
                       draggable={!sceneRenameActive}
+                      onDragStart={(event) => {
+                        event.stopPropagation()
+                        beginDrag(event, { kind: 'scene', chapterId: page.id, sceneIndex })
+                      }}
+                      onDragEnd={endDrag}
+                      onDragOver={(event) => {
+                        if (dragItem?.kind !== 'scene') return
+                        event.preventDefault()
+                        event.stopPropagation()
+                        const bounds = event.currentTarget.getBoundingClientRect()
+                        const placement = event.clientY < bounds.top + bounds.height / 2 ? 'before' : 'after'
+                        event.dataTransfer.dropEffect = 'move'
+                        setDropHint({ kind: 'scene', chapterId: page.id, sceneIndex, placement })
+                      }}
+                      onDrop={(event) => {
+                        event.preventDefault()
+                        event.stopPropagation()
+                        if (dragItem?.kind !== 'scene' || !sceneHint) return endDrag()
+                        moveSceneToChapter(
+                          dragItem.chapterId,
+                          dragItem.sceneIndex,
+                          page.id,
+                          sceneIndex,
+                          sceneHint.placement,
+                        )
+                        let newIndex = sceneIndex + (sceneHint.placement === 'after' ? 1 : 0)
+                        if (dragItem.chapterId === page.id && dragItem.sceneIndex < newIndex) newIndex -= 1
+                        newIndex = Math.max(0, Math.min(newIndex, count))
+                        setActiveChapter(page.id)
+                        focusSceneAfterChange(page.id, newIndex)
+                        endDrag()
+                      }}
+                    >
+                      {sceneRenameActive ? (
+                        <input
+                          autoFocus
+                          className="scene-inline-rename"
+                          aria-label={`Rename ${title}`}
+                          value={inlineRename.value}
     </aside>
   )
 }
