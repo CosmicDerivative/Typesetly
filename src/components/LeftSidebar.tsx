@@ -719,6 +719,45 @@ export function LeftSidebar() {
                           }}
                         >
                           <StickyNote size={10} />
+                          <span>{sceneNoteCount}</span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="scene-more"
+                        data-sidebar-menu-trigger
+                        aria-label={`Options for ${title}`}
+                        onClick={() => {
+                          setMenuOpen(false)
+                          setTrashOpen(false)
+                          setBodyMenu(false)
+                          setPageMenuId(null)
+                          setSceneMenu(menuActive ? null : { chapterId: page.id, index: sceneIndex })
+                        }}
+                      >
+                        <MoreVertical size={12} />
+                      </button>
+                      {menuActive && (
+                        <div className="scene-actions-menu">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              createContextNote(
+                                { target: 'scene', chapterId: page.id, sceneIndex },
+                                `${title} note`,
+                              )
+                              setSceneMenu(null)
+                            }}
+                          >
+                            Add sticky note
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRenameSceneTarget({ chapterId: page.id, index: sceneIndex })
+                              setSceneName(title)
+                              setSceneMenu(null)
+                            }}
     </aside>
   )
 }
