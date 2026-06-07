@@ -913,6 +913,45 @@ export function LeftSidebar() {
                 autoFocus
                 aria-label={`Rename ${folder.name}`}
                 value={inlineRename.value}
+                onChange={(event) => setInlineRename({ ...inlineRename, value: event.target.value })}
+                onKeyDown={handleInlineRenameKey}
+                onBlur={() => finishInlineRename(inlineRename)}
+              />
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="manuscript-folder-toggle"
+              aria-expanded={!folder.collapsed}
+              onClick={() => toggleManuscriptFolder(folder.id)}
+              onDoubleClick={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                beginInlineRename({ kind: 'folder', id: folder.id, value: folder.name })
+              }}
+            >
+              <ChevronRight
+                className={folder.collapsed ? 'folder-chevron' : 'folder-chevron expanded'}
+                size={13}
+              />
+              {folder.collapsed ? <Folder size={15} /> : <FolderOpen size={15} />}
+              <span>{folder.name}</span>
+              <small>{pages.length}</small>
+            </button>
+          )}
+          <button
+            type="button"
+            className="manuscript-folder-action primary"
+            title={`Add chapter to ${folder.name}`}
+            aria-label={`Add chapter to ${folder.name}`}
+            onClick={() => addChapterToFolder(folder.id)}
+          >
+            <Plus size={12} />
+          </button>
+          <button
+            type="button"
+            className="manuscript-folder-action"
+            title={`Rename ${folder.name}`}
     </aside>
   )
 }
