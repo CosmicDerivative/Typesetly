@@ -1184,6 +1184,45 @@ export function LeftSidebar() {
               event.target.value = ''
             }}
           />
+        </div>
+        <div
+          className={trashDragActive ? 'trash-wrap drag-over' : 'trash-wrap'}
+          onDragOver={(event) => {
+            if (!dragItem || !canMoveDragItemToTrash(dragItem)) return
+            event.preventDefault()
+            event.stopPropagation()
+            event.dataTransfer.dropEffect = 'move'
+            setTrashDragActive(true)
+          }}
+          onDragLeave={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+              setTrashDragActive(false)
+            }
+          }}
+          onDrop={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+            const dropped = dragItem
+            if (!dropped || !canMoveDragItemToTrash(dropped)) return endDrag()
+            if (dropped.kind === 'page') deleteChapter(dropped.pageId)
+            else deleteScene(dropped.chapterId, dropped.sceneIndex)
+            setTrashOpen(true)
+            endDrag()
+          }}
+        >
+          <button
+            type="button"
+            className={trashOpen || trashDragActive ? 'trash-btn active' : 'trash-btn'}
+            data-sidebar-menu-trigger
+            title="Trash"
+            aria-label={`Trash, ${trashItems.length} items`}
+            aria-expanded={trashOpen}
+            onClick={() => {
+              setMenuOpen(false)
+              setBodyMenu(false)
+              setPageMenuId(null)
+              setSceneMenu(null)
+              setTrashOpen((value) => !value)
     </aside>
   )
 }
