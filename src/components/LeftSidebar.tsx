@@ -1339,6 +1339,45 @@ export function LeftSidebar() {
           <label>
             Scene name
             <input value={sceneName} onChange={(event) => setSceneName(event.target.value)} />
+          </label>
+        </Dialog>
+      )}
+      {folderEditor && (
+        <Dialog
+          title={folderEditor.mode === 'create' ? 'New Manuscript Folder' : 'Rename Manuscript Folder'}
+          description="Folders organize the Manuscript map only. They do not add headings or change the exported book."
+          confirmLabel={folderEditor.mode === 'create' ? 'Create Folder' : 'Save Name'}
+          onCancel={() => setFolderEditor(null)}
+          onConfirm={() => {
+            if (folderEditor.mode === 'create') addManuscriptFolder(folderName)
+            else if (folderEditor.id) renameManuscriptFolder(folderEditor.id, folderName)
+            setFolderEditor(null)
+          }}
+        >
+          <label>
+            Folder name
+            <input
+              value={folderName}
+              placeholder="Drafts, Alternate scenes, Research…"
+              autoFocus
+              onChange={(event) => setFolderName(event.target.value)}
+            />
+          </label>
+        </Dialog>
+      )}
+      {folderDeleteTarget && (
+        <Dialog
+          title="Remove this manuscript folder?"
+          description="The pages inside will remain in the book and return to the unfiled Main text list."
+          confirmLabel="Remove Folder"
+          danger
+          onCancel={() => setFolderDeleteTarget(null)}
+          onConfirm={() => {
+            deleteManuscriptFolder(folderDeleteTarget)
+            setFolderDeleteTarget(null)
+          }}
+        />
+      )}
     </aside>
   )
 }
