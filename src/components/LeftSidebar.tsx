@@ -1106,6 +1106,45 @@ export function LeftSidebar() {
               setTrashOpen(false)
               setBodyMenu(false)
               setPageMenuId(null)
+              setSceneMenu(null)
+              setMenuOpen((value) => !value)
+            }}
+          >
+            <MoreVertical size={16} />
+          </button>
+          {menuOpen && (
+            <div className="add-menu" role="menu" aria-label="Add pages and import">
+              <div className="add-menu-head">
+                <strong>Add to book</strong>
+                <button type="button" aria-label="Close add menu" onClick={() => setMenuOpen(false)}>
+                  <X size={15} />
+                </button>
+              </div>
+              <button type="button" onClick={() => { addPart(); setMenuOpen(false) }}>Add Part / Volume</button>
+              <button
+                type="button"
+                onClick={() => {
+                  setFolderName('')
+                  setFolderEditor({ mode: 'create' })
+                  setMenuOpen(false)
+                }}
+              >
+                Add Manuscript Folder
+              </button>
+              <button type="button" onClick={() => { addPage('full-page-image'); setMenuOpen(false) }}>Add Full Page Image</button>
+              <button type="button" onClick={() => { addPage('custom-page'); setMenuOpen(false) }}>Add Custom Page</button>
+              <button type="button" onClick={() => { importRef.current?.click(); setMenuOpen(false) }}>Import Chapters (.docx)</button>
+              <button
+                type="button"
+                disabled={!activeChapter}
+                onClick={() => { saveActiveAsMasterPage(); setMenuOpen(false) }}
+              >
+                Save Current as Master Page
+              </button>
+              {(project.masterPages?.length || 0) > 0 && (
+                <>
+                  <div className="menu-label">Master pages</div>
+                  <input
     </aside>
   )
 }
