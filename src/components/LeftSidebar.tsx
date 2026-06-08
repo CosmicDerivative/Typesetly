@@ -952,6 +952,44 @@ export function LeftSidebar() {
             type="button"
             className="manuscript-folder-action"
             title={`Rename ${folder.name}`}
+            aria-label={`Rename ${folder.name}`}
+            onClick={() => {
+              setFolderName(folder.name)
+              setFolderEditor({ mode: 'rename', id: folder.id })
+            }}
+          >
+            <Pencil size={11} />
+          </button>
+          <button
+            type="button"
+            className="manuscript-folder-action danger"
+            title={`Remove ${folder.name}`}
+            aria-label={`Remove ${folder.name}`}
+            onClick={() => setFolderDeleteTarget(folder.id)}
+          >
+            <Trash2 size={11} />
+          </button>
+        </div>
+        {!folder.collapsed && (
+          <div className="manuscript-folder-pages">
+            {pages.length > 0 ? pages.map((page) => renderBodyPage(page, true)) : (
+              <div className="manuscript-folder-empty">
+                {dropActive ? 'Release to file this page' : 'Drop pages here or use + to add a chapter'}
+              </div>
+            )}
+          </div>
+        )}
+        {folder.collapsed && dropActive && (
+          <div className="manuscript-folder-drop-hint">Release to file this page</div>
+        )}
+      </section>
+    )
+  }
+
+  const trashItems = project.trashItems || []
+
+  return (
+    <aside className="left-sidebar" ref={sidebarRef}>
     </aside>
   )
 }
