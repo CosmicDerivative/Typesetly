@@ -1029,6 +1029,45 @@ export function LeftSidebar() {
               <button
                 type="button"
                 className="tiny-icon"
+                data-sidebar-menu-trigger
+                title="Main text options"
+                aria-expanded={bodyMenu}
+                onClick={() => {
+                  setMenuOpen(false)
+                  setTrashOpen(false)
+                  setPageMenuId(null)
+                  setSceneMenu(null)
+                  setBodyMenu((value) => !value)
+                }}
+              >
+                <MoreVertical size={14} />
+              </button>
+            </div>
+          </div>
+          {bodyMenu && (
+            <div className="body-options-menu">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={bodyChapters.filter((chapter) => chapter.type === 'chapter').every((chapter) => chapter.options.numbered)}
+                  onChange={(event) => updateBodyChapterOptions({ numbered: event.target.checked })}
+                />
+                Number chapters
+              </label>
+              <label>
+                Begin chapters on
+                <select
+                  value={bodyChapters.find((chapter) => chapter.type === 'chapter')?.options.beginOn || 'either'}
+                  onChange={(event) => updateBodyChapterOptions({ beginOn: event.target.value as 'either' | 'left' | 'right' })}
+                >
+                  <option value="either">Either side</option>
+                  <option value="right">Right side</option>
+                  <option value="left">Left side</option>
+                </select>
+              </label>
+            </div>
+          )}
+
     </aside>
   )
 }
