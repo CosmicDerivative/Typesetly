@@ -1300,6 +1300,45 @@ export function LeftSidebar() {
           }}
         />
       )}
+      {permanentDeleteTarget && (
+        <Dialog
+          title="Delete permanently?"
+          description="This item cannot be recovered after permanent deletion."
+          confirmLabel="Delete Permanently"
+          danger
+          onCancel={() => setPermanentDeleteTarget(null)}
+          onConfirm={() => {
+            permanentlyDeleteTrashItem(permanentDeleteTarget)
+            setPermanentDeleteTarget(null)
+          }}
+        />
+      )}
+      {confirmEmptyTrash && (
+        <Dialog
+          title="Empty Trash?"
+          description={`Permanently delete ${trashItems.length} item${trashItems.length === 1 ? '' : 's'}? This cannot be undone.`}
+          confirmLabel="Empty Trash"
+          danger
+          onCancel={() => setConfirmEmptyTrash(false)}
+          onConfirm={() => {
+            emptyTrash()
+            setConfirmEmptyTrash(false)
+          }}
+        />
+      )}
+      {renameSceneTarget && (
+        <Dialog
+          title="Rename Scene"
+          confirmLabel="Save Name"
+          onCancel={() => setRenameSceneTarget(null)}
+          onConfirm={() => {
+            updateSceneTitle(renameSceneTarget.chapterId, renameSceneTarget.index, sceneName)
+            setRenameSceneTarget(null)
+          }}
+        >
+          <label>
+            Scene name
+            <input value={sceneName} onChange={(event) => setSceneName(event.target.value)} />
     </aside>
   )
 }
