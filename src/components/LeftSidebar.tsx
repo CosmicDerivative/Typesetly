@@ -1223,6 +1223,44 @@ export function LeftSidebar() {
               setPageMenuId(null)
               setSceneMenu(null)
               setTrashOpen((value) => !value)
+            }}
+          >
+            <Trash2 size={16} />
+            {trashItems.length > 0 && <span>{trashItems.length > 99 ? '99+' : trashItems.length}</span>}
+          </button>
+          {trashDragActive && <span className="trash-drop-hint">Drop to Trash</span>}
+          {trashOpen && (
+            <div className="trash-panel">
+              <div className="trash-head">
+                <strong>Trash</strong>
+                <button type="button" aria-label="Close Trash" onClick={() => setTrashOpen(false)}><X size={15} /></button>
+              </div>
+              {trashItems.length === 0 ? (
+                <p className="trash-empty">Deleted pages and scenes will appear here.</p>
+              ) : (
+                <>
+                  <div className="trash-list">
+                    {[...trashItems].reverse().map((item) => {
+                      const canRestore = item.kind === 'page' ||
+                        project.chapters.some((chapter) => chapter.id === item.chapterId)
+                      return (
+                        <div className="trash-item" key={item.id}>
+                          <div>
+                            <strong>{item.kind === 'page' ? item.page.title : item.sceneTitle}</strong>
+                            <small>
+                              {item.kind === 'page'
+                                ? PAGE_TYPE_LABELS[item.page.type]
+                                : canRestore
+                                  ? `Scene from ${item.chapterTitle}`
+                                  : `Restore ${item.chapterTitle} first`}
+                            </small>
+                          </div>
+                          <button
+                            type="button"
+                            disabled={!canRestore}
+                            title={canRestore ? 'Restore' : 'Restore its chapter first'}
+                            aria-label={canRestore ? 'Restore' : 'Restore its chapter first'}
+                            onClick={() => restoreTrashItem(item.id)}
     </aside>
   )
 }
