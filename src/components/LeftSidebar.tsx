@@ -990,6 +990,45 @@ export function LeftSidebar() {
 
   return (
     <aside className="left-sidebar" ref={sidebarRef}>
+      <div className="sidebar-identity">
+        <div>
+          <span>Manuscript map</span>
+          <strong>{project.chapters.length} pages</strong>
+        </div>
+        <div className="sidebar-identity-actions">
+          <DrawerControls panel="outline" />
+          <span className="sidebar-monogram" aria-hidden>M</span>
+        </div>
+      </div>
+      <div className="sidebar-scroll">
+        <div className="sidebar-section-label">Opening pages</div>
+        <div className="front-matter">
+          {frontMatter.map((page) =>
+            renderPageRow(page, page.title, {
+              icon: frontIcons[page.type] || FileText,
+            }),
+          )}
+        </div>
+
+        <div className="body-section">
+          <div className="body-header">
+            <span>Main text</span>
+            <div className="body-header-actions">
+              <button
+                type="button"
+                className="tiny-icon"
+                title="New manuscript folder"
+                aria-label="New manuscript folder"
+                onClick={() => {
+                  setFolderName('')
+                  setFolderEditor({ mode: 'create' })
+                }}
+              >
+                <FolderPlus size={14} />
+              </button>
+              <button
+                type="button"
+                className="tiny-icon"
     </aside>
   )
 }
