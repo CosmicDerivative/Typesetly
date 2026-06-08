@@ -1145,6 +1145,45 @@ export function LeftSidebar() {
                 <>
                   <div className="menu-label">Master pages</div>
                   <input
+                    className="master-search"
+                    value={masterQuery}
+                    onChange={(event) => setMasterQuery(event.target.value)}
+                    placeholder="Search master pages…"
+                  />
+                  {project.masterPages
+                    ?.filter((page) => page.title.toLowerCase().includes(masterQuery.toLowerCase()))
+                    .map((page) => (
+                      <button key={page.id} type="button" onClick={() => { addMasterPage(page.id); setMenuOpen(false) }}>
+                        {page.title}
+                      </button>
+                    ))}
+                </>
+              )}
+              <div className="menu-label">Front matter</div>
+              {addableFront.map((type) => (
+                <button key={type} type="button" onClick={() => { addPage(type); setMenuOpen(false) }}>
+                  {PAGE_TYPE_LABELS[type]}
+                </button>
+              ))}
+              <div className="menu-label">Back matter</div>
+              {addableBack.map((type) => (
+                <button key={type} type="button" onClick={() => { addPage(type); setMenuOpen(false) }}>
+                  {PAGE_TYPE_LABELS[type]}
+                </button>
+              ))}
+            </div>
+          )}
+          <input
+            ref={importRef}
+            type="file"
+            hidden
+            accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            onChange={async (event) => {
+              const file = event.target.files?.[0]
+              if (file) await importChaptersFromDocx(file)
+              event.target.value = ''
+            }}
+          />
     </aside>
   )
 }
