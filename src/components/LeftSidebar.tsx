@@ -1261,6 +1261,45 @@ export function LeftSidebar() {
                             title={canRestore ? 'Restore' : 'Restore its chapter first'}
                             aria-label={canRestore ? 'Restore' : 'Restore its chapter first'}
                             onClick={() => restoreTrashItem(item.id)}
+                          >
+                            <RotateCcw size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            className="trash-delete"
+                            title="Delete permanently"
+                            aria-label="Delete permanently"
+                            onClick={() => setPermanentDeleteTarget(item.id)}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <button type="button" className="empty-trash" onClick={() => setConfirmEmptyTrash(true)}>
+                    Empty Trash
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {deleteTarget && (
+        <Dialog
+          title="Move this page to Trash?"
+          description="You can restore it later from the trashcan in the sidebar."
+          confirmLabel="Move to Trash"
+          danger
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={() => {
+            deleteChapter(deleteTarget)
+            setDeleteTarget(null)
+          }}
+        />
+      )}
     </aside>
   )
 }
