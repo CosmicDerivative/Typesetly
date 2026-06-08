@@ -1068,6 +1068,44 @@ export function LeftSidebar() {
             </div>
           )}
 
+          <div className="chapter-list">
+            {manuscriptFolders.map(renderFolder)}
+            {partBody.map((chapter) => {
+              const nested = Boolean(chapter.partId)
+              if (nested && expanded[chapter.partId!] === false) return null
+              return renderBodyPage(chapter, nested)
+            })}
+            {unfiledBody.map((chapter) => renderBodyPage(chapter))}
+          </div>
+        </div>
+
+        {backMatter.length > 0 && (
+          <div className="body-section back-matter-section">
+            <div className="body-header"><span>Closing pages</span></div>
+            <div className="chapter-list">
+              {backMatter.map((page) => renderPageRow(page, page.title))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="sidebar-footer">
+        <button type="button" className="add-chapter-btn" onClick={addChapter}>
+          <Plus size={16} strokeWidth={2.25} />
+          Add chapter
+        </button>
+        <div className="more-wrap">
+          <button
+            type="button"
+            className={menuOpen ? 'more-btn active' : 'more-btn'}
+            data-sidebar-menu-trigger
+            title="Add pages and import"
+            aria-label="Add pages and import"
+            aria-expanded={menuOpen}
+            onClick={() => {
+              setTrashOpen(false)
+              setBodyMenu(false)
+              setPageMenuId(null)
     </aside>
   )
 }
