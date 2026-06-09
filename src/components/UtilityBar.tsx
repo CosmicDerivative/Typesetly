@@ -40,7 +40,15 @@ export function UtilityBar() {
     <aside className="utility-bar" aria-label="Writing tools">
       <div className="utility-bar-track">
         <button
-          {tool}
+        type="button"
+        className={sidebarOpen ? 'util active' : 'util'}
+        title="Open manuscript map"
+        onClick={() => {
+          if (pinnedRightPanel === 'none') setRightPanel('none')
+          setSidebarOpen(sidebarPinned ? true : !sidebarOpen)
+        }}
+      >
+        <PanelLeft size={16} strokeWidth={2} />
         </button>
       ))}
     </nav>
