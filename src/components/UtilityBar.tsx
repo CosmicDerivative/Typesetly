@@ -68,5 +68,14 @@ export function UtilityBar() {
       >
         <History size={16} />
         <span>History</span>
+        </button>
+        <button
+        type="button"
+        className={rightPanel === 'find' ? 'util active' : 'util'}
+        title="Find and replace"
+        onClick={() => toggle('find')}
+      >
+        <Search size={16} />
+        <span>Find</span>
   )
 }
