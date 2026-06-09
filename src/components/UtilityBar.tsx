@@ -49,8 +49,14 @@ export function UtilityBar() {
         }}
       >
         <PanelLeft size={16} strokeWidth={2} />
+        <span>Outline</span>
         </button>
-      ))}
-    </nav>
+        <button
+        type="button"
+        className={rightPanel === 'editorial' ? 'util active' : 'util'}
+        title="Comments and tracked changes"
+        onClick={() => toggle('editorial')}
+      >
+        <MessageSquareText size={16} />
   )
 }
