@@ -58,5 +58,15 @@ export function UtilityBar() {
         onClick={() => toggle('editorial')}
       >
         <MessageSquareText size={16} />
+        <span>Review</span>
+        </button>
+        <button
+        type="button"
+        className={rightPanel === 'revisions' ? 'util active' : 'util'}
+        title="Version history"
+        onClick={() => toggle('revisions')}
+      >
+        <History size={16} />
+        <span>History</span>
   )
 }
