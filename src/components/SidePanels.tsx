@@ -13,6 +13,23 @@ const DAY_OPTIONS = [
   { label: 'W', value: 3 },
   { label: 'T', value: 4 },
   { label: 'F', value: 5 },
+  { label: 'S', value: 6 },
+]
+
+function transformTextNodes(html: string, transform: (text: string) => string) {
+  const documentValue = new DOMParser().parseFromString(html, 'text/html')
+  const visit = (node: Node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      node.textContent = transform(node.textContent || '')
+      return
+    }
+    for (const child of Array.from(node.childNodes)) visit(child)
+  }
+  visit(documentValue.body)
+  return documentValue.body.innerHTML
+}
+
+export function FindReplacePanel() {
   return (
     <aside className="side-panel">
       <h2>{title}</h2>
