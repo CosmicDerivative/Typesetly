@@ -15,6 +15,16 @@ import './UtilityBar.css'
 
 export function UtilityBar() {
   const {
+    rightPanel,
+    setRightPanel,
+    mode,
+    setMode,
+    sidebarOpen,
+    setSidebarOpen,
+    sidebarPinned,
+    pinnedRightPanel,
+    setPinnedRightPanel,
+  } = useApp()
 
   return (
     <nav className="utility-bar" aria-label="Writing tools">
