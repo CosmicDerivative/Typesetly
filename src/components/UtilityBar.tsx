@@ -26,6 +26,16 @@ export function UtilityBar() {
     setPinnedRightPanel,
   } = useApp()
 
+  const toggle = (panel: typeof rightPanel) => {
+    if (!sidebarPinned) setSidebarOpen(false)
+    if (pinnedRightPanel !== 'none') {
+      setPinnedRightPanel(panel)
+      setRightPanel(panel)
+      return
+    }
+    setRightPanel(rightPanel === panel ? (mode === 'publish' ? 'preview' : 'none') : panel)
+  }
+
   return (
     <nav className="utility-bar" aria-label="Writing tools">
       {tools.map((tool) => (
