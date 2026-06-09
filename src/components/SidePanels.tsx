@@ -1,6 +1,18 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useApp } from '../BookContext'
+import { countBookWords, localDateKey, todayKey } from '../data'
+import { isDarkWorkspaceTheme, WORKSPACE_THEMES } from '../themes/workspaceThemes'
+import { repairLegacyRtfQuoteDamage, smartenPunctuation } from '../editor/smartQuotes'
+import './SidePanels.css'
+import { DrawerControls } from './DrawerControls'
 
-function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+const DAY_OPTIONS = [
+  { label: 'S', value: 0 },
+  { label: 'M', value: 1 },
+  { label: 'T', value: 2 },
+  { label: 'W', value: 3 },
+  { label: 'T', value: 4 },
+  { label: 'F', value: 5 },
   return (
     <aside className="side-panel">
       <h2>{title}</h2>
