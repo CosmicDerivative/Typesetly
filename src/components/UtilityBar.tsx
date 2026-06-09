@@ -126,5 +126,15 @@ export function UtilityBar() {
         type="button"
         className={rightPanel === 'quotes' ? 'util active' : 'util'}
         title="Smart quotes"
+        onClick={() => toggle('quotes')}
+      >
+        <Quote size={16} />
+        <span>Quotes</span>
+        </button>
+        <div className="util-spacer" aria-hidden="true" />
+        <button
+        type="button"
+        className={rightPanel === 'preview' ? 'util active' : 'util'}
+        title="Open reader proof"
   )
 }
