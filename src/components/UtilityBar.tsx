@@ -97,5 +97,15 @@ export function UtilityBar() {
           setRightPanel(
             pinnedRightPanel !== 'none' && pinnedRightPanel !== 'story'
               ? pinnedRightPanel
+              : 'none',
+          )
+        }}
+      >
+        <BookOpen size={16} />
+        <span>Plan</span>
+        </button>
+        <button
+        type="button"
+        className={rightPanel === 'notes' ? 'util active' : 'util'}
   )
 }
