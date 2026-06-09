@@ -30,6 +30,23 @@ function transformTextNodes(html: string, transform: (text: string) => string) {
 }
 
 export function FindReplacePanel() {
+  const { project, rightPanel, updateChapterContent } = useApp()
+  const [find, setFind] = useState('')
+  const [replace, setReplace] = useState('')
+  const [message, setMessage] = useState('')
+
+  if (rightPanel !== 'find' || !project) return null
+
+  const runReplace = (all: boolean) => {
+    if (!find) return
+    let count = 0
+    for (const ch of project.chapters) {
+      let replacedHere = 0
+      const next = transformTextNodes(ch.content, (text) => {
+        if (!all && count + replacedHere > 0) return text
+        if (all) {
+          replacedHere += text.split(find).length - 1
+          return text.split(find).join(replace)
   return (
     <aside className="side-panel">
       <h2>{title}</h2>
