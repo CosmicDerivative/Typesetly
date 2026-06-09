@@ -116,5 +116,15 @@ export function UtilityBar() {
         <button
         type="button"
         className={rightPanel === 'settings' ? 'util active' : 'util'}
+        title="Editor settings"
+        onClick={() => toggle('settings')}
+      >
+        <Crosshair size={16} />
+        <span>Settings</span>
+        </button>
+        <button
+        type="button"
+        className={rightPanel === 'quotes' ? 'util active' : 'util'}
+        title="Smart quotes"
   )
 }
