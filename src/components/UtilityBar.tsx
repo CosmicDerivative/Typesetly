@@ -37,14 +37,9 @@ export function UtilityBar() {
   }
 
   return (
-    <nav className="utility-bar" aria-label="Writing tools">
-      {tools.map((tool) => (
+    <aside className="utility-bar" aria-label="Writing tools">
+      <div className="utility-bar-track">
         <button
-          key={tool}
-          type="button"
-          className={activeTool === tool ? 'active' : ''}
-          onClick={() => setActiveTool((current) => current === tool ? null : tool)}
-        >
           {tool}
         </button>
       ))}
