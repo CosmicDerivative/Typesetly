@@ -1,6 +1,9 @@
-import { useState } from 'react'
-
-const tools = ['Find', 'Goals', 'Comments', 'Revisions']
+import {
+  Crosshair,
+  BookOpen,
+  History,
+  MessageSquareText,
+  PanelLeft,
 
 export function UtilityBar() {
   const [activeTool, setActiveTool] = useState<string | null>(null)
