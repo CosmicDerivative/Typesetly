@@ -47,10 +47,23 @@ export function FindReplacePanel() {
         if (all) {
           replacedHere += text.split(find).length - 1
           return text.split(find).join(replace)
+        }
+        const changed = text.replace(find, replace)
+        if (changed !== text) replacedHere += 1
+        return changed
+      })
+      if (next !== ch.content) updateChapterContent(ch.id, next)
+      count += replacedHere
+      if (!all && count) break
+    }
+    setMessage(all ? `Replaced ${count} occurrence(s).` : count ? 'Replaced 1 occurrence.' : 'No matches.')
+  }
+
   return (
     <aside className="side-panel">
-      <h2>{title}</h2>
-      {children}
+      <div className="sp-head">
+        <strong>Find & Replace</strong>
+        <DrawerControls panel="find" />
     </aside>
   )
 }
