@@ -4,9 +4,17 @@ import {
   History,
   MessageSquareText,
   PanelLeft,
+  Quote,
+  Search,
+  SquareStack,
+  StickyNote,
+  Target,
+} from 'lucide-react'
+import { useApp } from '../BookContext'
+import './UtilityBar.css'
 
 export function UtilityBar() {
-  const [activeTool, setActiveTool] = useState<string | null>(null)
+  const {
 
   return (
     <nav className="utility-bar" aria-label="Writing tools">
