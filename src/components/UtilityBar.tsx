@@ -77,5 +77,15 @@ export function UtilityBar() {
       >
         <Search size={16} />
         <span>Find</span>
+        </button>
+        <button
+        type="button"
+        className={rightPanel === 'goals' ? 'util active' : 'util'}
+        title="Writing goals"
+        onClick={() => toggle('goals')}
+      >
+        <Target size={16} />
+        <span>Goals</span>
+        </button>
   )
 }
