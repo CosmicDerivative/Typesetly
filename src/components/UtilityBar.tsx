@@ -107,5 +107,14 @@ export function UtilityBar() {
         <button
         type="button"
         className={rightPanel === 'notes' ? 'util active' : 'util'}
+        title="Contextual sticky notes"
+        onClick={() => toggle('notes')}
+      >
+        <StickyNote size={16} />
+        <span>Notes</span>
+        </button>
+        <button
+        type="button"
+        className={rightPanel === 'settings' ? 'util active' : 'util'}
   )
 }
