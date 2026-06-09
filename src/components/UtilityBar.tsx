@@ -87,5 +87,15 @@ export function UtilityBar() {
         <Target size={16} />
         <span>Goals</span>
         </button>
+        <button
+        type="button"
+        className={mode === 'plan' ? 'util active' : 'util'}
+        title="Open the Plan workspace"
+        onClick={() => {
+          setMode('plan')
+          setSidebarOpen(false)
+          setRightPanel(
+            pinnedRightPanel !== 'none' && pinnedRightPanel !== 'story'
+              ? pinnedRightPanel
   )
 }
