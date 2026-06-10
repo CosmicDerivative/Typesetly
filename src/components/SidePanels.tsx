@@ -422,10 +422,27 @@ export function EditorSettingsPanel() {
         Paragraphs
         <select value={p.paragraphStyle} onChange={(event) => updateEditorPrefs({ paragraphStyle: event.target.value as typeof p.paragraphStyle })}>
           <option value="indent">First-line indent</option>
+          <option value="space">Space between paragraphs</option>
+        </select>
+      </label>
+      <label>
+        Alignment
+        <select value={p.textAlign} onChange={(event) => updateEditorPrefs({ textAlign: event.target.value as typeof p.textAlign })}>
+          <option value="left">Left aligned</option>
+          <option value="justify">Justified</option>
+        </select>
+      </label>
+    </aside>
   )
 }
 
 export function SmartQuotesPanel() {
+  const {
+    project,
+    rightPanel,
+    updateEditorPrefs,
+    updateChapterContent,
+    createNamedRevision,
   return (
     <Panel title="Smart punctuation">
       <button type="button">Convert straight quotes</button>
