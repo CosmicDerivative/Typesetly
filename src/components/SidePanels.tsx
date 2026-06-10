@@ -227,6 +227,23 @@ export function GoalsPanel() {
             </div>
             <div className="calendar-grid">
               {calendarDays.map(({ date, inMonth }) => {
+                const key = localDateKey(date)
+                const words = project.goals.habitLog[key] || 0
+                const scheduled = project.goals.habitWritingDays.includes(date.getDay())
+                const success = scheduled && words >= project.goals.dailyHabitWords
+                const missed = scheduled && date < startOfDay(new Date()) && !success
+                const chapterWords = project.goals.wordLog[key] || {}
+                const detail = Object.entries(chapterWords)
+                  .map(([chapterId, count]) => `${project.chapters.find((chapter) => chapter.id === chapterId)?.title || 'Chapter'}: ${count.toLocaleString()}`)
+                  .join('\n')
+                const classes = [
+                  'calendar-day',
+                  !inMonth ? 'outside' : '',
+                  success ? 'success' : '',
+                  missed ? 'missed' : '',
+                  key === todayKey() ? 'today' : '',
+                ].filter(Boolean).join(' ')
+                return <div className={classes} key={key} title={`${words.toLocaleString()} words${detail ? `\n${detail}` : ''}`}>{date.getDate()}</div>
   )
 }
 
