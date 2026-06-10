@@ -64,12 +64,25 @@ export function FindReplacePanel() {
       <div className="sp-head">
         <strong>Find & Replace</strong>
         <DrawerControls panel="find" />
+      </div>
+      <label>Find<input value={find} onChange={(e) => setFind(e.target.value)} /></label>
+      <label>Replace<input value={replace} onChange={(e) => setReplace(e.target.value)} /></label>
+      <div className="sp-actions">
+        <button type="button" onClick={() => runReplace(false)}>Replace</button>
+        <button type="button" className="primary" onClick={() => runReplace(true)}>Replace all</button>
+      </div>
+      {message && <p className="sp-msg">{message}</p>}
     </aside>
   )
 }
 
-export function FindReplacePanel() {
-  const [query, setQuery] = useState('')
+export function GoalsPanel() {
+  const { project, rightPanel, updateGoals } = useApp()
+  const [activeGoal, setActiveGoal] = useState<'book' | 'habit'>('book')
+  const [bookTarget, setBookTarget] = useState(50000)
+  const [dueDate, setDueDate] = useState('')
+  const [bookDays, setBookDays] = useState<number[]>([1, 2, 3, 4, 5])
+  const [habitTarget, setHabitTarget] = useState(500)
   return (
     <Panel title="Find and replace">
       <input
