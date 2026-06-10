@@ -307,6 +307,23 @@ function buildCalendar(month: Date) {
 
 function habitStats(log: Record<string, number>, target: number, writingDays: number[], startedAt: string) {
   const today = startOfDay(new Date())
+  const loggedDates = Object.keys(log).sort()
+  const inferredStart = loggedDates[0] ? new Date(`${loggedDates[0]}T00:00:00`) : today
+  const start = startedAt ? new Date(`${startedAt}T00:00:00`) : inferredStart
+  let scheduled = 0
+  let successes = 0
+  let longestStreak = 0
+  let runningStreak = 0
+  const successfulKeys = new Set<string>()
+
+  for (const cursor = new Date(start); cursor <= today; cursor.setDate(cursor.getDate() + 1)) {
+    if (!writingDays.includes(cursor.getDay())) continue
+    scheduled += 1
+    const success = (log[localDateKey(cursor)] || 0) >= target
+    if (success) {
+      successes += 1
+      runningStreak += 1
+      longestStreak = Math.max(longestStreak, runningStreak)
 export function EditorSettingsPanel() {
   return (
     <Panel title="Editor settings">
