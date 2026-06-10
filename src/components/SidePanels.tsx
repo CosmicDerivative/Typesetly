@@ -116,8 +116,23 @@ export function GoalsPanel() {
 
   const toggleDay = (days: number[], day: number, setDays: (value: number[]) => void) => {
     setDays(days.includes(day) ? days.filter((value) => value !== day) : [...days, day].sort())
+  }
+
+  const saveBookGoal = () => {
+    updateGoals({ bookWordTarget: Math.max(1, bookTarget), dueDate, writingDays: bookDays })
+    setSavedMessage('Book goal saved')
+  }
+
+  const saveHabit = () => {
+    updateGoals({
+      dailyHabitWords: Math.max(1, habitTarget),
+      habitWritingDays: habitDays,
+      habitStartedAt: project.goals.habitStartedAt || todayKey(),
+    })
+    setSavedMessage('Writing habit saved')
+  }
+
   return (
-    <Panel title="Find and replace">
       <input
         aria-label="Find"
         value={query}
