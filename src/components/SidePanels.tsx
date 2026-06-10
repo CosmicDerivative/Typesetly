@@ -257,13 +257,22 @@ export function GoalsPanel() {
 
 function DayPicker({ days, onToggle }: { days: number[]; onToggle: (day: number) => void }) {
   return (
-        onChange={(event) => setTarget(Number(event.target.value))}
-      />
-      <p>Daily target: {target} words</p>
-    </Panel>
+    <fieldset className="writing-days">
+      <legend>Writing days</legend>
+      {DAY_OPTIONS.map(({ label, value }) => (
+        <label key={value}>
+          <input type="checkbox" checked={days.includes(value)} onChange={() => onToggle(value)} />
+          {label}
+        </label>
+      ))}
+    </fieldset>
   )
 }
 
+function daysLeft(dueDate: string, writingDays: number[]) {
+  if (!dueDate) return 0
+  const end = startOfDay(new Date(`${dueDate}T00:00:00`))
+  const now = startOfDay(new Date())
 export function EditorSettingsPanel() {
   return (
     <Panel title="Editor settings">
