@@ -273,6 +273,23 @@ function daysLeft(dueDate: string, writingDays: number[]) {
   if (!dueDate) return 0
   const end = startOfDay(new Date(`${dueDate}T00:00:00`))
   const now = startOfDay(new Date())
+  let count = 0
+  const cursor = new Date(now)
+  while (cursor <= end) {
+    if (writingDays.includes(cursor.getDay())) count += 1
+    cursor.setDate(cursor.getDate() + 1)
+  }
+  return count
+}
+
+function startOfDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+}
+
+function startOfMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1)
+}
+
 export function EditorSettingsPanel() {
   return (
     <Panel title="Editor settings">
