@@ -143,6 +143,23 @@ export function GoalsPanel() {
         <button
           type="button"
           role="tab"
+          aria-selected={activeGoal === 'book'}
+          className={activeGoal === 'book' ? 'active' : ''}
+          onClick={() => { setActiveGoal('book'); setSavedMessage('') }}
+        >
+          Book Goal
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeGoal === 'habit'}
+          className={activeGoal === 'habit' ? 'active' : ''}
+          onClick={() => { setActiveGoal('habit'); setSavedMessage('') }}
+        >
+          Writing Habit
+        </button>
+      </div>
+
   )
 }
 
