@@ -176,6 +176,23 @@ export function GoalsPanel() {
                 <strong>{dailyNeeded.toLocaleString()}</strong>
                 <span>words per writing day</span>
               </div>
+            )}
+          </div>
+
+          <label>
+            Total word count goal
+            <input type="number" min={1} value={bookTarget} onChange={(event) => setBookTarget(Number(event.target.value))} />
+          </label>
+          <label>
+            Finish by
+            <input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} />
+          </label>
+          <DayPicker days={bookDays} onToggle={(day) => toggleDay(bookDays, day, setBookDays)} />
+          <button type="button" className="primary goal-save" onClick={saveBookGoal}>Save Book Goal</button>
+        </div>
+      ) : (
+        <div className="goal-view" role="tabpanel">
+          <p className="goal-intro">Build a consistent writing routine. Net words added to your manuscript are counted automatically, so deleting words written today reduces today’s progress.</p>
   )
 }
 
