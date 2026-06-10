@@ -83,6 +83,22 @@ export function GoalsPanel() {
   const [dueDate, setDueDate] = useState('')
   const [bookDays, setBookDays] = useState<number[]>([1, 2, 3, 4, 5])
   const [habitTarget, setHabitTarget] = useState(500)
+  const [habitDays, setHabitDays] = useState<number[]>([1, 2, 3, 4, 5])
+  const [calendarMonth, setCalendarMonth] = useState(() => startOfMonth(new Date()))
+  const [savedMessage, setSavedMessage] = useState('')
+
+  useEffect(() => {
+    if (!project) return
+    setBookTarget(project.goals.bookWordTarget)
+    setDueDate(project.goals.dueDate)
+    setBookDays(project.goals.writingDays)
+    setHabitTarget(project.goals.dailyHabitWords)
+    setHabitDays(project.goals.habitWritingDays)
+  }, [project])
+
+  const calendarDays = useMemo(() => buildCalendar(calendarMonth), [calendarMonth])
+
+  if (rightPanel !== 'goals' || !project) return null
   return (
     <Panel title="Find and replace">
       <input
