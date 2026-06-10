@@ -290,6 +290,23 @@ function startOfMonth(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), 1)
 }
 
+function addMonths(date: Date, amount: number) {
+  return new Date(date.getFullYear(), date.getMonth() + amount, 1)
+}
+
+function buildCalendar(month: Date) {
+  const first = startOfMonth(month)
+  const cursor = new Date(first)
+  cursor.setDate(cursor.getDate() - first.getDay())
+  return Array.from({ length: 42 }, () => {
+    const date = new Date(cursor)
+    cursor.setDate(cursor.getDate() + 1)
+    return { date, inMonth: date.getMonth() === month.getMonth() }
+  })
+}
+
+function habitStats(log: Record<string, number>, target: number, writingDays: number[], startedAt: string) {
+  const today = startOfDay(new Date())
 export function EditorSettingsPanel() {
   return (
     <Panel title="Editor settings">
