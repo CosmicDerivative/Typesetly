@@ -160,6 +160,22 @@ export function GoalsPanel() {
         </button>
       </div>
 
+      {activeGoal === 'book' ? (
+        <div className="goal-view" role="tabpanel">
+          <p className="goal-intro">Set a finish line and choose the days you plan to write. Your daily target updates as your manuscript grows.</p>
+
+          <div className="goal-summary-card">
+            <div className="goal-summary-heading"><span>Book progress</span><strong>{pct}%</strong></div>
+            <div className="goal-progress"><span style={{ width: `${pct}%` }} /></div>
+            <div className="goal-progress-copy">
+              <span>{total.toLocaleString()} written</span>
+              <span>{target.toLocaleString()} goal</span>
+            </div>
+            {project.goals.dueDate && (
+              <div className="daily-target">
+                <strong>{dailyNeeded.toLocaleString()}</strong>
+                <span>words per writing day</span>
+              </div>
   )
 }
 
