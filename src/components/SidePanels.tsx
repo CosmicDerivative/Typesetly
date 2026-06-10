@@ -406,6 +406,22 @@ export function EditorSettingsPanel() {
         Line height
         <input type="number" min={1.2} max={2.4} step={0.05} value={p.lineHeight} onChange={(e) => updateEditorPrefs({ lineHeight: Number(e.target.value) })} />
       </label>
+      <label className="check-row">
+        <input
+          type="checkbox"
+          checked={p.typewriterScrolling}
+          onChange={(event) => updateEditorPrefs({ typewriterScrolling: event.target.checked })}
+        />
+        Keep the current line centered while typing
+      </label>
+      <label className="check-row">
+        <input type="checkbox" checked={p.spellcheck} onChange={(event) => updateEditorPrefs({ spellcheck: event.target.checked })} />
+        Check spelling while writing
+      </label>
+      <label>
+        Paragraphs
+        <select value={p.paragraphStyle} onChange={(event) => updateEditorPrefs({ paragraphStyle: event.target.value as typeof p.paragraphStyle })}>
+          <option value="indent">First-line indent</option>
   )
 }
 
