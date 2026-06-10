@@ -99,6 +99,23 @@ export function GoalsPanel() {
   const calendarDays = useMemo(() => buildCalendar(calendarMonth), [calendarMonth])
 
   if (rightPanel !== 'goals' || !project) return null
+
+  const total = countBookWords(project)
+  const target = project.goals.bookWordTarget || 1
+  const pct = Math.min(100, Math.round((total / target) * 100))
+  const today = project.goals.habitLog[todayKey()] || 0
+  const habitMet = today >= project.goals.dailyHabitWords
+  const writingDaysLeft = daysLeft(project.goals.dueDate, project.goals.writingDays)
+  const dailyNeeded = writingDaysLeft > 0 ? Math.ceil(Math.max(0, target - total) / writingDaysLeft) : 0
+  const stats = habitStats(
+    project.goals.habitLog,
+    project.goals.dailyHabitWords,
+    project.goals.habitWritingDays,
+    project.goals.habitStartedAt,
+  )
+
+  const toggleDay = (days: number[], day: number, setDays: (value: number[]) => void) => {
+    setDays(days.includes(day) ? days.filter((value) => value !== day) : [...days, day].sort())
   return (
     <Panel title="Find and replace">
       <input
