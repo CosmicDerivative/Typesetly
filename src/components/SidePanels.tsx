@@ -372,6 +372,23 @@ export function EditorSettingsPanel() {
                 aria-pressed={active}
                 title={theme.description}
                 onClick={() => updateEditorPrefs({
+                  workspaceTheme: theme.id,
+                  darkMode: isDarkWorkspaceTheme(theme.id),
+                })}
+              >
+                <span className="appearance-swatches" aria-hidden="true">
+                  {theme.swatches.map((color) => (
+                    <span key={color} style={{ backgroundColor: color }} />
+                  ))}
+                </span>
+                <span className="appearance-name">{theme.name}</span>
+                <span className="appearance-tone">{theme.tone}</span>
+              </button>
+            )
+          })}
+        </div>
+      </fieldset>
+      <label>
   )
 }
 
