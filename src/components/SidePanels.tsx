@@ -389,6 +389,23 @@ export function EditorSettingsPanel() {
         </div>
       </fieldset>
       <label>
+        Font
+        <select value={p.fontFamily} onChange={(e) => updateEditorPrefs({ fontFamily: e.target.value })}>
+          <option>Libre Baskerville</option>
+          <option>Georgia</option>
+          <option>Palatino Linotype</option>
+          <option>Source Sans 3</option>
+          <option>Times New Roman</option>
+        </select>
+      </label>
+      <label>
+        Size
+        <input type="number" min={12} max={28} value={p.fontSize} onChange={(e) => updateEditorPrefs({ fontSize: Number(e.target.value) })} />
+      </label>
+      <label>
+        Line height
+        <input type="number" min={1.2} max={2.4} step={0.05} value={p.lineHeight} onChange={(e) => updateEditorPrefs({ lineHeight: Number(e.target.value) })} />
+      </label>
   )
 }
 
