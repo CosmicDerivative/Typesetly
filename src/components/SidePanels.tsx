@@ -133,13 +133,16 @@ export function GoalsPanel() {
   }
 
   return (
-      <input
-        aria-label="Find"
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-      />
-      <button type="button" disabled={!query}>Find next</button>
-    </Panel>
+    <aside className="side-panel goals-panel">
+      <div className="sp-head">
+        <strong>Goals</strong>
+        <DrawerControls panel="goals" />
+      </div>
+
+      <div className="goals-tabs" role="tablist" aria-label="Goal type">
+        <button
+          type="button"
+          role="tab"
   )
 }
 
