@@ -193,6 +193,23 @@ export function GoalsPanel() {
       ) : (
         <div className="goal-view" role="tabpanel">
           <p className="goal-intro">Build a consistent writing routine. Net words added to your manuscript are counted automatically, so deleting words written today reduces today’s progress.</p>
+
+          <div className={`today-habit ${habitMet ? 'met' : ''}`}>
+            <span className="habit-icon" aria-hidden="true">{habitMet ? '🔥' : '❄️'}</span>
+            <div>
+              <strong>{habitMet ? 'Goal met today!' : 'Today’s progress'}</strong>
+              <span>{today.toLocaleString()} of {project.goals.dailyHabitWords.toLocaleString()} words</span>
+            </div>
+          </div>
+
+          <div className="habit-stats">
+            <div><strong>{stats.successRate}%</strong><span>Success rate</span></div>
+            <div><strong>{stats.currentStreak}</strong><span>Current streak</span></div>
+            <div><strong>{stats.longestStreak}</strong><span>Longest streak</span></div>
+            <div><strong>{project.goals.sprintLog.length}</strong><span>Writing sprints</span></div>
+          </div>
+
+          <label>
   )
 }
 
