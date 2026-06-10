@@ -210,6 +210,23 @@ export function GoalsPanel() {
           </div>
 
           <label>
+            Daily word goal
+            <input type="number" min={1} value={habitTarget} onChange={(event) => setHabitTarget(Number(event.target.value))} />
+          </label>
+          <DayPicker days={habitDays} onToggle={(day) => toggleDay(habitDays, day, setHabitDays)} />
+          <button type="button" className="primary goal-save" onClick={saveHabit}>Save Writing Habit</button>
+
+          <div className="habit-calendar">
+            <div className="calendar-head">
+              <button type="button" aria-label="Previous month" onClick={() => setCalendarMonth(addMonths(calendarMonth, -1))}>‹</button>
+              <strong>{calendarMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</strong>
+              <button type="button" aria-label="Next month" onClick={() => setCalendarMonth(addMonths(calendarMonth, 1))}>›</button>
+            </div>
+            <div className="calendar-grid calendar-weekdays">
+              {DAY_OPTIONS.map((day) => <span key={day.value}>{day.label}</span>)}
+            </div>
+            <div className="calendar-grid">
+              {calendarDays.map(({ date, inMonth }) => {
   )
 }
 
