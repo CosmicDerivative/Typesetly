@@ -355,6 +355,23 @@ export function EditorSettingsPanel() {
   return (
     <aside className="side-panel">
       <div className="sp-head">
+        <strong>Editor settings</strong>
+        <DrawerControls panel="settings" />
+      </div>
+      <p className="sp-hint">Shape your workspace without changing the book’s export design or reader preview.</p>
+      <fieldset className="appearance-picker">
+        <legend>Workspace appearance</legend>
+        <div className="appearance-grid">
+          {WORKSPACE_THEMES.map((theme) => {
+            const active = p.workspaceTheme === theme.id
+            return (
+              <button
+                type="button"
+                key={theme.id}
+                className={active ? 'appearance-option active' : 'appearance-option'}
+                aria-pressed={active}
+                title={theme.description}
+                onClick={() => updateEditorPrefs({
   )
 }
 
