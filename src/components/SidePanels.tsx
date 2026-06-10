@@ -340,12 +340,21 @@ function habitStats(log: Record<string, number>, target: number, writingDays: nu
     if (!successfulKeys.has(localDateKey(cursor))) break
     currentStreak += 1
   }
+
+  return {
+    successRate: scheduled ? Math.round((successes / scheduled) * 100) : 0,
+    currentStreak,
+    longestStreak,
+  }
+}
+
 export function EditorSettingsPanel() {
+  const { project, rightPanel, updateEditorPrefs } = useApp()
+  if (rightPanel !== 'settings' || !project) return null
+  const p = project.editorPrefs
   return (
-    <Panel title="Editor settings">
-      <label><input type="checkbox" /> Typewriter scrolling</label>
-      <label><input type="checkbox" /> Highlight current line</label>
-    </Panel>
+    <aside className="side-panel">
+      <div className="sp-head">
   )
 }
 
