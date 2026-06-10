@@ -244,17 +244,19 @@ export function GoalsPanel() {
                   key === todayKey() ? 'today' : '',
                 ].filter(Boolean).join(' ')
                 return <div className={classes} key={key} title={`${words.toLocaleString()} words${detail ? `\n${detail}` : ''}`}>{date.getDate()}</div>
+              })}
+            </div>
+            <div className="calendar-legend"><span className="success-dot" /> Goal met <span className="missed-dot" /> Missed writing day</div>
+          </div>
+        </div>
+      )}
+      {savedMessage && <p className="goal-saved" role="status">✓ {savedMessage}</p>}
+    </aside>
   )
 }
 
-export function GoalsPanel() {
-  const [target, setTarget] = useState(500)
+function DayPicker({ days, onToggle }: { days: number[]; onToggle: (day: number) => void }) {
   return (
-    <Panel title="Writing goal">
-      <input
-        type="number"
-        min="1"
-        value={target}
         onChange={(event) => setTarget(Number(event.target.value))}
       />
       <p>Daily target: {target} words</p>
