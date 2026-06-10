@@ -324,6 +324,22 @@ function habitStats(log: Record<string, number>, target: number, writingDays: nu
       successes += 1
       runningStreak += 1
       longestStreak = Math.max(longestStreak, runningStreak)
+      successfulKeys.add(localDateKey(cursor))
+    } else {
+      runningStreak = 0
+    }
+  }
+
+  let currentStreak = 0
+  const cursor = new Date(today)
+  if (writingDays.includes(cursor.getDay()) && !successfulKeys.has(localDateKey(cursor))) {
+    cursor.setDate(cursor.getDate() - 1)
+  }
+  for (; cursor >= start; cursor.setDate(cursor.getDate() - 1)) {
+    if (!writingDays.includes(cursor.getDay())) continue
+    if (!successfulKeys.has(localDateKey(cursor))) break
+    currentStreak += 1
+  }
 export function EditorSettingsPanel() {
   return (
     <Panel title="Editor settings">
