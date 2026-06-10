@@ -443,6 +443,23 @@ export function SmartQuotesPanel() {
     updateEditorPrefs,
     updateChapterContent,
     createNamedRevision,
+  } = useApp()
+  const [repairMessage, setRepairMessage] = useState('')
+  if (rightPanel !== 'quotes' || !project) return null
+
+  const applyAll = () => {
+    for (const ch of project.chapters) {
+      const next = transformTextNodes(ch.content, smartenPunctuation)
+      if (next !== ch.content) updateChapterContent(ch.id, next)
+    }
+  }
+
+  const repairImportedApostrophes = () => {
+    let repaired = 0
+    let unresolved = 0
+    const updates: Array<{ id: string; content: string }> = []
+    for (const chapter of project.chapters) {
+      const content = transformTextNodes(chapter.content, (text) => {
   return (
     <Panel title="Smart punctuation">
       <button type="button">Convert straight quotes</button>
