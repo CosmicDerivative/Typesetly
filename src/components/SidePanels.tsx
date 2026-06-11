@@ -477,10 +477,19 @@ export function SmartQuotesPanel() {
         : unresolved
           ? `${unresolved} ambiguous case(s) need manual review. No text was changed.`
           : 'No older Scrivener apostrophe damage was found.',
+    )
+  }
+
   return (
-    <Panel title="Smart punctuation">
-      <button type="button">Convert straight quotes</button>
-      <button type="button">Normalize dashes</button>
-    </Panel>
+    <aside className="side-panel">
+      <div className="sp-head">
+        <strong>Smart Quotes</strong>
+        <DrawerControls panel="quotes" />
+      </div>
+      <label className="check-row">
+        <input
+          type="checkbox"
+          checked={project.editorPrefs.smartQuotes}
+          onChange={(e) => updateEditorPrefs({ smartQuotes: e.target.checked })}
   )
 }
