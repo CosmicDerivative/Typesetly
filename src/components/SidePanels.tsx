@@ -460,6 +460,23 @@ export function SmartQuotesPanel() {
     const updates: Array<{ id: string; content: string }> = []
     for (const chapter of project.chapters) {
       const content = transformTextNodes(chapter.content, (text) => {
+        const result = repairLegacyRtfQuoteDamage(text)
+        repaired += result.repaired
+        unresolved += result.unresolved
+        return result.text
+      })
+      if (content !== chapter.content) updates.push({ id: chapter.id, content })
+    }
+    if (updates.length) {
+      createNamedRevision('Before imported apostrophe repair')
+      for (const update of updates) updateChapterContent(update.id, update.content)
+    }
+    setRepairMessage(
+      repaired
+        ? `Repaired ${repaired} damaged contraction or possessive.${unresolved ? ` ${unresolved} ambiguous case(s) still need review.` : ''}`
+        : unresolved
+          ? `${unresolved} ambiguous case(s) need manual review. No text was changed.`
+          : 'No older Scrivener apostrophe damage was found.',
   return (
     <Panel title="Smart punctuation">
       <button type="button">Convert straight quotes</button>
