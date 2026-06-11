@@ -491,5 +491,22 @@ export function SmartQuotesPanel() {
           type="checkbox"
           checked={project.editorPrefs.smartQuotes}
           onChange={(e) => updateEditorPrefs({ smartQuotes: e.target.checked })}
+        />
+        Convert quotes while typing
+      </label>
+      <button type="button" className="primary full" onClick={applyAll}>
+        Apply smart quotes to whole book
+      </button>
+      <hr />
+      <h4>Imported-text repair</h4>
+      <p className="sp-hint">
+        Repairs the duplicated apostrophes and missing letters produced by an older Scrivener importer bug.
+        A History revision is saved first.
+      </p>
+      <button type="button" className="full" onClick={repairImportedApostrophes}>
+        Repair damaged apostrophes
+      </button>
+      {repairMessage && <p className="sp-msg" role="status">{repairMessage}</p>}
+    </aside>
   )
 }

@@ -1,0 +1,149 @@
+.utility-bar {
+  position: absolute;
+  z-index: 70;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 48px;
+  min-width: 0;
+  padding: 0 10px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-700);
+  background: rgba(255, 253, 249, .97);
+  box-shadow: 0 -8px 24px rgba(52, 30, 38, .07);
+  overflow: hidden;
+  backdrop-filter: blur(12px);
+}
+
+.utility-bar-track {
+  width: max-content;
+  max-width: 100%;
+  min-width: 0;
+  height: 100%;
+  margin-inline: auto;
+  padding: 5px 2px;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(56px, auto);
+  align-items: center;
+  justify-content: start;
+  gap: 2px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+}
+
+.utility-bar-track::-webkit-scrollbar {
+  display: none;
+}
+
+.util {
+  width: 100%;
+  min-width: 56px;
+  height: 36px;
+  padding: 0 9px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--text-500);
+  background: transparent;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    color 130ms ease,
+    border-color 130ms ease,
+    background-color 130ms ease;
+}
+
+.util svg {
+  flex: 0 0 auto;
+}
+
+.util span {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .01em;
+}
+
+.util:hover,
+.util:focus-visible {
+  border-color: var(--line);
+  color: var(--ink-900);
+  background: var(--paper-200);
+}
+
+.util.active {
+  color: var(--paper-50);
+  background: var(--ink-900);
+}
+
+.util-spacer {
+  width: 1px;
+  height: 25px;
+  margin-inline: 4px;
+  background: var(--line);
+}
+
+.app-shell.dark .utility-bar {
+  color: var(--paper-50);
+  border-color: rgba(255, 255, 255, .08);
+  background:
+    radial-gradient(circle at 20% 0, rgba(215, 100, 67, .16), transparent 34%),
+    #351b28;
+}
+
+.app-shell.dark .utility-bar .util {
+  color: rgba(255, 253, 249, .62);
+}
+
+.app-shell.dark .utility-bar .util:hover,
+.app-shell.dark .utility-bar .util:focus-visible {
+  border-color: rgba(255, 255, 255, .1);
+  color: var(--paper-50);
+  background: rgba(255, 255, 255, .08);
+}
+
+.app-shell.dark .utility-bar .util.active {
+  color: var(--ink-950);
+  background: var(--gold-400);
+}
+
+.app-shell.dark .utility-bar .util-spacer {
+  background: rgba(255, 255, 255, .13);
+}
+
+@media (max-width: 760px) {
+  .utility-bar {
+    height: 46px;
+    padding-inline: 5px;
+  }
+
+  .utility-bar-track {
+    width: 100%;
+    margin: 0;
+    padding: 4px 2px;
+    grid-auto-columns: 42px;
+  }
+
+  .util {
+    min-width: 42px;
+    height: 36px;
+    padding: 0;
+  }
+
+  .util span {
+    display: none;
+  }
+
+  .util-spacer {
+    margin-inline: 2px;
+  }
+}

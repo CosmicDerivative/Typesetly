@@ -136,5 +136,15 @@ export function UtilityBar() {
         type="button"
         className={rightPanel === 'preview' ? 'util active' : 'util'}
         title="Open reader proof"
+        onClick={() => {
+          if (mode === 'publish') setRightPanel('preview')
+          else toggle('preview')
+        }}
+      >
+        <SquareStack size={16} />
+        <span>Proof</span>
+        </button>
+      </div>
+    </aside>
   )
 }
