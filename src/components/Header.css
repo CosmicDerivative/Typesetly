@@ -1,0 +1,36 @@
+.header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  min-height: 62px;
+  padding: 0 20px;
+  border-bottom: 1px solid #ddd6ca;
+  background: #fff;
+}
+
+.header > img {
+  width: 132px;
+}
+
+.header nav {
+  display: flex;
+  padding: 3px;
+  border-radius: 8px;
+  background: #eee9df;
+}
+
+.header nav button {
+  padding: 7px 15px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+}
+
+.header nav button.active {
+  background: #fff;
+  box-shadow: 0 1px 4px #443c3026;
+}
+
+.header > button {
+  justify-self: end;
+}
