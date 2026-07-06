@@ -1,4 +1,18 @@
-import { useState } from 'react'
+import {
+  BookOpen,
+  CircleHelp,
+  HardDrive,
+  LayoutGrid,
+  Map as MapIcon,
+  PackageOpen,
+  Palette,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PenLine,
+  Share2,
+} from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { useApp } from '../BookContext'
 import './Header.css'
 
 export function Header() {
