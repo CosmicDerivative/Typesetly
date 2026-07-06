@@ -31,6 +31,22 @@ export function Header() {
     sidebarOpen,
     setSidebarOpen,
     sidebarPinned,
+    pinnedRightPanel,
+    setPinnedRightPanel,
+    activeChapter,
+    addChapter,
+    addPart,
+    duplicateChapter,
+    deleteChapter,
+    deleteScene,
+    moveChapterBy,
+  } = useApp()
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(false)
+  const [wikiOpen, setWikiOpen] = useState(false)
+  const closeWiki = useCallback(() => setWikiOpen(false), [])
+  const activateMode = useCallback((nextMode: AppMode) => {
+    setMode(nextMode)
 
   return (
     <header className="header">
