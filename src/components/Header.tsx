@@ -47,6 +47,22 @@ export function Header() {
   const closeWiki = useCallback(() => setWikiOpen(false), [])
   const activateMode = useCallback((nextMode: AppMode) => {
     setMode(nextMode)
+    setSidebarOpen(nextMode === 'plan' ? false : sidebarPinned)
+    setRightPanel(
+      nextMode === 'plan' && pinnedRightPanel === 'story'
+        ? 'none'
+        : pinnedRightPanel !== 'none'
+        ? pinnedRightPanel
+        : nextMode === 'publish'
+          ? 'preview'
+          : 'none',
+    )
+  }, [
+    pinnedRightPanel,
+    setMode,
+    setRightPanel,
+    setSidebarOpen,
+    sidebarPinned,
 
   return (
     <header className="header">
