@@ -13,10 +13,24 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useApp } from '../BookContext'
+import { TYPESETLY_LOGO_URL } from '../branding'
+import type { AppMode } from '../types'
+import { BookDetailsModal } from './BookDetailsModal'
 import './Header.css'
+import { Dialog } from './Dialog'
+import { Wiki } from './Wiki'
 
 export function Header() {
-  const [mode, setMode] = useState<'write' | 'format'>('write')
+  const {
+    project,
+    mode,
+    setMode,
+    goHome,
+    downloadSnapshot,
+    setRightPanel,
+    sidebarOpen,
+    setSidebarOpen,
+    sidebarPinned,
 
   return (
     <header className="header">
