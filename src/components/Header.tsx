@@ -175,18 +175,10 @@ export function Header() {
   if (!project) return null
 
   return (
-      <nav aria-label="Workspace">
-        <button
-          type="button"
-          className={mode === 'write' ? 'active' : ''}
-          onClick={() => setMode('write')}
-        >
-          Write
-        </button>
-        <button
-          type="button"
-          className={mode === 'format' ? 'active' : ''}
-          onClick={() => setMode('format')}
+    <>
+      <header className="app-header">
+        <div className="header-left">
+          <button className="app-logo" title="Home" type="button" onClick={goHome}>
         >
           Format
         </button>
