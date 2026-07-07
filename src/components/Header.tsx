@@ -96,6 +96,22 @@ export function Header() {
         event.preventDefault()
         downloadSnapshot()
       } else if (modifier && !event.shiftKey && key === 's') {
+        event.preventDefault()
+        window.dispatchEvent(new CustomEvent('typesetly:notice', {
+          detail: 'Saved locally. Typesetly also saves changes automatically.',
+        }))
+      } else if (modifier && event.shiftKey && key === 'e') {
+        event.preventDefault()
+        activateMode('publish')
+      } else if (modifier && !event.shiftKey && key === 'f') {
+        event.preventDefault()
+        if (pinnedRightPanel !== 'none') setPinnedRightPanel('find')
+        setRightPanel('find')
+      } else if (modifier && key === ',') {
+        event.preventDefault()
+        if (pinnedRightPanel !== 'none') setPinnedRightPanel('settings')
+        setRightPanel('settings')
+      } else if (modifier && key === '\\') {
   return (
     <header className="header">
       <img src="/typesetly-logo.png" alt="Typesetly" />
