@@ -63,7 +63,23 @@ export function Header() {
     setRightPanel,
     setSidebarOpen,
     sidebarPinned,
+  ])
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const modifier = event.ctrlKey || event.metaKey
+      const key = event.key.toLowerCase()
+      const target = event.target instanceof Element ? event.target : null
+      const editable = Boolean(
+        target?.closest('input, textarea, select, [contenteditable="true"]'),
+      )
+
+      if (event.key === 'F1') {
+        event.preventDefault()
+        setHelpOpen(true)
+      } else if (modifier && event.altKey && event.key === '1') {
+        event.preventDefault()
+        activateMode('draft')
   return (
     <header className="header">
       <img src="/typesetly-logo.png" alt="Typesetly" />
