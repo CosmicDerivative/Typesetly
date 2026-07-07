@@ -112,6 +112,22 @@ export function Header() {
         if (pinnedRightPanel !== 'none') setPinnedRightPanel('settings')
         setRightPanel('settings')
       } else if (modifier && key === '\\') {
+        event.preventDefault()
+        setSidebarOpen(sidebarPinned ? true : !sidebarOpen)
+      } else if (modifier && !event.shiftKey && key === 'n') {
+        event.preventDefault()
+        addChapter()
+      } else if (modifier && event.shiftKey && key === 'n') {
+        event.preventDefault()
+        addPart()
+      } else if (modifier && event.shiftKey && key === 'd' && activeChapter) {
+        event.preventDefault()
+        duplicateChapter(activeChapter.id)
+      } else if (
+        modifier &&
+        event.shiftKey &&
+        (event.key === 'Delete' || event.key === 'Backspace') &&
+        activeChapter
   return (
     <header className="header">
       <img src="/typesetly-logo.png" alt="Typesetly" />
