@@ -160,9 +160,21 @@ export function Header() {
     addPart,
     activateMode,
     deleteChapter,
+    deleteScene,
+    downloadSnapshot,
+    duplicateChapter,
+    moveChapterBy,
+    pinnedRightPanel,
+    setRightPanel,
+    setPinnedRightPanel,
+    setSidebarOpen,
+    sidebarOpen,
+    sidebarPinned,
+  ])
+
+  if (!project) return null
+
   return (
-    <header className="header">
-      <img src="/typesetly-logo.png" alt="Typesetly" />
       <nav aria-label="Workspace">
         <button
           type="button"
