@@ -179,6 +179,22 @@ export function Header() {
       <header className="app-header">
         <div className="header-left">
           <button className="app-logo" title="Home" type="button" onClick={goHome}>
+            <img src={TYPESETLY_LOGO_URL} alt="" />
+            <span className="app-wordmark">Typesetly</span>
+          </button>
+          {mode === 'draft' && (
+            <button
+              className="icon-btn sidebar-toggle"
+              title={sidebarOpen ? 'Hide navigation' : 'Show navigation'}
+              aria-label={sidebarOpen ? 'Hide navigation' : 'Show navigation'}
+              type="button"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+            >
+              {sidebarOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
+            </button>
+          )}
+          <div className="book-identity">
+            <span>Open manuscript</span>
         >
           Format
         </button>
