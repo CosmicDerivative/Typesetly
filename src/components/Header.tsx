@@ -80,6 +80,22 @@ export function Header() {
       } else if (modifier && event.altKey && event.key === '1') {
         event.preventDefault()
         activateMode('draft')
+      } else if (modifier && event.altKey && event.key === '2') {
+        event.preventDefault()
+        activateMode('plan')
+      } else if (modifier && event.altKey && event.key === '3') {
+        event.preventDefault()
+        activateMode('organize')
+      } else if (modifier && event.altKey && event.key === '4') {
+        event.preventDefault()
+        activateMode('design')
+      } else if (modifier && event.altKey && event.key === '5') {
+        event.preventDefault()
+        activateMode('publish')
+      } else if (modifier && event.shiftKey && key === 's') {
+        event.preventDefault()
+        downloadSnapshot()
+      } else if (modifier && !event.shiftKey && key === 's') {
   return (
     <header className="header">
       <img src="/typesetly-logo.png" alt="Typesetly" />
