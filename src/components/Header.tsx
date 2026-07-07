@@ -144,6 +144,22 @@ export function Header() {
           event.preventDefault()
           deleteScene(
             sceneElement.dataset.chapterId || '',
+            Number(sceneElement.dataset.sceneIndex),
+          )
+        } else if (pageElement?.dataset.pageId) {
+          event.preventDefault()
+          deleteChapter(pageElement.dataset.pageId)
+        }
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [
+    activeChapter,
+    addChapter,
+    addPart,
+    activateMode,
+    deleteChapter,
   return (
     <header className="header">
       <img src="/typesetly-logo.png" alt="Typesetly" />
