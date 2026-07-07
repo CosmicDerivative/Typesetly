@@ -128,6 +128,22 @@ export function Header() {
         event.shiftKey &&
         (event.key === 'Delete' || event.key === 'Backspace') &&
         activeChapter
+      ) {
+        event.preventDefault()
+        deleteChapter(activeChapter.id)
+      } else if (event.altKey && event.shiftKey && event.key === 'ArrowUp' && activeChapter) {
+        event.preventDefault()
+        moveChapterBy(activeChapter.id, -1)
+      } else if (event.altKey && event.shiftKey && event.key === 'ArrowDown' && activeChapter) {
+        event.preventDefault()
+        moveChapterBy(activeChapter.id, 1)
+      } else if (event.key === 'Delete' && !editable && !modifier && !event.altKey) {
+        const sceneElement = target?.closest<HTMLElement>('[data-scene-index][data-chapter-id]')
+        const pageElement = target?.closest<HTMLElement>('[data-page-id]')
+        if (sceneElement) {
+          event.preventDefault()
+          deleteScene(
+            sceneElement.dataset.chapterId || '',
   return (
     <header className="header">
       <img src="/typesetly-logo.png" alt="Typesetly" />
