@@ -227,6 +227,22 @@ export function Header() {
             type="button"
             className={mode === 'organize' ? 'mode-tab active' : 'mode-tab'}
             onClick={() => activateMode('organize')}
+          >
+            <LayoutGrid size={14} />
+            <span className="mode-label">Organize</span>
+          </button>
+          <button
+            type="button"
+            className={mode === 'design' ? 'mode-tab active' : 'mode-tab'}
+            onClick={() => activateMode('design')}
+          >
+            <Palette size={14} />
+            <span className="mode-label">Design</span>
+          </button>
+          <button
+            type="button"
+            className={mode === 'publish' ? 'mode-tab active' : 'mode-tab'}
+            onClick={() => activateMode('publish')}
         >
           Format
         </button>
