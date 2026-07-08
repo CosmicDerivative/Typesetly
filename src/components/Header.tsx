@@ -243,6 +243,22 @@ export function Header() {
             type="button"
             className={mode === 'publish' ? 'mode-tab active' : 'mode-tab'}
             onClick={() => activateMode('publish')}
+          >
+            <PackageOpen size={14} />
+            <span className="mode-label">Publish</span>
+          </button>
+        </nav>
+
+        <div className="header-right">
+          <button
+            className="icon-btn"
+            title="Export"
+            aria-label="Open formatting and export"
+            type="button"
+            onClick={() => {
+              activateMode('publish')
+            }}
+          >
         >
           Format
         </button>
