@@ -275,6 +275,22 @@ export function Header() {
           <button className="icon-btn" title="Help" aria-label="Open help" type="button" onClick={() => setHelpOpen(true)}>
             <CircleHelp size={18} strokeWidth={1.75} />
           </button>
+          <button
+            className="wiki-button"
+            title="Open the Typesetly wiki"
+            aria-label="Open application wiki"
+            type="button"
+            onClick={() => setWikiOpen(true)}
+          >
+            <BookOpen size={14} />
+            <span>Wiki</span>
+          </button>
+        </div>
+      </header>
+      {detailsOpen && <BookDetailsModal onClose={() => setDetailsOpen(false)} />}
+      {wikiOpen && <Wiki onClose={closeWiki} />}
+      {helpOpen && (
+        <Dialog
         >
           Format
         </button>
