@@ -1,36 +1,423 @@
-.header {
+.app-header {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  min-height: 62px;
-  padding: 0 20px;
-  border-bottom: 1px solid #ddd6ca;
-  background: #fff;
+  height: 52px;
+  padding: 0 14px;
+  background: #1c1c1c;
+  color: #f2f2f2;
+  border-bottom: 1px solid #0f0f0f;
+  flex-shrink: 0;
+  z-index: 20;
 }
 
-.header > img {
-  width: 132px;
-}
-
-.header nav {
+.header-left,
+.header-right {
   display: flex;
-  padding: 3px;
-  border-radius: 8px;
-  background: #eee9df;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
 
-.header nav button {
-  padding: 7px 15px;
-  border: 0;
-  border-radius: 6px;
+.header-right {
+  justify-content: flex-end;
+}
+
+.app-logo {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.app-logo img {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  object-fit: cover;
+}
+
+.book-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+.edit-details-btn {
+  border: 1px solid #4a4a4a;
   background: transparent;
+  color: #d8d8d8;
+  border-radius: 4px;
+  padding: 5px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
 }
 
-.header nav button.active {
-  background: #fff;
-  box-shadow: 0 1px 4px #443c3026;
+.edit-details-btn:hover {
+  background: #2a2a2a;
+  color: #fff;
 }
 
-.header > button {
-  justify-self: end;
+.header-modes {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.mode-tab {
+  background: none;
+  border: none;
+  color: #8a8a8a;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 14px 0 12px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+
+.mode-tab.active {
+  color: #ffffff;
+  border-bottom-color: #2f80ed;
+}
+
+.mode-tab:hover {
+  color: #e8e8e8;
+}
+
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: #cfcfcf;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.icon-btn:hover {
+  background: #2e2e2e;
+  color: #fff;
+}
+
+.avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #5b8def, #2f80ed);
+  display: grid;
+  place-items: center;
+  color: white;
+  margin-left: 4px;
+}
+
+.shortcut-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.shortcut-list div {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid #edf0f3;
+}
+
+.shortcut-list dt {
+  color: #344253;
+}
+
+.shortcut-list dd {
+  margin: 0;
+  color: #6b7785;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+/* Typesetly's shell uses a warm editorial workshop rather than a dark,
+   tabbed utility bar. */
+.app-header {
+  grid-template-columns: minmax(360px, 1fr) auto minmax(250px, 1fr);
+  height: 68px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-900);
+  background:
+    linear-gradient(90deg, rgba(215, 100, 67, .08), transparent 28%),
+    var(--paper-50);
+  box-shadow: 0 3px 18px rgba(49, 29, 38, .06);
+}
+
+.header-left,
+.header-right {
+  gap: 8px;
+}
+
+.app-logo {
+  grid-auto-flow: column;
+  gap: 9px;
+  padding: 5px 10px 5px 5px;
+  border: 0;
+  border-radius: 14px;
+  color: var(--ink-900);
+  background: transparent;
+  cursor: pointer;
+}
+
+.app-logo:hover {
+  background: var(--paper-100);
+}
+
+.app-logo img {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  box-shadow: 0 5px 14px rgba(59, 31, 45, .18);
+}
+
+.app-wordmark {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 17px;
+  font-weight: 750;
+  letter-spacing: -.02em;
+}
+
+.book-identity {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+  padding-left: 10px;
+  border-left: 1px solid var(--line);
+}
+
+.book-identity > span {
+  color: var(--text-500);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+}
+
+.book-title {
+  max-width: 190px;
+  color: var(--text-900);
+  font-size: 13px;
+}
+
+.edit-details-btn {
+  padding: 6px 9px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--sage-600);
+  background: rgba(57, 119, 108, .1);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.edit-details-btn:hover {
+  color: var(--paper-50);
+  background: var(--sage-500);
+}
+
+.header-modes {
+  gap: 4px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--paper-100);
+}
+
+.mode-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 15px;
+  border: 0;
+  border-radius: 11px;
+  color: var(--text-500);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.mode-tab > span {
+  color: var(--coral-500);
+  font: 700 9px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.mode-tab:hover {
+  color: var(--ink-900);
+  background: rgba(255, 255, 255, .65);
+}
+
+.mode-tab.active {
+  color: var(--paper-50);
+  background: var(--ink-900);
+  box-shadow: 0 6px 16px rgba(59, 31, 45, .18);
+}
+
+.mode-tab.active > span {
+  color: var(--gold-400);
+}
+
+.icon-btn {
+  width: 34px;
+  height: 34px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  color: var(--ink-800);
+}
+
+.icon-btn:hover {
+  border-color: var(--line);
+  color: var(--coral-600);
+  background: var(--paper-100);
+}
+
+.header-right .icon-btn:first-child {
+  width: auto;
+  grid-auto-flow: column;
+  gap: 7px;
+  padding: 0 12px;
+  border-color: var(--coral-500);
+  color: var(--paper-50);
+  background: var(--coral-500);
+}
+
+.header-right .icon-btn:first-child:hover {
+  border-color: var(--coral-600);
+  color: #fff;
+  background: var(--coral-600);
+}
+
+.header-action-label {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.wiki-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  margin-left: 3px;
+  padding: 0 9px;
+  border: 1px solid rgba(57, 119, 108, .16);
+  border-radius: 999px;
+  color: var(--sage-600);
+  background: rgba(57, 119, 108, .11);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.wiki-button:hover {
+  border-color: var(--sage-500);
+  color: var(--paper-50);
+  background: var(--sage-500);
+}
+
+.shortcut-list div {
+  border-bottom-color: var(--line);
+}
+
+.shortcut-list dt {
+  color: var(--text-900);
+}
+
+.shortcut-list dd {
+  color: var(--coral-600);
+}
+
+@media (max-width: 1080px) {
+  .app-header {
+    grid-template-columns: minmax(250px, 1fr) auto minmax(180px, 1fr);
+  }
+
+  .app-wordmark,
+  .edit-details-btn,
+  .wiki-button span {
+    display: none;
+  }
+}
+
+.mode-tab > .mode-label,
+.mode-tab.active > .mode-label {
+  color: inherit;
+  font: inherit;
+}
+
+.mode-tab svg {
+  flex: 0 0 auto;
+  color: var(--coral-500);
+}
+
+.mode-tab.active svg {
+  color: var(--gold-400);
+}
+
+@media (max-width: 900px) {
+  .app-header {
+    grid-template-columns: minmax(112px, 1fr) auto minmax(88px, 1fr);
+    padding-inline: 10px;
+  }
+
+  .book-identity,
+  .header-action-label {
+    display: none;
+  }
+
+  .mode-tab {
+    min-width: 38px;
+    padding-inline: 11px;
+    justify-content: center;
+  }
+
+  .mode-label {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .app-header {
+    grid-template-columns: auto 1fr auto;
+    height: 56px;
+    padding-inline: 7px;
+  }
+
+  .app-logo {
+    padding: 3px;
+  }
+
+  .app-logo img {
+    width: 31px;
+    height: 31px;
+  }
+
+  .header-modes {
+    justify-self: center;
+    gap: 1px;
+  }
+
+  .mode-tab {
+    min-width: 34px;
+    padding-inline: 8px;
+  }
+
+  .header-right .icon-btn:first-child {
+    width: 34px;
+    padding: 0;
+  }
+
+  .header-right .icon-btn:not(:first-child),
+  .sidebar-toggle {
+    display: none;
+  }
 }

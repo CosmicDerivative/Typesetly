@@ -303,5 +303,21 @@ export function Header() {
             <div><dt>Move active page to Trash</dt><dd>Ctrl + Shift + Delete</dd></div>
             <div><dt>Delete focused sidebar item</dt><dd>Delete</dd></div>
             <div><dt>Find and replace</dt><dd>Ctrl + F</dd></div>
+            <div><dt>Editor settings</dt><dd>Ctrl + ,</dd></div>
+            <div><dt>Toggle navigation</dt><dd>Ctrl + \</dd></div>
+            <div><dt>Draft workspace</dt><dd>Ctrl + Alt + 1</dd></div>
+            <div><dt>Plan workspace</dt><dd>Ctrl + Alt + 2</dd></div>
+            <div><dt>Organize workspace</dt><dd>Ctrl + Alt + 3</dd></div>
+            <div><dt>Design workspace</dt><dd>Ctrl + Alt + 4</dd></div>
+            <div><dt>Publish workspace</dt><dd>Ctrl + Alt + 5</dd></div>
+            <div><dt>Publish and export</dt><dd>Ctrl + Shift + E</dd></div>
+            <div><dt>Save locally</dt><dd>Ctrl + S</dd></div>
+            <div><dt>Download snapshot</dt><dd>Ctrl + Shift + S</dd></div>
+            <div><dt>Help</dt><dd>F1</dd></div>
+            <div><dt>Bold / Italic / Underline</dt><dd>Ctrl + B / I / U</dd></div>
+          </dl>
+        </Dialog>
+      )}
+    </>
   )
 }
