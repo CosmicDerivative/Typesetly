@@ -291,11 +291,17 @@ export function Header() {
       {wikiOpen && <Wiki onClose={closeWiki} />}
       {helpOpen && (
         <Dialog
+          title="Typesetly keyboard shortcuts"
+          confirmLabel="Done"
+          onCancel={() => setHelpOpen(false)}
+          onConfirm={() => setHelpOpen(false)}
         >
-          Format
-        </button>
-      </nav>
-      <button type="button">Export</button>
-    </header>
+          <dl className="shortcut-list">
+            <div><dt>New chapter / new part</dt><dd>Ctrl + N / Ctrl + Shift + N</dd></div>
+            <div><dt>Duplicate active page</dt><dd>Ctrl + Shift + D</dd></div>
+            <div><dt>Move active page</dt><dd>Alt + Shift + ↑ / ↓</dd></div>
+            <div><dt>Move active page to Trash</dt><dd>Ctrl + Shift + Delete</dd></div>
+            <div><dt>Delete focused sidebar item</dt><dd>Delete</dd></div>
+            <div><dt>Find and replace</dt><dd>Ctrl + F</dd></div>
   )
 }
