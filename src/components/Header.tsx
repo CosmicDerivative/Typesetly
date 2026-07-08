@@ -211,6 +211,22 @@ export function Header() {
             type="button"
             className={mode === 'draft' ? 'mode-tab active' : 'mode-tab'}
             onClick={() => activateMode('draft')}
+          >
+            <PenLine size={14} />
+            <span className="mode-label">Draft</span>
+          </button>
+          <button
+            type="button"
+            className={mode === 'plan' ? 'mode-tab active' : 'mode-tab'}
+            onClick={() => activateMode('plan')}
+          >
+            <MapIcon size={14} />
+            <span className="mode-label">Plan</span>
+          </button>
+          <button
+            type="button"
+            className={mode === 'organize' ? 'mode-tab active' : 'mode-tab'}
+            onClick={() => activateMode('organize')}
         >
           Format
         </button>
