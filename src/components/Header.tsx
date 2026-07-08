@@ -259,6 +259,22 @@ export function Header() {
               activateMode('publish')
             }}
           >
+            <Share2 size={18} strokeWidth={1.75} />
+            <span className="header-action-label">Publish</span>
+          </button>
+          <button
+            className="icon-btn"
+            title="Save snapshot"
+            type="button"
+            onClick={() => {
+              downloadSnapshot()
+            }}
+          >
+            <HardDrive size={18} strokeWidth={1.75} />
+          </button>
+          <button className="icon-btn" title="Help" aria-label="Open help" type="button" onClick={() => setHelpOpen(true)}>
+            <CircleHelp size={18} strokeWidth={1.75} />
+          </button>
         >
           Format
         </button>
