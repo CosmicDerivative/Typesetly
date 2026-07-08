@@ -195,6 +195,22 @@ export function Header() {
           )}
           <div className="book-identity">
             <span>Open manuscript</span>
+            <h1 className="book-title">{project.details.title}</h1>
+          </div>
+          <button
+            className="edit-details-btn"
+            type="button"
+            onClick={() => setDetailsOpen(true)}
+          >
+            Book profile
+          </button>
+        </div>
+
+        <nav className="header-modes" aria-label="Mode">
+          <button
+            type="button"
+            className={mode === 'draft' ? 'mode-tab active' : 'mode-tab'}
+            onClick={() => activateMode('draft')}
         >
           Format
         </button>
