@@ -1,0 +1,50 @@
+.drawer-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
+}
+
+.drawer-control {
+  width: 29px;
+  height: 29px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  color: var(--text-500);
+  background: transparent;
+  cursor: pointer;
+}
+
+.sp-head .drawer-control {
+  width: 29px;
+  height: 29px;
+  padding: 0;
+  font-size: inherit;
+}
+
+.drawer-control:hover {
+  color: var(--coral-600);
+  background: var(--paper-200);
+}
+
+.drawer-control.pinned {
+  color: var(--paper-50);
+  background: var(--sage-500);
+}
+
+.left-sidebar .drawer-control {
+  color: rgba(255, 253, 249, .65);
+}
+
+.left-sidebar .drawer-control:hover {
+  color: var(--paper-50);
+  background: rgba(255, 255, 255, .1);
+}
+
+.left-sidebar .drawer-control.pinned {
+  color: var(--ink-950);
+  background: var(--gold-400);
+}
