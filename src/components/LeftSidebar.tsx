@@ -2,6 +2,7 @@ import {
   ChevronRight,
   Copyright,
   FileText,
+  FileUp,
   Folder,
   FolderOpen,
   FolderPlus,
@@ -1094,6 +1095,16 @@ export function LeftSidebar() {
           <Plus size={16} strokeWidth={2.25} />
           Add chapter
         </button>
+        <button
+          type="button"
+          className="import-docx-btn"
+          title="Import DOCX chapters"
+          aria-label="Import DOCX chapters"
+          onClick={() => importRef.current?.click()}
+        >
+          <FileUp size={15} />
+          Import DOCX
+        </button>
         <div className="more-wrap">
           <button
             type="button"
@@ -1133,7 +1144,7 @@ export function LeftSidebar() {
               </button>
               <button type="button" onClick={() => { addPage('full-page-image'); setMenuOpen(false) }}>Add Full Page Image</button>
               <button type="button" onClick={() => { addPage('custom-page'); setMenuOpen(false) }}>Add Custom Page</button>
-              <button type="button" onClick={() => { importRef.current?.click(); setMenuOpen(false) }}>Import Chapters (.docx)</button>
+              <button type="button" onClick={() => { importRef.current?.click(); setMenuOpen(false) }}>Import DOCX into this book</button>
               <button
                 type="button"
                 disabled={!activeChapter}

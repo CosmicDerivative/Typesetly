@@ -150,7 +150,7 @@ export function Home() {
         </button>
         <button type="button" className="cta-card" onClick={() => fileRef.current?.click()}>
           <Upload size={22} />
-          <span>Bring in a Word file</span>
+          <span>Import Word (.docx)</span>
         </button>
         <button
           type="button"

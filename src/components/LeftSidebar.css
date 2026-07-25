@@ -1433,7 +1433,7 @@
 }
 
 .sidebar-footer {
-  grid-template-columns: minmax(0, 1fr) 40px 40px;
+  grid-template-columns: minmax(0, 1fr) minmax(88px, .82fr) 40px 40px;
   padding: 12px;
   border-top-color: rgba(255, 255, 255, .1);
   background: rgba(31, 13, 22, .32);
@@ -1448,6 +1448,30 @@
 
 .add-chapter-btn:hover {
   background: #ebbe6c;
+}
+
+.import-docx-btn {
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 9px;
+  border: 1px solid rgba(216, 170, 88, .44);
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  color: var(--gold-400);
+  background: rgba(216, 170, 88, .09);
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.import-docx-btn:hover,
+.import-docx-btn:focus-visible {
+  color: var(--ink-950);
+  background: var(--gold-400);
 }
 
 .more-btn,
