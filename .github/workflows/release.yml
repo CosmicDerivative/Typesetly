@@ -130,11 +130,36 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Configure Windows certificate signing
+        if: matrix.platform == 'windows'
+        shell: bash
+        env:
+          SIGNING_LINK: ${{ secrets.WINDOWS_CSC_LINK }}
+          SIGNING_PASSWORD: ${{ secrets.WINDOWS_CSC_KEY_PASSWORD }}
+        run: |
+          if [[ -n "$SIGNING_LINK" ]]; then
+            printf 'CSC_LINK=%s\n' "$SIGNING_LINK" >> "$GITHUB_ENV"
+            printf 'CSC_KEY_PASSWORD=%s\n' "$SIGNING_PASSWORD" >> "$GITHUB_ENV"
+          else
+            echo "No Windows signing certificate configured; building unsigned packages."
+          fi
+
+      - name: Configure macOS certificate signing
+        if: matrix.platform == 'macos'
+        shell: bash
+        env:
+          SIGNING_LINK: ${{ secrets.MACOS_CSC_LINK }}
+          SIGNING_PASSWORD: ${{ secrets.MACOS_CSC_KEY_PASSWORD }}
+        run: |
+          if [[ -n "$SIGNING_LINK" ]]; then
+            printf 'CSC_LINK=%s\n' "$SIGNING_LINK" >> "$GITHUB_ENV"
+            printf 'CSC_KEY_PASSWORD=%s\n' "$SIGNING_PASSWORD" >> "$GITHUB_ENV"
+          else
+            echo "No macOS signing certificate configured; building unsigned packages."
+          fi
+
       - name: Build native packages
         run: npm run ${{ matrix.script }} -- --publish never
-        env:
-          CSC_LINK: ${{ matrix.platform == 'windows' && secrets.WINDOWS_CSC_LINK || matrix.platform == 'macos' && secrets.MACOS_CSC_LINK || '' }}
-          CSC_KEY_PASSWORD: ${{ matrix.platform == 'windows' && secrets.WINDOWS_CSC_KEY_PASSWORD || matrix.platform == 'macos' && secrets.MACOS_CSC_KEY_PASSWORD || '' }}
 
       - name: Upload native packages
         uses: actions/upload-artifact@v7
