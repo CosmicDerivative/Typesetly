@@ -101,7 +101,7 @@
 .reader-controls {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: 30px 42px 30px 1fr;
+  grid-template-columns: 30px 44px 30px minmax(92px, 1fr);
   gap: 4px;
   align-items: center;
 }
@@ -133,6 +133,14 @@
   padding: 6px 8px;
   font-size: 12px;
   color: #333;
+}
+
+.preview-controls .reader-controls select {
+  width: 100%;
+  min-width: 0;
+  height: 30px;
+  padding: 0 30px 0 10px;
+  line-height: 1.2;
 }
 
 .theme-chip {
