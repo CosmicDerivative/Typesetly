@@ -88,6 +88,7 @@ export function decorateFirstSentenceHtml(html: string, dropCap: boolean, leadIn
   if (!root) return html
   const text = root.textContent || ''
   if (!text) return html
+  const dropCapRange = dropCap ? firstLetterRange(text) : null
   const sentenceEnd = text.search(/[.!?](?:\s|$)/)
   const leadEnd = sentenceEnd >= 0 ? sentenceEnd + 1 : Math.min(text.length, 90)
   const walker = documentValue.createTreeWalker(root, NodeFilter.SHOW_TEXT)
@@ -101,14 +102,14 @@ export function decorateFirstSentenceHtml(html: string, dropCap: boolean, leadIn
     for (let index = 0; index < value.length;) {
       const absolute = offset + index
       const className =
-        dropCap && absolute === 0 ? 'dropcap'
+        dropCapRange && absolute >= dropCapRange.start && absolute < dropCapRange.end ? 'dropcap'
           : leadIn && absolute < leadEnd ? 'lead-in'
             : ''
       let end = index + 1
       while (end < value.length) {
         const nextAbsolute = offset + end
         const nextClass =
-          dropCap && nextAbsolute === 0 ? 'dropcap'
+          dropCapRange && nextAbsolute >= dropCapRange.start && nextAbsolute < dropCapRange.end ? 'dropcap'
             : leadIn && nextAbsolute < leadEnd ? 'lead-in'
               : ''
         if (nextClass !== className) break
@@ -127,6 +128,13 @@ export function decorateFirstSentenceHtml(html: string, dropCap: boolean, leadIn
     node.replaceWith(fragment)
   }
   return root.innerHTML
+}
+
+export function firstLetterRange(text: string): { start: number; end: number } | null {
+  const start = text.search(/\p{L}/u)
+  if (start < 0) return null
+  const character = Array.from(text.slice(start))[0]
+  return { start, end: start + character.length }
 }
 
 export function exportableChapters(project: BookProject, target: 'ebook' | 'print' | 'all' = 'all'): Chapter[] {

@@ -2,6 +2,7 @@ import { saveAs } from 'file-saver'
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage } from 'pdf-lib'
 import { exportableChapters, headingParts, parseManuscript } from '../layout/manuscript'
 import type { BookProject, BookTheme, Chapter, ExportResult } from '../types'
+import { pdfSafeText } from './pdfText'
 import { preflightBook } from './preflight'
 
 function fileName(title: string) {
@@ -77,6 +78,14 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
   const sansBold = await documentValue.embedFont(StandardFonts.HelveticaBold)
   const bodyFont = /sans|helvetica|source/i.test(theme.typography.bodyFont) ? sans : serif
   const headingFont = /sans|helvetica|source/i.test(theme.chapterHeading.titleFont) ? sansBold : serifBold
+  const replacedPdfCharacters = new Set<string>()
+  const safeText = (text: string, font: PDFFont) => {
+    const safe = pdfSafeText(text, font.getCharacterSet())
+    safe.replaced.forEach((character) => replacedPdfCharacters.add(character))
+    return safe.text
+  }
+  const wrapForPdf = (text: string, font: PDFFont, size: number, width: number, hyphenate: boolean) =>
+    wrapText(safeText(text, font), font, size, width, hyphenate)
   const pageWidth = theme.print.trimWidthIn * 72
   const pageHeight = theme.print.trimHeightIn * 72
   const fontSize = theme.print.largePrint ? Math.max(14, theme.typography.bodySize) : theme.typography.bodySize
@@ -112,7 +121,7 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
     const margin = margins()
     const noteSize = Math.min(theme.notes.fontSize, fontSize - 1)
     const width = pageWidth - margin.left - margin.right
-    return pageFootnotes.flatMap((note) => wrapText(`${note.number}. ${note.text}`, bodyFont, noteSize, width, false))
+    return pageFootnotes.flatMap((note) => wrapForPdf(`${note.number}. ${note.text}`, bodyFont, noteSize, width, false))
   }
 
   const drawHeaderFooter = () => {
@@ -124,14 +133,16 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
     const title = project.details.title
     const author = project.details.author
     const chapter = activeChapter.title
-    const center = (text: string, yPosition: number) =>
-      page.drawText(text, {
-        x: (pageWidth - bodyFont.widthOfTextAtSize(text, size)) / 2,
+    const center = (text: string, yPosition: number) => {
+      const printable = safeText(text, bodyFont)
+      page.drawText(printable, {
+        x: (pageWidth - bodyFont.widthOfTextAtSize(printable, size)) / 2,
         y: yPosition,
         size,
         font: bodyFont,
         color,
       })
+    }
     if (!activeChapter.options.hideHeaderFooter) {
       if (theme.headerFooter.layout === 'page-center' && !activeChapter.options.hidePageNumber) {
         center(String(pageNumber), margin.bottom / 2)
@@ -143,8 +154,9 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
             : odd
               ? title
               : author || title
-        page.drawText(headerText, {
-          x: odd ? pageWidth - margin.right - bodyFont.widthOfTextAtSize(headerText, size) : margin.left,
+        const printableHeader = safeText(headerText, bodyFont)
+        page.drawText(printableHeader, {
+          x: odd ? pageWidth - margin.right - bodyFont.widthOfTextAtSize(printableHeader, size) : margin.left,
           y: pageHeight - margin.top / 2,
           size,
           font: bodyFont,
@@ -200,7 +212,8 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
     const usedFont = options.font || bodyFont
     const usedSize = options.size || fontSize
     const indent = options.indent || 0
-    const textWidth = usedFont.widthOfTextAtSize(text, usedSize)
+    const printable = safeText(text, usedFont)
+    const textWidth = usedFont.widthOfTextAtSize(printable, usedSize)
     const x =
       options.align === 'center'
         ? (pageWidth - textWidth) / 2
@@ -208,7 +221,7 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
           ? pageWidth - margin.right - textWidth
           : margin.left + indent
     ensureSpace(usedSize * 1.3)
-    page.drawText(text, { x, y, size: usedSize, font: usedFont, color: options.color || rgb(0.1, 0.1, 0.1) })
+    page.drawText(printable, { x, y, size: usedSize, font: usedFont, color: options.color || rgb(0.1, 0.1, 0.1) })
     y -= usedSize * 1.3
   }
 
@@ -217,7 +230,7 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
     const indent =
       theme.paragraph.paragraphStyle === 'indent' && !first ? fontSize * 1.2 : 0
     const width = pageWidth - margin.left - margin.right - indent
-    const lines = wrapText(text, bodyFont, fontSize, width, theme.print.hyphens)
+    const lines = wrapForPdf(text, bodyFont, fontSize, width, theme.print.hyphens)
     if (theme.print.layoutPriority !== 'balanced' && lines.length > 1) {
       const availableLines = Math.floor((y - margin.bottom) / lineHeight)
       const leavesSingleLineOnNextPage = availableLines > 1 && lines.length - availableLines === 1
@@ -261,12 +274,13 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
     const maxBubbleWidth = availableWidth * 0.76
     const maxTextWidth = maxBubbleWidth - paddingX * 2
     const lines = text.split(/\r?\n/).flatMap((value) => {
-      const wrapped = wrapText(value, bodyFont, messageSize, maxTextWidth, true)
+      const wrapped = wrapForPdf(value, bodyFont, messageSize, maxTextWidth, true)
       return wrapped.length ? wrapped : ['']
     })
+    const printableSender = safeText(sender, sansBold)
     const textWidth = Math.max(
       54,
-      sender ? bodyFont.widthOfTextAtSize(sender, senderSize) : 0,
+      printableSender ? sansBold.widthOfTextAtSize(printableSender, senderSize) : 0,
       ...lines.map((line) => bodyFont.widthOfTextAtSize(line, messageSize)),
     )
     const bubbleWidth = Math.min(maxBubbleWidth, textWidth + paddingX * 2)
@@ -294,8 +308,8 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
     })
 
     let lineY = top - paddingY - messageSize
-    if (sender) {
-      page.drawText(sender, {
+    if (printableSender) {
+      page.drawText(printableSender, {
         x: x + paddingX,
         y: lineY,
         size: senderSize,
@@ -364,7 +378,7 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
     startChapter(chapter)
     if (chapter.type === 'title-page') {
       y = pageHeight * 0.62
-      const titleLines = wrapText(project.details.title, headingFont, 24, pageWidth - margins().left - margins().right, false)
+      const titleLines = wrapForPdf(project.details.title, headingFont, 24, pageWidth - margins().left - margins().right, false)
       for (const line of titleLines) drawLine(line, { font: headingFont, size: 24, align: 'center' })
       if (project.details.subtitle) drawLine(project.details.subtitle, { size: 14, align: 'center' })
       if (project.details.seriesName) {
@@ -424,7 +438,7 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
           ? theme.chapterHeading.titleSize * 0.75
           : Math.min(theme.chapterHeading.titleSize, 34)
         const margin = margins()
-        for (const line of wrapText(heading.title, headingFont, titleSize, pageWidth - margin.left - margin.right, false)) {
+        for (const line of wrapForPdf(heading.title, headingFont, titleSize, pageWidth - margin.left - margin.right, false)) {
           drawLine(line, { font: headingFont, size: titleSize, align: theme.chapterHeading.titleAlign })
         }
       }
@@ -541,6 +555,9 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
   }
 
   if (pageNumber) drawHeaderFooter()
+  if (replacedPdfCharacters.size) {
+    warnings.push('Characters unsupported by the standard print fonts were replaced with print-safe equivalents.')
+  }
   const bytes = await documentValue.save()
   const blob = new Blob([bytes.buffer as ArrayBuffer], { type: 'application/pdf' })
   const outputName = fileName(project.details.title)

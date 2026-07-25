@@ -1,6 +1,6 @@
 import { saveAs } from 'file-saver'
 import JSZip from 'jszip'
-import { exportableChapters, headingParts } from '../layout/manuscript'
+import { decorateFirstSentenceHtml, exportableChapters, headingParts } from '../layout/manuscript'
 import type { BookProject, BookTheme, Chapter, ExportResult } from '../types'
 import { preflightBook } from './preflight'
 
@@ -123,22 +123,25 @@ function chapterBody(
     }
   }
 
+  if (
+    chapter.type === 'chapter'
+    && !chapter.options.hideFirstSentenceFormatting
+    && (theme.paragraph.dropCaps || theme.paragraph.leadInSmallCaps)
+  ) {
+    const firstParagraph = Array.from(documentValue.body.querySelectorAll('p'))
+      .find((paragraph) => /\p{L}/u.test(paragraph.textContent || ''))
+    if (firstParagraph) {
+      firstParagraph.innerHTML = decorateFirstSentenceHtml(
+        firstParagraph.innerHTML,
+        theme.paragraph.dropCaps,
+        theme.paragraph.leadInSmallCaps,
+      )
+    }
+  }
+
   let content = documentValue.body.innerHTML
     .replace(/<img([^>]*?)(?<!\/)>/gi, '<img$1 />')
     .replace(/<br([^>]*?)(?<!\/)>/gi, '<br$1 />')
-
-  if (theme.paragraph.leadInSmallCaps) {
-    content = content.replace(
-      /<p([^>]*)>(\s*)([^<.!?]+[.!?])/i,
-      '<p$1>$2<span class="lead-in">$3</span>',
-    )
-  }
-  if (theme.paragraph.dropCaps && chapter.type === 'chapter' && !chapter.options.hideFirstSentenceFormatting) {
-    content = content.replace(
-      /<p([^>]*)>(\s*)([^<\s])/i,
-      '<p$1>$2<span class="dropcap">$3</span>',
-    )
-  }
 
   return { content, chapterNotes, subheadings }
 }
