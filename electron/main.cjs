@@ -38,6 +38,7 @@ function createWindow() {
     backgroundColor: '#1a1a1a',
     icon: windowIcon,
     titleBarStyle: 'default',
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
@@ -46,6 +47,7 @@ function createWindow() {
       webSecurity: true,
     },
   })
+  win.removeMenu()
 
   if (state.maximized) win.maximize()
   let saveTimer

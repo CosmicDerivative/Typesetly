@@ -22,6 +22,18 @@ Typesetly combines a structured manuscript editor, visual story-planning tools, 
 > [!IMPORTANT]
 > Typesetly is an independent project and is not affiliated with, endorsed by, or sponsored by any commercial writing application.
 
+## Demo
+
+<p align="center">
+  <a href="docs/typesetly-demo.mp4">
+    <img src="docs/typesetly-demo-poster.png" alt="Watch the Typesetly demo" width="960" />
+  </a>
+</p>
+
+<p align="center">
+  <a href="docs/typesetly-demo.mp4">Watch the 41-second Typesetly demo</a>
+</p>
+
 ## Highlights
 
 - Rich-text manuscript editing with chapters, Parts, scenes, front matter, back matter, custom pages, images, footnotes, verse, quotations, callouts, and message bubbles

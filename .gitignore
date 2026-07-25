@@ -8,6 +8,7 @@ release/
 .agents/
 .idea/
 .tmp-video-frames/
+docs/demo/
 src/assets/hero.png
 *.log
 *.tsbuildinfo
