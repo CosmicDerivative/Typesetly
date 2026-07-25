@@ -1,0 +1,511 @@
+/*
+ * Workspace themes only style the application chrome and drafting desk.
+ * Export typography and the simulated reader appearance remain independent.
+ */
+.app-shell {
+  --workspace-canvas: var(--paper-200);
+  --workspace-panel: var(--paper-50);
+  --workspace-panel-alt: var(--paper-100);
+  --workspace-deep: var(--ink-900);
+  --workspace-deep-alt: var(--ink-800);
+  --workspace-on-deep: #fffdf9;
+  --workspace-on-panel: var(--text-900);
+  --workspace-muted: var(--text-700);
+  --workspace-border: var(--line);
+  --workspace-grid: rgba(59, 31, 45, .025);
+  --workspace-focus: var(--gold-400);
+  --workspace-active-ink: var(--ink-950);
+  color-scheme: light;
+}
+
+.app-shell.theme-paper {
+  --ink-950: #0e2235;
+  --ink-900: #18324a;
+  --ink-800: #2b4a65;
+  --paper-50: #ffffff;
+  --paper-100: #f6f8fa;
+  --paper-200: #edf2f7;
+  --paper-300: #d8e1e9;
+  --coral-500: #d85f45;
+  --coral-600: #b94831;
+  --sage-500: #2f766c;
+  --sage-600: #245f57;
+  --gold-400: #e2ad4e;
+  --text-900: #18232d;
+  --text-700: #536372;
+  --text-500: #7b8995;
+  --line: rgba(24, 50, 74, .15);
+  --workspace-grid: rgba(24, 50, 74, .025);
+}
+
+.app-shell.theme-fog {
+  --ink-950: #202526;
+  --ink-900: #303536;
+  --ink-800: #4a5050;
+  --paper-50: #fbfbfa;
+  --paper-100: #f2f2ef;
+  --paper-200: #e8e8e4;
+  --paper-300: #d5d6d1;
+  --coral-500: #b9634c;
+  --coral-600: #984c3a;
+  --sage-500: #55766e;
+  --sage-600: #3f5e57;
+  --gold-400: #c5a45d;
+  --text-900: #282d2d;
+  --text-700: #5c6463;
+  --text-500: #838987;
+  --line: rgba(48, 53, 54, .14);
+  --workspace-grid: rgba(48, 53, 54, .022);
+}
+
+.app-shell.theme-sepia {
+  --ink-950: #3d2b20;
+  --ink-900: #503b2b;
+  --ink-800: #6d523d;
+  --paper-50: #fff8e8;
+  --paper-100: #f7ecd4;
+  --paper-200: #ead9b9;
+  --paper-300: #d8c39e;
+  --coral-500: #b75a3c;
+  --coral-600: #93432c;
+  --sage-500: #64745a;
+  --sage-600: #4d5d45;
+  --gold-400: #d4a24c;
+  --text-900: #3f332a;
+  --text-700: #6f5d4e;
+  --text-500: #927f6b;
+  --line: rgba(80, 59, 43, .16);
+  --workspace-grid: rgba(80, 59, 43, .028);
+}
+
+.app-shell.theme-solarized-light {
+  --ink-950: #002b36;
+  --ink-900: #073642;
+  --ink-800: #24505a;
+  --paper-50: #fdf6e3;
+  --paper-100: #f7efd9;
+  --paper-200: #eee8d5;
+  --paper-300: #ded7c3;
+  --coral-500: #cb4b16;
+  --coral-600: #a53d12;
+  --sage-500: #2aa198;
+  --sage-600: #1d7f78;
+  --gold-400: #b58900;
+  --text-900: #3d5961;
+  --text-700: #586e75;
+  --text-500: #7b8e91;
+  --line: rgba(7, 54, 66, .16);
+  --workspace-grid: rgba(38, 139, 210, .035);
+}
+
+.app-shell.theme-mint {
+  --ink-950: #173c31;
+  --ink-900: #235344;
+  --ink-800: #326b59;
+  --paper-50: #f8fcf7;
+  --paper-100: #edf6ef;
+  --paper-200: #dcebe1;
+  --paper-300: #c7ddce;
+  --coral-500: #c96850;
+  --coral-600: #a84e39;
+  --sage-500: #3e826c;
+  --sage-600: #286351;
+  --gold-400: #d6aa55;
+  --text-900: #20342d;
+  --text-700: #536b62;
+  --text-500: #7c9088;
+  --line: rgba(35, 83, 68, .14);
+  --workspace-grid: rgba(35, 83, 68, .025);
+}
+
+.app-shell.theme-rose {
+  --ink-950: #542437;
+  --ink-900: #713149;
+  --ink-800: #8c3e59;
+  --paper-50: #fff9fa;
+  --paper-100: #f9edf0;
+  --paper-200: #f1dde2;
+  --paper-300: #e3c8d0;
+  --coral-500: #cf604f;
+  --coral-600: #ad4538;
+  --sage-500: #527b71;
+  --sage-600: #3d6259;
+  --gold-400: #d7a758;
+  --text-900: #422c35;
+  --text-700: #715963;
+  --text-500: #987e89;
+  --line: rgba(113, 49, 73, .14);
+  --workspace-grid: rgba(113, 49, 73, .023);
+}
+
+.app-shell.theme-lavender {
+  --ink-950: #332c5b;
+  --ink-900: #453d72;
+  --ink-800: #564a86;
+  --paper-50: #fdfbff;
+  --paper-100: #f3f0f8;
+  --paper-200: #e8e3f2;
+  --paper-300: #d6cfe5;
+  --coral-500: #c96368;
+  --coral-600: #a94c52;
+  --sage-500: #4f7c78;
+  --sage-600: #3d6562;
+  --gold-400: #d7aa5d;
+  --text-900: #302e42;
+  --text-700: #605d74;
+  --text-500: #89859d;
+  --line: rgba(69, 61, 114, .15);
+  --workspace-grid: rgba(86, 74, 134, .027);
+}
+
+.app-shell.theme-midnight {
+  --ink-950: #fff1e8;
+  --ink-900: #f3ded4;
+  --ink-800: #d9c0c8;
+  --paper-50: #402f36;
+  --paper-100: #35252c;
+  --paper-200: #24171d;
+  --paper-300: #563e48;
+  --coral-500: #eb8061;
+  --coral-600: #ff9b7d;
+  --sage-500: #69a99d;
+  --sage-600: #8ac4b9;
+  --gold-400: #d8aa58;
+  --text-900: #f2e9e3;
+  --text-700: #cbbbc2;
+  --text-500: #a9959e;
+  --line: rgba(255, 255, 255, .11);
+  --workspace-canvas: #21131a;
+  --workspace-panel: #35252c;
+  --workspace-panel-alt: #402f36;
+  --workspace-deep: #2d1722;
+  --workspace-deep-alt: #351b28;
+  --workspace-on-deep: #f6eee6;
+  --workspace-grid: rgba(235, 128, 97, .035);
+  --workspace-focus: #d8aa58;
+  --workspace-active-ink: #2d1722;
+}
+
+.app-shell.theme-charcoal {
+  --ink-950: #f2f5f7;
+  --ink-900: #e1e8ed;
+  --ink-800: #c2cdd5;
+  --paper-50: #2b3238;
+  --paper-100: #23292e;
+  --paper-200: #181d21;
+  --paper-300: #3b454d;
+  --coral-500: #df7359;
+  --coral-600: #f09278;
+  --sage-500: #69a99d;
+  --sage-600: #87c4b7;
+  --gold-400: #d4b160;
+  --text-900: #e8edf0;
+  --text-700: #bdc7ce;
+  --text-500: #929ea6;
+  --line: rgba(220, 232, 239, .13);
+  --workspace-canvas: #15191d;
+  --workspace-panel: #23292e;
+  --workspace-panel-alt: #2b3238;
+  --workspace-deep: #101417;
+  --workspace-deep-alt: #1c2227;
+  --workspace-on-deep: #f2f5f7;
+  --workspace-grid: rgba(115, 169, 216, .035);
+  --workspace-focus: #73a9d8;
+  --workspace-active-ink: #0c1b27;
+}
+
+.app-shell.theme-solarized-dark {
+  --ink-950: #fdf6e3;
+  --ink-900: #eee8d5;
+  --ink-800: #93a1a1;
+  --paper-50: #0b414c;
+  --paper-100: #073642;
+  --paper-200: #002b36;
+  --paper-300: #1a4b55;
+  --coral-500: #cb4b16;
+  --coral-600: #e86f39;
+  --sage-500: #2aa198;
+  --sage-600: #57c6bd;
+  --gold-400: #b58900;
+  --text-900: #eee8d5;
+  --text-700: #b5b9ad;
+  --text-500: #839496;
+  --line: rgba(147, 161, 161, .18);
+  --workspace-canvas: #002b36;
+  --workspace-panel: #073642;
+  --workspace-panel-alt: #0b414c;
+  --workspace-deep: #001f27;
+  --workspace-deep-alt: #04313b;
+  --workspace-on-deep: #eee8d5;
+  --workspace-grid: rgba(42, 161, 152, .045);
+  --workspace-focus: #b58900;
+  --workspace-active-ink: #002b36;
+}
+
+.app-shell.theme-forest {
+  --ink-950: #f0f5e9;
+  --ink-900: #dce9d7;
+  --ink-800: #b8ceb3;
+  --paper-50: #2d433b;
+  --paper-100: #243a33;
+  --paper-200: #142820;
+  --paper-300: #3b554b;
+  --coral-500: #d8795c;
+  --coral-600: #ef987d;
+  --sage-500: #72a47e;
+  --sage-600: #94c39c;
+  --gold-400: #c8ac61;
+  --text-900: #e8f0e5;
+  --text-700: #bdccba;
+  --text-500: #91a78f;
+  --line: rgba(220, 233, 215, .13);
+  --workspace-canvas: #10221d;
+  --workspace-panel: #243a33;
+  --workspace-panel-alt: #2d433b;
+  --workspace-deep: #0b1915;
+  --workspace-deep-alt: #1a3029;
+  --workspace-on-deep: #f0f5e9;
+  --workspace-grid: rgba(141, 184, 138, .035);
+  --workspace-focus: #a9c87c;
+  --workspace-active-ink: #13231d;
+}
+
+.app-shell.theme-ocean {
+  --ink-950: #f1f8fb;
+  --ink-900: #d9ebf1;
+  --ink-800: #b4d3dd;
+  --paper-50: #244154;
+  --paper-100: #1c3447;
+  --paper-200: #102638;
+  --paper-300: #31536a;
+  --coral-500: #e07860;
+  --coral-600: #f39a84;
+  --sage-500: #4aa596;
+  --sage-600: #73c5b7;
+  --gold-400: #d6b35f;
+  --text-900: #eaf3f6;
+  --text-700: #b9cdd5;
+  --text-500: #8daab6;
+  --line: rgba(217, 235, 241, .13);
+  --workspace-canvas: #0c1b2a;
+  --workspace-panel: #1c3447;
+  --workspace-panel-alt: #244154;
+  --workspace-deep: #07131f;
+  --workspace-deep-alt: #142c3d;
+  --workspace-on-deep: #f1f8fb;
+  --workspace-grid: rgba(84, 184, 201, .04);
+  --workspace-focus: #54b8c9;
+  --workspace-active-ink: #08202d;
+}
+
+.app-shell.theme-aubergine {
+  --ink-950: #fff0f6;
+  --ink-900: #efdce8;
+  --ink-800: #d5b9cc;
+  --paper-50: #483248;
+  --paper-100: #3d2a3f;
+  --paper-200: #291a2c;
+  --paper-300: #5a405a;
+  --coral-500: #d96f78;
+  --coral-600: #ef9099;
+  --sage-500: #6a9d91;
+  --sage-600: #8bbdb2;
+  --gold-400: #d6ad63;
+  --text-900: #f2e7ef;
+  --text-700: #d0bdca;
+  --text-500: #aa90a2;
+  --line: rgba(239, 220, 232, .13);
+  --workspace-canvas: #211623;
+  --workspace-panel: #3d2a3f;
+  --workspace-panel-alt: #483248;
+  --workspace-deep: #180f1a;
+  --workspace-deep-alt: #332136;
+  --workspace-on-deep: #fff0f6;
+  --workspace-grid: rgba(214, 140, 168, .04);
+  --workspace-focus: #d68ca8;
+  --workspace-active-ink: #261523;
+}
+
+.app-shell.theme-nord {
+  --ink-950: #eceff4;
+  --ink-900: #e5e9f0;
+  --ink-800: #d8dee9;
+  --paper-50: #434c5e;
+  --paper-100: #3b4252;
+  --paper-200: #2e3440;
+  --paper-300: #4c566a;
+  --coral-500: #bf616a;
+  --coral-600: #d9858d;
+  --sage-500: #8fbcbb;
+  --sage-600: #a3cfce;
+  --gold-400: #ebcb8b;
+  --text-900: #eceff4;
+  --text-700: #d8dee9;
+  --text-500: #aeb7c5;
+  --line: rgba(216, 222, 233, .15);
+  --workspace-canvas: #242933;
+  --workspace-panel: #3b4252;
+  --workspace-panel-alt: #434c5e;
+  --workspace-deep: #20242d;
+  --workspace-deep-alt: #343b4a;
+  --workspace-on-deep: #eceff4;
+  --workspace-grid: rgba(136, 192, 208, .04);
+  --workspace-focus: #88c0d0;
+  --workspace-active-ink: #242933;
+}
+
+.app-shell.theme-high-contrast {
+  --ink-950: #ffffff;
+  --ink-900: #ffffff;
+  --ink-800: #f5f5f5;
+  --paper-50: #1b1b1b;
+  --paper-100: #111111;
+  --paper-200: #050505;
+  --paper-300: #3a3a3a;
+  --coral-500: #ff784f;
+  --coral-600: #ff9b7c;
+  --sage-500: #56e0d0;
+  --sage-600: #87fff1;
+  --gold-400: #ffd84d;
+  --text-900: #ffffff;
+  --text-700: #eeeeee;
+  --text-500: #c7c7c7;
+  --line: rgba(255, 255, 255, .32);
+  --workspace-canvas: #050505;
+  --workspace-panel: #111111;
+  --workspace-panel-alt: #1b1b1b;
+  --workspace-deep: #000000;
+  --workspace-deep-alt: #0b0b0b;
+  --workspace-on-deep: #ffffff;
+  --workspace-grid: rgba(255, 216, 77, .065);
+  --workspace-focus: #ffd84d;
+  --workspace-active-ink: #000000;
+}
+
+.app-shell.dark {
+  color: var(--text-900);
+  background: var(--workspace-canvas);
+  color-scheme: dark;
+}
+
+.app-shell.dark .workspace,
+.app-shell.dark .editor-pane,
+.app-shell.dark .editor-scroll,
+.app-shell.dark .formatting-host,
+.app-shell.dark .formatting-view {
+  background-color: var(--workspace-canvas);
+}
+
+.app-shell .editor-pane {
+  background-image:
+    linear-gradient(var(--workspace-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--workspace-grid) 1px, transparent 1px);
+  background-color: var(--workspace-canvas);
+}
+
+.app-shell.dark .app-header {
+  color: var(--workspace-on-deep);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--coral-500) 12%, transparent), transparent 30%),
+    var(--workspace-deep);
+  border-color: var(--workspace-border);
+}
+
+.app-shell.dark .app-wordmark,
+.app-shell.dark .book-title,
+.app-shell.dark .book-identity,
+.app-shell.dark .icon-btn {
+  color: var(--workspace-on-deep);
+}
+
+.app-shell.dark .header-modes {
+  border-color: var(--workspace-border);
+  background: var(--workspace-deep-alt);
+}
+
+.app-shell.dark .mode-tab.active,
+.app-shell.dark .utility-bar .util.active {
+  color: var(--workspace-active-ink);
+  background: var(--workspace-focus);
+}
+
+.app-shell.dark .left-sidebar {
+  color: var(--workspace-on-deep);
+  background:
+    radial-gradient(circle at 20% 0, color-mix(in srgb, var(--coral-500) 16%, transparent), transparent 34%),
+    var(--workspace-deep-alt);
+  border-color: var(--workspace-border);
+}
+
+.app-shell.dark .utility-bar {
+  color: var(--workspace-on-deep);
+  background: var(--workspace-deep);
+  border-color: var(--workspace-border);
+}
+
+.app-shell.dark .editor-toolbar,
+.app-shell.dark .editor-status,
+.app-shell.dark .previewer,
+.app-shell.dark .side-panel,
+.app-shell.dark .formatting-panel,
+.app-shell.dark .dialog-card {
+  color: var(--text-900);
+  background: var(--workspace-panel);
+  border-color: var(--workspace-border);
+}
+
+.app-shell.dark .editor-sheet,
+.app-shell.dark input,
+.app-shell.dark select,
+.app-shell.dark textarea,
+.app-shell.dark .goal-summary-card,
+.app-shell.dark .today-habit,
+.app-shell.dark .habit-calendar,
+.app-shell.dark .habit-stats div,
+.app-shell.dark .comment-card,
+.app-shell.dark .revision-list article {
+  color: var(--text-900);
+  background-color: var(--workspace-panel-alt);
+  border-color: var(--workspace-border);
+}
+
+.app-shell.dark .editor-sheet {
+  background-image:
+    linear-gradient(90deg, color-mix(in srgb, var(--coral-500) 9%, transparent), transparent 16px);
+}
+
+.app-shell.dark .prose-editor,
+.app-shell.dark .chapter-title-input,
+.app-shell.dark .chapter-title-static,
+.app-shell.dark .chapter-subtitle-input,
+.app-shell.dark .fv-card h3,
+.app-shell.dark .sp-head h3,
+.app-shell.dark .previewer-title span {
+  color: var(--text-900);
+}
+
+.app-shell:not(.dark) .workspace,
+.app-shell:not(.dark) .formatting-host,
+.app-shell:not(.dark) .formatting-view {
+  background-color: var(--workspace-canvas);
+}
+
+.app-shell:not(.dark) .app-header,
+.app-shell:not(.dark) .editor-toolbar,
+.app-shell:not(.dark) .editor-status,
+.app-shell:not(.dark) .previewer,
+.app-shell:not(.dark) .side-panel,
+.app-shell:not(.dark) .formatting-panel {
+  border-color: var(--workspace-border);
+}
+
+.app-shell.theme-high-contrast :focus-visible {
+  outline: 3px solid var(--gold-400);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .appearance-option {
+    transition: none;
+  }
+}

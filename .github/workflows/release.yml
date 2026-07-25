@@ -1,0 +1,208 @@
+name: Desktop Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag matching package.json (for example, v1.1.0)
+        required: true
+        type: string
+      draft:
+        description: Create the GitHub release as a draft
+        required: false
+        default: false
+        type: boolean
+      prerelease:
+        description: Mark the GitHub release as a prerelease
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify release
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+      version: ${{ steps.release.outputs.version }}
+      draft: ${{ steps.release.outputs.draft }}
+      prerelease: ${{ steps.release.outputs.prerelease }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Validate version and release options
+        id: release
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          INPUT_DRAFT: ${{ inputs.draft }}
+          INPUT_PRERELEASE: ${{ inputs.prerelease }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          version="$(node -p "require('./package.json').version")"
+
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            tag="$INPUT_TAG"
+            draft="$INPUT_DRAFT"
+            prerelease="$INPUT_PRERELEASE"
+          else
+            tag="$REF_NAME"
+            draft="false"
+            if [[ "$tag" == *-* ]]; then
+              prerelease="true"
+            else
+              prerelease="false"
+            fi
+          fi
+
+          if [[ "$tag" != "v$version" ]]; then
+            echo "::error::Release tag '$tag' must match package.json version '$version' as v$version."
+            exit 1
+          fi
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "draft=$draft" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint, test, and build
+        run: npm run verify
+
+  build:
+    name: Build ${{ matrix.label }}
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Windows
+            os: windows-latest
+            platform: windows
+            script: package:win
+            assets: |
+              release/*.exe
+          - label: macOS
+            os: macos-latest
+            platform: macos
+            script: package:mac
+            assets: |
+              release/*.dmg
+              release/*.zip
+          - label: Linux
+            os: ubuntu-latest
+            platform: linux
+            script: package:linux
+            assets: |
+              release/*.AppImage
+              release/*.deb
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build native packages
+        run: npm run ${{ matrix.script }} -- --publish never
+        env:
+          CSC_LINK: ${{ matrix.platform == 'windows' && secrets.WINDOWS_CSC_LINK || matrix.platform == 'macos' && secrets.MACOS_CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ matrix.platform == 'windows' && secrets.WINDOWS_CSC_KEY_PASSWORD || matrix.platform == 'macos' && secrets.MACOS_CSC_KEY_PASSWORD || '' }}
+
+      - name: Upload native packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: typesetly-${{ matrix.platform }}-${{ needs.verify.outputs.version }}
+          path: ${{ matrix.assets }}
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+  release:
+    name: Publish GitHub release
+    needs:
+      - verify
+      - build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download native packages
+        uses: actions/download-artifact@v8
+        with:
+          pattern: typesetly-*-${{ needs.verify.outputs.version }}
+          path: release-assets
+          merge-multiple: true
+
+      - name: Generate SHA-256 checksums
+        shell: bash
+        run: |
+          cd release-assets
+          mapfile -t files < <(find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -printf '%f\n' | sort)
+
+          if [[ "${#files[@]}" -eq 0 ]]; then
+            echo "::error::No packaged applications were downloaded."
+            exit 1
+          fi
+
+          sha256sum "${files[@]}" > SHA256SUMS.txt
+
+      - name: Create or update release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.verify.outputs.tag }}
+          RELEASE_VERSION: ${{ needs.verify.outputs.version }}
+          RELEASE_DRAFT: ${{ needs.verify.outputs.draft }}
+          RELEASE_PRERELEASE: ${{ needs.verify.outputs.prerelease }}
+        run: |
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" release-assets/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --clobber
+            exit 0
+          fi
+
+          release_flags=(
+            --repo "$GITHUB_REPOSITORY"
+            --title "Typesetly $RELEASE_VERSION"
+            --target "$GITHUB_SHA"
+            --generate-notes
+          )
+
+          if [[ "$RELEASE_DRAFT" == "true" ]]; then
+            release_flags+=(--draft)
+          fi
+
+          if [[ "$RELEASE_PRERELEASE" == "true" ]]; then
+            release_flags+=(--prerelease)
+          fi
+
+          gh release create "$RELEASE_TAG" release-assets/* "${release_flags[@]}"
