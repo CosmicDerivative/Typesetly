@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { useApp } from '../BookContext'
 import './EditorialPanels.css'
 import { plainTextFromHtml, wordDiff } from '../editor/diff'
-import { listRevisions } from '../library/store'
-import type { BookProject } from '../types'
+import { listRevisions, loadNamedRevision } from '../library/store'
+import type { BookProject, DocumentRevision } from '../types'
 import { Dialog } from './Dialog'
 import { DrawerControls } from './DrawerControls'
 
@@ -117,6 +117,9 @@ export function RevisionsPanel() {
   const { project, rightPanel, createNamedRevision, restoreNamedRevision, replaceProject } = useApp()
   const [name, setName] = useState('')
   const [compareId, setCompareId] = useState('')
+  // Full revision content loads from IndexedDB only while a comparison is
+  // open and is released as soon as it closes.
+  const [compareRevision, setCompareRevision] = useState<DocumentRevision | null>(null)
   const [automatic, setAutomatic] = useState<Array<{ id: string; createdAt: string; book: BookProject }>>([])
   const [restoreTarget, setRestoreTarget] = useState<{ kind: 'named'; id: string; label: string } | { kind: 'automatic'; book: BookProject; label: string } | null>(null)
   const projectId = project?.id
@@ -135,6 +138,20 @@ export function RevisionsPanel() {
     return () => { active = false }
   }, [projectId, rightPanel])
 
+  useEffect(() => {
+    if (rightPanel !== 'revisions' || !compareId) {
+      setCompareRevision(null)
+      return
+    }
+    let active = true
+    void loadNamedRevision(compareId).then((revision) => {
+      if (active) setCompareRevision(revision)
+    }).catch(() => {
+      if (active) setCompareRevision(null)
+    })
+    return () => { active = false }
+  }, [compareId, rightPanel])
+
   if (rightPanel !== 'revisions' || !project) return null
 
   return (
@@ -151,7 +168,7 @@ export function RevisionsPanel() {
       </label>
       <button type="button" className="primary full" onClick={() => { createNamedRevision(name); setName('') }}>Save Current Version</button>
       {compareId && (() => {
-        const revision = project.revisions?.find((item) => item.id === compareId)
+        const revision = compareRevision
         if (!revision) return null
         const changed = revision.chapters.map((saved) => {
           const current = project.chapters.find((chapter) => chapter.id === saved.id)

@@ -3,6 +3,9 @@ import { useEffect, useRef, useState } from 'react'
 import { useApp } from '../BookContext'
 import './BookDetailsModal.css'
 import { processImageFile } from '../images/process'
+import { dataUrlToBlob, imageRef } from '../library/images'
+import { storeNewImage } from '../library/store'
+import { useResolvedImageSrc } from '../library/useResolvedImageSrc'
 
 export function BookDetailsModal({ onClose }: { onClose: () => void }) {
   const {
@@ -19,6 +22,7 @@ export function BookDetailsModal({ onClose }: { onClose: () => void }) {
     project?.scrivenerSync?.format || 'rtf',
   )
   const [syncBusy, setSyncBusy] = useState(false)
+  const coverSrc = useResolvedImageSrc(project?.details.coverDataUrl)
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => event.key === 'Escape' && onClose()
     window.addEventListener('keydown', onKeyDown)
@@ -148,7 +152,7 @@ export function BookDetailsModal({ onClose }: { onClose: () => void }) {
         <div className="cover-row">
           <div
             className="cover-preview"
-            style={d.coverDataUrl ? { backgroundImage: `url(${d.coverDataUrl})` } : undefined}
+            style={coverSrc ? { backgroundImage: `url(${coverSrc})` } : undefined}
           />
           <div>
             <button type="button" onClick={() => coverRef.current?.click()}>
@@ -166,9 +170,12 @@ export function BookDetailsModal({ onClose }: { onClose: () => void }) {
               hidden
               onChange={async (e) => {
                 const file = e.target.files?.[0]
-                if (!file) return
+                if (!file || !project) return
                 const processed = await processImageFile(file, 3000)
-                updateDetails({ coverDataUrl: processed.dataUrl })
+                const blob = dataUrlToBlob(processed.dataUrl)
+                if (!blob) return
+                const stored = await storeNewImage(project.id, blob)
+                updateDetails({ coverDataUrl: imageRef(stored.id) })
               }}
             />
           </div>
@@ -268,9 +275,18 @@ export function BookDetailsModal({ onClose }: { onClose: () => void }) {
           </div>
           <div className="details-export-actions">
             <button type="button" onClick={downloadSnapshot}>Snapshot</button>
-            <button type="button" onClick={() => void import('../export/docx').then(({ exportProjectToDocx }) => exportProjectToDocx(project))}>DOCX</button>
-            <button type="button" onClick={() => void import('../export/epub').then(({ exportProjectToEpub }) => exportProjectToEpub(project, activeTheme))}>EPUB</button>
-            <button type="button" onClick={() => void import('../export/pdf').then(({ exportProjectToPdf }) => exportProjectToPdf(project, activeTheme))}>PDF</button>
+            <button type="button" onClick={() => void (async () => {
+              const [{ exportProjectToDocx }, { prepareForExport }] = await Promise.all([import('../export/docx'), import('../export/prepare')])
+              await exportProjectToDocx(await prepareForExport(project))
+            })()}>DOCX</button>
+            <button type="button" onClick={() => void (async () => {
+              const [{ exportProjectToEpub }, { prepareForExport }] = await Promise.all([import('../export/epub'), import('../export/prepare')])
+              await exportProjectToEpub(await prepareForExport(project), await prepareForExport(activeTheme))
+            })()}>EPUB</button>
+            <button type="button" onClick={() => void (async () => {
+              const [{ exportProjectToPdf }, { prepareForExport }] = await Promise.all([import('../export/pdf'), import('../export/prepare')])
+              await exportProjectToPdf(await prepareForExport(project), await prepareForExport(activeTheme))
+            })()}>PDF</button>
           </div>
         </div>
       </div>

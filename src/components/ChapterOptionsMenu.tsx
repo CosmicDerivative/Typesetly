@@ -3,6 +3,8 @@ import { REQUIRED_PAGE_TYPES } from '../manuscript/pageTypes'
 import type { Chapter } from '../types'
 import './ChapterOptionsMenu.css'
 import { processImageFile } from '../images/process'
+import { dataUrlToBlob, imageRef } from '../library/images'
+import { storeNewImage } from '../library/store'
 import { PageTypeSelect } from './PageTypeSelect'
 
 export function ChapterOptionsMenu({
@@ -104,10 +106,19 @@ export function ChapterOptionsMenu({
           accept="image/png,image/jpeg,image/webp"
           onChange={async (event) => {
             const file = event.target.files?.[0]
-            if (!file) return
+            if (!file || !project) return
             try {
               const processed = await processImageFile(file)
-              updateChapterImage(chapter.id, processed.dataUrl, processed)
+              const blob = dataUrlToBlob(processed.dataUrl)
+              if (!blob) throw new Error('The selected image is not supported.')
+              const stored = await storeNewImage(project.id, blob)
+              // Keep the tiny persistent ref in project state; the ornament
+              // resolves an object URL only while this chapter is on screen.
+              updateChapterImage(chapter.id, imageRef(stored.id), {
+                width: processed.width,
+                height: processed.height,
+                bytes: processed.bytes,
+              })
             } catch (error) {
               window.dispatchEvent(new CustomEvent('typesetly:notice', {
                 detail: error instanceof Error ? error.message : 'The image could not be imported.',

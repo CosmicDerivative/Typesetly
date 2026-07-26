@@ -1,5 +1,5 @@
 import { Heart, Pencil, Plus, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { useApp } from '../BookContext'
 import { TRIM_SIZES } from '../themes/presets'
 import { FONT_FAMILIES, FONT_FAMILY_GROUPS, fontStack } from '../themes/fonts'
@@ -7,6 +7,33 @@ import type { BookTheme } from '../types'
 import './FormattingPanel.css'
 import { Dialog } from './Dialog'
 import { processImageFile } from '../images/process'
+import { dataUrlToBlob, imageRef } from '../library/images'
+import { storeNewImage } from '../library/store'
+import { useResolvedImageSrc } from '../library/useResolvedImageSrc'
+
+function ResolvedImg({
+  src,
+  alt = '',
+  className,
+  style,
+}: {
+  src?: string
+  alt?: string
+  className?: string
+  style?: CSSProperties
+}) {
+  const resolved = useResolvedImageSrc(src)
+  if (!src || !resolved) return null
+  return <img className={className} src={resolved} alt={alt} style={style} />
+}
+
+async function storeThemeImage(file: File, maxDimension?: number) {
+  const processed = await processImageFile(file, maxDimension)
+  const blob = dataUrlToBlob(processed.dataUrl)
+  if (!blob) throw new Error('The selected image is not supported.')
+  const stored = await storeNewImage('library', blob)
+  return imageRef(stored.id)
+}
 
 function previewChapterNumber(theme: BookTheme) {
   if (!theme.chapterHeading.showNumber || theme.chapterHeading.numberView === 'none') return ''
@@ -129,13 +156,19 @@ export function FormattingPanel() {
                   onChange={async (event) => {
                     const file = event.target.files?.[0]
                     if (!file) return
-                    const processed = await processImageFile(file)
-                    updateEditingTheme({
-                      chapterHeading: {
-                        ...t.chapterHeading,
-                        sharedImageDataUrl: processed.dataUrl,
-                      },
-                    })
+                    try {
+                      const ref = await storeThemeImage(file)
+                      updateEditingTheme({
+                        chapterHeading: {
+                          ...t.chapterHeading,
+                          sharedImageDataUrl: ref,
+                        },
+                      })
+                    } catch (error) {
+                      window.dispatchEvent(new CustomEvent('typesetly:notice', {
+                        detail: error instanceof Error ? error.message : 'The image could not be imported.',
+                      }))
+                    }
                   }}
                 />
               </label>
@@ -550,17 +583,23 @@ export function FormattingPanel() {
                     onChange={async (event) => {
                       const file = event.target.files?.[0]
                       if (!file) return
-                      const processed = await processImageFile(file, 1200)
-                      updateEditingTheme({
-                        sceneBreak: { ...t.sceneBreak, customImageDataUrl: processed.dataUrl },
-                      })
+                      try {
+                        const ref = await storeThemeImage(file, 1200)
+                        updateEditingTheme({
+                          sceneBreak: { ...t.sceneBreak, customImageDataUrl: ref },
+                        })
+                      } catch (error) {
+                        window.dispatchEvent(new CustomEvent('typesetly:notice', {
+                          detail: error instanceof Error ? error.message : 'The image could not be imported.',
+                        }))
+                      }
                       event.target.value = ''
                     }}
                   />
                 </label>
                 {t.sceneBreak.customImageDataUrl && (
                   <div className="scene-image-setting">
-                    <img src={t.sceneBreak.customImageDataUrl} alt="Current scene ornament" />
+                    <ResolvedImg src={t.sceneBreak.customImageDataUrl} alt="Current scene ornament" />
                     <button
                       type="button"
                       onClick={() =>
@@ -956,7 +995,7 @@ export function FormattingPanel() {
                   }}
                 >
                   {theme.chapterHeading.sharedImageDataUrl && (
-                    <img
+                    <ResolvedImg
                       className="ts-kicker-image"
                       src={theme.chapterHeading.sharedImageDataUrl}
                       alt=""

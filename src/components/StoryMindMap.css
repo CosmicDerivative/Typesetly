@@ -8,15 +8,15 @@
 
 .story-map-canvas {
   min-height: 300px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--workspace-border);
   border-radius: 18px;
   position: relative;
   overflow: hidden;
   background:
-    radial-gradient(circle at 50% 45%, rgba(221, 164, 70, .12), transparent 35%),
-    linear-gradient(rgba(67, 42, 54, .035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(67, 42, 54, .035) 1px, transparent 1px),
-    var(--paper-100);
+    radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--workspace-focus) 14%, transparent), transparent 35%),
+    linear-gradient(var(--workspace-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--workspace-grid) 1px, transparent 1px),
+    var(--workspace-panel-alt);
   background-size: auto, 24px 24px, 24px 24px, auto;
 }
 
@@ -28,13 +28,13 @@
 }
 
 .story-map-edge line {
-  stroke: rgba(79, 50, 63, .34);
+  stroke: color-mix(in srgb, var(--ink-900) 28%, transparent);
   stroke-width: 2;
 }
 
 .story-map-edge rect {
-  fill: var(--paper-50);
-  stroke: rgba(79, 50, 63, .13);
+  fill: var(--workspace-panel);
+  stroke: var(--workspace-border);
 }
 
 .story-map-edge text {
@@ -49,15 +49,15 @@
 }
 
 .story-map-node rect {
-  fill: #fffaf4;
-  stroke: #d5bc8a;
+  fill: color-mix(in srgb, var(--gold-400) 16%, var(--workspace-panel));
+  stroke: color-mix(in srgb, var(--gold-400) 72%, var(--workspace-border));
   stroke-width: 1.5;
-  filter: drop-shadow(0 7px 9px rgba(54, 31, 41, .12));
+  filter: drop-shadow(0 7px 9px color-mix(in srgb, var(--ink-900) 12%, transparent));
 }
 
 .story-map-node.world rect {
-  fill: #edf5f0;
-  stroke: #80aa9e;
+  fill: color-mix(in srgb, var(--sage-500) 16%, var(--workspace-panel));
+  stroke: color-mix(in srgb, var(--sage-500) 72%, var(--workspace-border));
 }
 
 .story-map-node:hover rect,
@@ -222,8 +222,8 @@
 }
 
 .relationship-row button:hover {
-  color: #a43d30;
-  background: rgba(189, 78, 49, .09);
+  color: var(--coral-600);
+  background: color-mix(in srgb, var(--coral-500) 12%, transparent);
 }
 
 .relationship-empty {
@@ -236,22 +236,22 @@
 .app-shell.dark .story-map-canvas,
 .app-shell.dark .relationship-builder,
 .app-shell.dark .relationship-row {
-  border-color: rgba(255, 255, 255, .1);
-  background-color: #35272d;
+  border-color: var(--workspace-border);
+  background-color: var(--workspace-panel-alt);
 }
 
 .app-shell.dark .story-map-node rect,
 .app-shell.dark .story-map-edge rect {
-  fill: #49343d;
+  fill: color-mix(in srgb, var(--gold-400) 14%, var(--workspace-panel));
 }
 
 .app-shell.dark .story-map-node.world rect {
-  fill: #30443f;
+  fill: color-mix(in srgb, var(--sage-500) 16%, var(--workspace-panel));
 }
 
 .app-shell.dark .story-map-node-name,
 .app-shell.dark .story-map-edge text {
-  fill: #f3eae3;
+  fill: var(--ink-900);
 }
 
 @media (max-width: 820px) {

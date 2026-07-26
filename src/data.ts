@@ -135,7 +135,9 @@ export function countWords(html: string): number {
 export function countBookWords(project: BookProject): number {
   return project.chapters
     .filter((c) => c.type === 'chapter')
-    .reduce((sum, c) => sum + countWords(c.content), 0)
+    // Closed books keep only metadata in memory; their chapter HTML stays in
+    // IndexedDB, so fall back to the word count captured at last save.
+    .reduce((sum, c) => sum + (c.content ? countWords(c.content) : c.wordCount ?? 0), 0)
 }
 
 export function todayKey(): string {

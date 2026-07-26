@@ -237,6 +237,23 @@
   outline: none !important;
 }
 
+/* Find matches: theme-token washes so High Contrast / Midnight / etc. stay intentional.
+   Visible while Find keeps focus in the panel (native ::selection is hidden when blurred). */
+.prose-editor .find-match {
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--workspace-focus) 40%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--workspace-focus) 34%, transparent);
+}
+
+.prose-editor .find-match-highlight {
+  border-radius: 2px;
+  color: var(--workspace-active-ink);
+  background: color-mix(in srgb, var(--workspace-focus) 90%, transparent);
+  box-shadow:
+    0 0 0 1.5px var(--workspace-focus),
+    0 0 0 3px color-mix(in srgb, var(--workspace-focus) 30%, transparent);
+}
+
 .editor-content.space .prose-editor p {
   margin-block: 0 0 1em;
 }

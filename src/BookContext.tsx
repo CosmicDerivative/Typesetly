@@ -37,6 +37,12 @@ export interface AppContextValue {
   loading: boolean
   openBookId: string | null
   project: BookProject | null
+  /**
+   * True once the open book's chapter HTML has loaded from IndexedDB. Until
+   * then, chapter `content` fields are empty placeholders and the editor
+   * must not write.
+   */
+  projectHydrated: boolean
   themes: BookTheme[]
   activeTheme: BookTheme
   mode: AppMode

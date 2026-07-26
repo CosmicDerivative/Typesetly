@@ -7,6 +7,30 @@ import './Home.css'
 import { DesktopUpdateButton } from './DesktopUpdateButton'
 import { Dialog } from './Dialog'
 import type { ImportReport } from '../types'
+import { useResolvedImageSrc } from '../library/useResolvedImageSrc'
+
+function BookCoverThumb({ coverSrc, title, author, isBoxset }: {
+  coverSrc?: string
+  title: string
+  author: string
+  isBoxset?: boolean
+}) {
+  const resolved = useResolvedImageSrc(coverSrc)
+  return (
+    <div
+      className="book-cover"
+      style={resolved ? { backgroundImage: `url(${resolved})` } : undefined}
+    >
+      {!coverSrc && (
+        <div className="cover-fallback">
+          <strong>{title}</strong>
+          <span>{author}</span>
+        </div>
+      )}
+      {isBoxset && <span className="badge">Boxset</span>}
+    </div>
+  )
+}
 
 export function Home() {
   const {
@@ -501,22 +525,12 @@ export function Home() {
               else openBook(book.id)
             }}
           >
-            <div
-              className="book-cover"
-              style={
-                book.details.coverDataUrl
-                  ? { backgroundImage: `url(${book.details.coverDataUrl})` }
-                  : undefined
-              }
-            >
-              {!book.details.coverDataUrl && (
-                <div className="cover-fallback">
-                  <strong>{book.details.title}</strong>
-                  <span>{book.details.author}</span>
-                </div>
-              )}
-              {book.isBoxset && <span className="badge">Boxset</span>}
-            </div>
+            <BookCoverThumb
+              coverSrc={book.details.coverDataUrl}
+              title={book.details.title}
+              author={book.details.author}
+              isBoxset={book.isBoxset}
+            />
             <div className="book-meta">
               <h3>{book.details.title}</h3>
               {book.details.seriesName && (

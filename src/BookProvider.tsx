@@ -13,12 +13,21 @@ import {
   todayKey,
 } from './data'
 import {
+  adoptFullBook,
+  chapterKey,
+  copyImagesForTexts,
+  exportSnapshot,
+  hydrateBookImages,
+  loadChapterContents,
   loadLibrary,
+  loadNamedRevision,
   parseSnapshot,
-  saveLibrary,
+  persistLibrary,
+  saveNamedRevision,
   saveRevision,
   upsertBook,
 } from './library/store'
+import { imageRef, imageUrlFor } from './library/images'
 import {
   convertPageType,
   nextChapterTitle,
@@ -34,13 +43,16 @@ import type {
   BookDetails,
   BookProject,
   BookTheme,
+  Chapter,
   CharacterProfile,
   ChapterOptions,
+  DocumentRevision,
   EditorPrefs,
   LibraryState,
   PageType,
   PreviewDevice,
   SaveStatus,
+  SnapshotBook,
   StickyNote,
   StoryRelationship,
   WritingGoals,
@@ -170,6 +182,30 @@ function normalizeBook(book: BookProject): BookProject {
   }
 }
 
+/**
+ * Rewrites copied image ids inside a serialized book so duplicated books and
+ * boxsets own independent image rows.
+ */
+function remapImageIds(serialized: string, mapping: Map<string, string>): string {
+  let result = serialized
+  for (const [oldId, newId] of mapping) {
+    result = result.split(imageRef(oldId)).join(imageRef(newId))
+    const oldUrl = imageUrlFor(oldId)
+    const newUrl = imageUrlFor(newId)
+    if (oldUrl && newUrl) result = result.split(oldUrl).join(newUrl)
+  }
+  return result
+}
+
+/** Chapter list stripped to metadata for the persisted library record. */
+function stripChapterContent(chapters: Chapter[], wordCountFor: (chapter: Chapter) => number): Chapter[] {
+  return chapters.map((chapter) => ({
+    ...chapter,
+    content: '',
+    wordCount: wordCountFor(chapter),
+  }))
+}
+
 function downloadJson(name: string, value: unknown) {
   const blob = new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' })
   const anchor = document.createElement('a')
@@ -205,6 +241,38 @@ export function BookProvider({ children }: { children: ReactNode }) {
   const saveGeneration = useRef(0)
   const latestProject = useRef<BookProject | null>(null)
   const latestSaveStatus = useRef<SaveStatus>('saved')
+  // Books whose chapter HTML is currently held in memory. Everything else in
+  // `books` carries metadata only; chapter content stays in IndexedDB.
+  const [hydratedBookIds, setHydratedBookIds] = useState<ReadonlySet<string>>(new Set())
+  const hydratedRef = useRef(new Set<string>())
+  /** Chapter content as of the last successful save, in hydrated form. */
+  const savedContentRef = useRef(new Map<string, string>())
+  const pendingBookDeletions = useRef(new Set<string>())
+  const wordCountCache = useRef(new Map<string, { content: string; count: number }>())
+  const latestState = useRef<LibraryState>({ books: [], openBookId: null, themes: [] })
+  latestState.current = { books, openBookId, themes }
+
+  const markBookHydrated = useCallback((id: string, isHydrated: boolean) => {
+    if (isHydrated) hydratedRef.current.add(id)
+    else hydratedRef.current.delete(id)
+    setHydratedBookIds(new Set(hydratedRef.current))
+  }, [])
+
+  const forgetSavedContent = useCallback((bookId: string) => {
+    for (const key of [...savedContentRef.current.keys()]) {
+      if (key.startsWith(`${bookId}/`)) savedContentRef.current.delete(key)
+    }
+  }, [])
+
+  const chapterWordCount = useCallback((bookId: string, chapter: Chapter): number => {
+    if (!chapter.content) return chapter.wordCount ?? 0
+    const key = chapterKey(bookId, chapter.id)
+    const cached = wordCountCache.current.get(key)
+    if (cached && cached.content === chapter.content) return cached.count
+    const count = countWords(chapter.content)
+    wordCountCache.current.set(key, { content: chapter.content, count })
+    return count
+  }, [])
 
   useEffect(() => {
     try {
@@ -218,9 +286,29 @@ export function BookProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let active = true
     void loadLibrary()
-      .then((library) => {
+      .then(async (library) => {
+        let normalized = library.books.map(normalizeBook)
+        if (library.openBookId) {
+          // Only the open book's chapter HTML comes back into memory; every
+          // other book stays as metadata until it is opened.
+          const contents = await loadChapterContents(library.openBookId)
+          normalized = normalized.map((book) => {
+            if (book.id !== library.openBookId) return book
+            for (const [id, content] of contents) {
+              savedContentRef.current.set(chapterKey(book.id, id), content)
+            }
+            return {
+              ...book,
+              chapters: book.chapters.map((chapter) =>
+                contents.has(chapter.id) ? { ...chapter, content: contents.get(chapter.id)! } : chapter,
+              ),
+            }
+          })
+          hydratedRef.current.add(library.openBookId)
+        }
         if (!active) return
-        setBooks(library.books.map(normalizeBook))
+        setHydratedBookIds(new Set(hydratedRef.current))
+        setBooks(normalized)
         setOpenBookId(library.openBookId)
         setThemes([...PRESET_THEMES, ...library.themes.filter((theme) => !theme.preset)])
         hydrated.current = true
@@ -236,18 +324,129 @@ export function BookProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const hydrateBookById = useCallback(async (id: string) => {
+    if (hydratedRef.current.has(id)) return
+    const contents = await loadChapterContents(id)
+    if (hydratedRef.current.has(id)) return
+    for (const [chapterId, content] of contents) {
+      savedContentRef.current.set(chapterKey(id, chapterId), content)
+    }
+    markBookHydrated(id, true)
+    setBooks((previous) =>
+      previous.map((book) =>
+        book.id === id
+          ? {
+              ...book,
+              chapters: book.chapters.map((chapter) =>
+                contents.has(chapter.id) ? { ...chapter, content: contents.get(chapter.id)! } : chapter,
+              ),
+            }
+          : book,
+      ),
+    )
+  }, [markBookHydrated])
+
+  useEffect(() => {
+    if (!hydrated.current || !openBookId) return
+    if (hydratedRef.current.has(openBookId)) return
+    void hydrateBookById(openBookId).catch((error: unknown) => {
+      setSaveStatus('error')
+      setSaveError(error instanceof Error ? error.message : 'This book could not be opened.')
+    })
+  }, [hydrateBookById, openBookId])
+
+  // Once everything is saved, release chapter HTML for books that are no
+  // longer open so a large library never accumulates in memory.
+  useEffect(() => {
+    if (saveStatus !== 'saved' || !hydrated.current) return
+    const releasable = books.filter(
+      (book) =>
+        book.id !== openBookId &&
+        hydratedRef.current.has(book.id) &&
+        book.chapters.every(
+          (chapter) => savedContentRef.current.get(chapterKey(book.id, chapter.id)) === chapter.content,
+        ),
+    )
+    if (!releasable.length) return
+    for (const book of releasable) {
+      markBookHydrated(book.id, false)
+      forgetSavedContent(book.id)
+    }
+    const ids = new Set(releasable.map((book) => book.id))
+    setBooks((previous) =>
+      previous.map((book) =>
+        ids.has(book.id)
+          ? { ...book, chapters: stripChapterContent(book.chapters, (chapter) => chapterWordCount(book.id, chapter)) }
+          : book,
+      ),
+    )
+  }, [books, chapterWordCount, forgetSavedContent, markBookHydrated, openBookId, saveStatus])
+
   useEffect(() => {
     const showNotice = (event: Event) => setNotice((event as CustomEvent<string>).detail)
     window.addEventListener('typesetly:notice', showNotice)
     return () => window.removeEventListener('typesetly:notice', showNotice)
   }, [])
 
+  /**
+   * Persists the current library: the small metadata record always, plus only
+   * the chapters whose HTML changed since the previous save.
+   */
+  const flushSave = useCallback(async (state: LibraryState) => {
+    const dirtyChapters: Array<{ bookId: string; chapterId: string; content: string }> = []
+    const deletedChapterKeys: string[] = []
+    for (const book of state.books) {
+      if (!hydratedRef.current.has(book.id)) continue
+      const liveIds = new Set<string>()
+      for (const chapter of book.chapters) {
+        liveIds.add(chapter.id)
+        const key = chapterKey(book.id, chapter.id)
+        if (savedContentRef.current.get(key) !== chapter.content) {
+          dirtyChapters.push({ bookId: book.id, chapterId: chapter.id, content: chapter.content })
+        }
+      }
+      for (const key of savedContentRef.current.keys()) {
+        if (key.startsWith(`${book.id}/`) && !liveIds.has(key.slice(book.id.length + 1))) {
+          deletedChapterKeys.push(key)
+        }
+      }
+    }
+    const deletedBookIds = [...pendingBookDeletions.current]
+    await persistLibrary({
+      state: {
+        books: state.books.map((book) => ({
+          ...book,
+          chapters: stripChapterContent(book.chapters, (chapter) => chapterWordCount(book.id, chapter)),
+        })),
+        openBookId: state.openBookId,
+        themes: state.themes,
+      },
+      dirtyChapters,
+      deletedChapterKeys,
+      deletedBookIds,
+    })
+    for (const chapter of dirtyChapters) {
+      savedContentRef.current.set(chapterKey(chapter.bookId, chapter.chapterId), chapter.content)
+    }
+    for (const key of deletedChapterKeys) savedContentRef.current.delete(key)
+    for (const id of deletedBookIds) pendingBookDeletions.current.delete(id)
+  }, [chapterWordCount])
+
+  /** Immediate save of the latest state, used before snapshots and exports. */
+  const flushNow = useCallback(async () => {
+    const generation = ++saveGeneration.current
+    await flushSave(latestState.current)
+    if (saveGeneration.current === generation) {
+      setSaveStatus('saved')
+      setSaveError('')
+    }
+  }, [flushSave])
+
   useEffect(() => {
     if (!hydrated.current) return
     const generation = ++saveGeneration.current
     const timer = window.setTimeout(() => {
-      const state: LibraryState = { books, openBookId, themes }
-      void saveLibrary(state)
+      void flushSave({ books, openBookId, themes })
         .then(() => {
           if (saveGeneration.current !== generation) return
           setSaveStatus('saved')
@@ -260,7 +459,7 @@ export function BookProvider({ children }: { children: ReactNode }) {
         })
     }, 550)
     return () => window.clearTimeout(timer)
-  }, [books, openBookId, themes])
+  }, [books, flushSave, openBookId, themes])
 
   useEffect(() => {
     if (!timerRunning) return
@@ -306,6 +505,9 @@ export function BookProvider({ children }: { children: ReactNode }) {
   const mutateOpen = useCallback(
     (updater: (previous: BookProject) => BookProject) => {
       if (!openBookId) return
+      // Never mutate a book whose chapter HTML has not finished loading;
+      // otherwise an edit could persist empty content over the real text.
+      if (!hydratedRef.current.has(openBookId)) return
       markDirty()
       // All project writes pass through one functional update so rapid editor,
       // drag/drop, and timer changes cannot overwrite one another.
@@ -386,11 +588,14 @@ export function BookProvider({ children }: { children: ReactNode }) {
     [project],
   )
 
+  const projectHydrated = project ? hydratedBookIds.has(project.id) : false
+
   const value = {
     books,
     loading,
     openBookId,
     project,
+    projectHydrated,
     themes,
     activeTheme,
     mode,
@@ -429,6 +634,7 @@ export function BookProvider({ children }: { children: ReactNode }) {
     createBook: (title?: string) => {
       const book = normalizeBook(createEmptyBook(title))
       markDirty()
+      markBookHydrated(book.id, true)
       setBooks((previous) => [book, ...previous])
       setOpenBookId(book.id)
       setNotice('New book created.')
@@ -436,35 +642,60 @@ export function BookProvider({ children }: { children: ReactNode }) {
     duplicateBook: (id: string) => {
       const source = books.find((book) => book.id === id)
       if (!source) return
-      const idMap = new Map(source.chapters.map((chapter) => [chapter.id, uuid()]))
-      const folderIdMap = new Map(
-        (source.manuscriptFolders || []).map((folder) => [folder.id, uuid()]),
-      )
-      const copy = normalizeBook({
-        ...structuredClone(source),
-        id: uuid(),
-        details: { ...source.details, title: `${source.details.title} (Copy)` },
-        chapters: source.chapters.map((chapter) => ({
-          ...structuredClone(chapter),
-          id: idMap.get(chapter.id)!,
-          partId: chapter.partId ? idMap.get(chapter.partId) : undefined,
-          folderId: chapter.folderId ? folderIdMap.get(chapter.folderId) : undefined,
-        })),
-        manuscriptFolders: (source.manuscriptFolders || []).map((folder) => ({
-          ...structuredClone(folder),
-          id: folderIdMap.get(folder.id)!,
-        })),
-        activeId: idMap.get(source.activeId) || idMap.get(source.chapters[0].id)!,
-        trashItems: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      })
-      markDirty()
-      setBooks((previous) => [copy, ...previous])
-      setNotice('Book duplicated.')
+      void (async () => {
+        try {
+          // Closed books hold no chapter HTML in memory; pull it from storage.
+          const contents = hydratedRef.current.has(id)
+            ? new Map(source.chapters.map((chapter) => [chapter.id, chapter.content]))
+            : await loadChapterContents(id)
+          const idMap = new Map(source.chapters.map((chapter) => [chapter.id, uuid()]))
+          const folderIdMap = new Map(
+            (source.manuscriptFolders || []).map((folder) => [folder.id, uuid()]),
+          )
+          const copyId = uuid()
+          const draft = {
+            ...structuredClone(source),
+            id: copyId,
+            details: { ...source.details, title: `${source.details.title} (Copy)` },
+            chapters: source.chapters.map((chapter) => ({
+              ...structuredClone(chapter),
+              id: idMap.get(chapter.id)!,
+              content: contents.get(chapter.id) ?? chapter.content,
+              partId: chapter.partId ? idMap.get(chapter.partId) : undefined,
+              folderId: chapter.folderId ? folderIdMap.get(chapter.folderId) : undefined,
+            })),
+            manuscriptFolders: (source.manuscriptFolders || []).map((folder) => ({
+              ...structuredClone(folder),
+              id: folderIdMap.get(folder.id)!,
+            })),
+            activeId: idMap.get(source.activeId) || idMap.get(source.chapters[0].id)!,
+            trashItems: [],
+            // Named versions belong to the original book's history.
+            revisions: [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }
+          // The copy gets its own image rows so deleting either book cannot
+          // break the other's pictures.
+          const serialized = JSON.stringify(draft)
+          const mapping = await copyImagesForTexts([serialized], copyId)
+          const copy = normalizeBook(JSON.parse(remapImageIds(serialized, mapping)) as BookProject)
+          markDirty()
+          markBookHydrated(copy.id, true)
+          setBooks((previous) => [copy, ...previous])
+          setNotice('Book duplicated.')
+        } catch (error) {
+          setNotice(error instanceof Error ? error.message : 'The book could not be duplicated.')
+        }
+      })()
     },
     deleteBook: (id: string) => {
       markDirty()
+      // The next save purges the book's chapters, named revisions, images,
+      // and recovery points from IndexedDB.
+      pendingBookDeletions.current.add(id)
+      markBookHydrated(id, false)
+      forgetSavedContent(id)
       setBooks((previous) => previous.filter((book) => book.id !== id))
       if (openBookId === id) setOpenBookId(null)
       setNotice('Book deleted.')
@@ -472,9 +703,12 @@ export function BookProvider({ children }: { children: ReactNode }) {
     importBookFromDocx: async (file: File) => {
       const { importDocxToBook } = await import('./import/docx')
       const report = await importDocxToBook(file)
+      // Move any base64 images from the imported HTML into blob storage.
+      const book = normalizeBook(await adoptFullBook(report.book as SnapshotBook))
       markDirty()
-      setBooks((previous) => [normalizeBook(report.book), ...previous])
-      setOpenBookId(report.book.id)
+      markBookHydrated(book.id, true)
+      setBooks((previous) => [book, ...previous])
+      setOpenBookId(book.id)
       setNotice(
         report.warnings.length
           ? `Book imported with ${report.warnings.length} warning(s): ${report.warnings[0]}`
@@ -577,18 +811,45 @@ export function BookProvider({ children }: { children: ReactNode }) {
     restoreSnapshot: async (file: File) => {
       const snapshot = parseSnapshot(await file.text())
       const restoredThemes = [...PRESET_THEMES, ...snapshot.themes.filter((theme) => !theme.preset)]
-      const restoredBooks = snapshot.books.map(normalizeBook)
+      const restoredBooks: BookProject[] = []
+      for (const raw of snapshot.books) {
+        // Splits inlined images and revisions back into their own stores.
+        restoredBooks.push(normalizeBook(await adoptFullBook(raw)))
+      }
+      const restoredIds = new Set(restoredBooks.map((book) => book.id))
+      for (const book of books) {
+        if (!restoredIds.has(book.id)) pendingBookDeletions.current.add(book.id)
+      }
+      hydratedRef.current = new Set(restoredIds)
+      setHydratedBookIds(new Set(hydratedRef.current))
+      savedContentRef.current.clear()
       setBooks(restoredBooks)
       setThemes(restoredThemes)
       setOpenBookId(null)
       markDirty()
-      await saveLibrary({ books: restoredBooks, openBookId: null, themes: restoredThemes })
+      await flushSave({ books: restoredBooks, openBookId: null, themes: restoredThemes })
+      setSaveStatus('saved')
       setNotice(`${restoredBooks.length} book(s) restored from snapshot.`)
     },
     replaceProject: (next: BookProject) => {
-      setBooks((previous) => upsertBook({ books: previous, openBookId, themes }, normalizeBook(next)).books)
-      setOpenBookId(next.id)
-      markDirty()
+      void (async () => {
+        try {
+          // Recovery points store image refs; resolve them for display.
+          const hydratedNext = normalizeBook(await hydrateBookImages(next))
+          // Poison the saved-content bookkeeping for this book: every current
+          // chapter becomes dirty (full rewrite) and rows for chapters the
+          // replacement no longer has get deleted on the next save.
+          for (const key of savedContentRef.current.keys()) {
+            if (key.startsWith(`${next.id}/`)) savedContentRef.current.set(key, '\u0000invalidated')
+          }
+          markBookHydrated(next.id, true)
+          setBooks((previous) => upsertBook({ books: previous, openBookId, themes }, hydratedNext).books)
+          setOpenBookId(next.id)
+          markDirty()
+        } catch (error) {
+          setNotice(error instanceof Error ? error.message : 'The version could not be restored.')
+        }
+      })()
     },
     updateDetails: (details: Partial<BookDetails>) =>
       mutateOpen((book) => ({ ...book, details: { ...book.details, ...details } })),
@@ -1604,20 +1865,29 @@ export function BookProvider({ children }: { children: ReactNode }) {
       })),
     deleteComment: (id: string) =>
       mutateOpen((book) => ({ ...book, comments: (book.comments || []).filter((comment) => comment.id !== id) })),
-    setTrackChanges: (enabled: boolean) =>
-      mutateOpen((book) => ({
-        ...book,
-        trackChanges: enabled,
-        revisions: [
-          ...(book.revisions || []),
-          {
-            id: uuid(),
-            name: enabled ? 'Before tracked editing' : 'After tracked editing',
-            createdAt: new Date().toISOString(),
-            chapters: book.chapters.map(({ id, title, subtitle, content }) => ({ id, title, subtitle, content })),
-          },
-        ],
-      })),
+    setTrackChanges: (enabled: boolean) => {
+      if (!project || !hydratedRef.current.has(project.id)) return
+      const revision: DocumentRevision = {
+        id: uuid(),
+        name: enabled ? 'Before tracked editing' : 'After tracked editing',
+        createdAt: new Date().toISOString(),
+        chapters: project.chapters.map(({ id, title, subtitle, content }) => ({ id, title, subtitle, content })),
+      }
+      void saveNamedRevision(project.id, revision)
+        .then(() =>
+          mutateOpen((book) => ({
+            ...book,
+            trackChanges: enabled,
+            revisions: [
+              ...(book.revisions || []),
+              { id: revision.id, name: revision.name, createdAt: revision.createdAt },
+            ],
+          })),
+        )
+        .catch((error: unknown) => {
+          setNotice(error instanceof Error ? error.message : 'The safety version could not be saved.')
+        })
+    },
     resolveTrackedChange: (id: string, resolution: 'accepted' | 'rejected') =>
       mutateOpen((book) => {
         const change = book.trackedChanges?.find((item) => item.id === id)
@@ -1639,32 +1909,51 @@ export function BookProvider({ children }: { children: ReactNode }) {
       })),
     deleteCalloutPreset: (id: string) =>
       mutateOpen((book) => ({ ...book, calloutPresets: (book.calloutPresets || []).filter((preset) => preset.id !== id) })),
-    createNamedRevision: (name: string) =>
-      mutateOpen((book) => ({
-        ...book,
-        revisions: [
-          ...(book.revisions || []),
-          {
-            id: uuid(),
-            name: name.trim() || `Revision ${(book.revisions?.length || 0) + 1}`,
-            createdAt: new Date().toISOString(),
-            chapters: book.chapters.map(({ id, title, subtitle, content }) => ({ id, title, subtitle, content })),
-          },
-        ],
-      })),
-    restoreNamedRevision: (id: string) =>
-      mutateOpen((book) => {
-        const revision = book.revisions?.find((item) => item.id === id)
-        if (!revision) return book
-        const contentById = new Map(revision.chapters.map((chapter) => [chapter.id, chapter]))
-        return {
-          ...book,
-          chapters: book.chapters.map((chapter) => {
-            const savedChapter = contentById.get(chapter.id)
-            return savedChapter ? { ...chapter, ...savedChapter } : chapter
-          }),
+    createNamedRevision: (name: string) => {
+      if (!project || !hydratedRef.current.has(project.id)) return
+      // Full chapter copies go straight to their own IndexedDB store; only a
+      // small listing stays on the book (and in memory).
+      const revision: DocumentRevision = {
+        id: uuid(),
+        name: name.trim() || `Revision ${(project.revisions?.length || 0) + 1}`,
+        createdAt: new Date().toISOString(),
+        chapters: project.chapters.map(({ id, title, subtitle, content }) => ({ id, title, subtitle, content })),
+      }
+      void saveNamedRevision(project.id, revision)
+        .then(() =>
+          mutateOpen((book) => ({
+            ...book,
+            revisions: [
+              ...(book.revisions || []),
+              { id: revision.id, name: revision.name, createdAt: revision.createdAt },
+            ],
+          })),
+        )
+        .catch((error: unknown) => {
+          setNotice(error instanceof Error ? error.message : 'The version could not be saved.')
+        })
+    },
+    restoreNamedRevision: (id: string) => {
+      void (async () => {
+        try {
+          const revision = await loadNamedRevision(id)
+          if (!revision) {
+            setNotice('That version could not be loaded from this device.')
+            return
+          }
+          const contentById = new Map(revision.chapters.map((chapter) => [chapter.id, chapter]))
+          mutateOpen((book) => ({
+            ...book,
+            chapters: book.chapters.map((chapter) => {
+              const savedChapter = contentById.get(chapter.id)
+              return savedChapter ? { ...chapter, ...savedChapter } : chapter
+            }),
+          }))
+        } catch (error) {
+          setNotice(error instanceof Error ? error.message : 'The version could not be restored.')
         }
-      }),
+      })()
+    },
     toggleTimer: () => setTimerRunning((running) => !running),
     resetTimer: () => {
       setTimerRunning(false)
@@ -1679,47 +1968,70 @@ export function BookProvider({ children }: { children: ReactNode }) {
     setBreakDuration: (seconds: number) => setBreakDurationState(Math.max(60, seconds)),
     markSaved: () => setSaveStatus('saved'),
     downloadSnapshot: () => {
-      const payload = {
-        version: 3 as const,
-        books,
-        themes: themes.filter((theme) => !theme.preset),
-        exportedAt: new Date().toISOString(),
-      }
-      if (window.typesetly?.saveJson) {
-        void window.typesetly.saveJson({ defaultName: 'typesetly-snapshot.json', data: payload })
-      } else downloadJson('typesetly-snapshot.json', payload)
-      setNotice('Snapshot downloaded.')
+      void (async () => {
+        try {
+          // Snapshots are assembled from IndexedDB, so settle any pending
+          // edits first, then inline chapters, revisions, and images.
+          await flushNow()
+          const payload = await exportSnapshot()
+          if (window.typesetly?.saveJson) {
+            await window.typesetly.saveJson({ defaultName: 'typesetly-snapshot.json', data: payload })
+          } else downloadJson('typesetly-snapshot.json', payload)
+          setNotice('Snapshot downloaded.')
+        } catch (error) {
+          setNotice(error instanceof Error ? error.message : 'The snapshot could not be created.')
+        }
+      })()
     },
     createBoxset: (bookIds: string[], title: string) => {
       const selected = bookIds.map((id) => books.find((book) => book.id === id)).filter(Boolean) as BookProject[]
       if (!selected.length) return
-      const chapters = [
-        makePage('title-page', 'Title Page'),
-        makePage('copyright', 'Copyright', '<p>Copyright © Box Set. All rights reserved.</p>'),
-        makePage('contents', 'Contents'),
-      ]
-      for (const book of selected) {
-        const part = createPart(book.details.title)
-        chapters.push(part)
-        for (const sourceChapter of book.chapters.filter((candidate) => candidate.type === 'chapter')) {
-          chapters.push({ ...structuredClone(sourceChapter), id: uuid(), partId: part.id })
+      void (async () => {
+        try {
+          const chapters = [
+            makePage('title-page', 'Title Page'),
+            makePage('copyright', 'Copyright', '<p>Copyright © Box Set. All rights reserved.</p>'),
+            makePage('contents', 'Contents'),
+          ]
+          for (const book of selected) {
+            // Volume chapters usually live only in IndexedDB; load them here.
+            const contents = hydratedRef.current.has(book.id)
+              ? new Map(book.chapters.map((chapter) => [chapter.id, chapter.content]))
+              : await loadChapterContents(book.id)
+            const part = createPart(book.details.title)
+            chapters.push(part)
+            for (const sourceChapter of book.chapters.filter((candidate) => candidate.type === 'chapter')) {
+              chapters.push({
+                ...structuredClone(sourceChapter),
+                id: uuid(),
+                content: contents.get(sourceChapter.id) ?? sourceChapter.content,
+                partId: part.id,
+              })
+            }
+          }
+          const draft = {
+            ...createEmptyBook(title),
+            details: {
+              ...createEmptyBook(title).details,
+              title,
+              author: selected[0]?.details.author || '',
+            },
+            chapters,
+            activeId: chapters[3]?.id || chapters[0].id,
+            isBoxset: true,
+            volumeBookIds: bookIds,
+          }
+          const serialized = JSON.stringify(draft)
+          const mapping = await copyImagesForTexts([serialized], draft.id)
+          const box = normalizeBook(JSON.parse(remapImageIds(serialized, mapping)) as BookProject)
+          markDirty()
+          markBookHydrated(box.id, true)
+          setBooks((previous) => [box, ...previous])
+          setOpenBookId(box.id)
+        } catch (error) {
+          setNotice(error instanceof Error ? error.message : 'The box set could not be created.')
         }
-      }
-      const box = normalizeBook({
-        ...createEmptyBook(title),
-        details: {
-          ...createEmptyBook(title).details,
-          title,
-          author: selected[0]?.details.author || '',
-        },
-        chapters,
-        activeId: chapters[3]?.id || chapters[0].id,
-        isBoxset: true,
-        volumeBookIds: bookIds,
-      })
-      markDirty()
-      setBooks((previous) => [box, ...previous])
-      setOpenBookId(box.id)
+      })()
     },
     dismissNotice: () => setNotice(''),
   }

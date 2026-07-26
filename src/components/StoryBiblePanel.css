@@ -3,17 +3,17 @@
   min-height: 0;
   margin: 18px 24px 24px;
   padding: 24px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--workspace-border);
   border-radius: 22px;
   display: flex;
   flex: 1;
   flex-direction: column;
   gap: 14px;
   overflow: hidden;
-  color: var(--text-900);
+  color: var(--workspace-on-panel);
   background:
-    radial-gradient(circle at 100% 0, rgba(221, 164, 70, .12), transparent 30%),
-    var(--paper-50);
+    radial-gradient(circle at 100% 0, color-mix(in srgb, var(--workspace-focus) 18%, transparent), transparent 30%),
+    var(--workspace-panel);
   box-shadow: var(--shadow-card);
 }
 
@@ -141,7 +141,7 @@
 .story-tabs button.active {
   color: var(--ink-900);
   background: var(--paper-50);
-  box-shadow: 0 3px 9px rgba(52, 30, 38, .08);
+  box-shadow: 0 3px 9px color-mix(in srgb, var(--ink-900) 8%, transparent);
 }
 
 .story-tabs span,
@@ -386,7 +386,7 @@
   align-items: center;
   gap: 3px;
   color: var(--sage-600);
-  background: rgba(57, 119, 108, .1);
+  background: color-mix(in srgb, var(--sage-500) 12%, transparent);
   font-size: 8px;
   font-weight: 800;
 }
@@ -511,12 +511,12 @@
 
 .story-heading-actions button:hover {
   color: var(--ink-900);
-  background: rgba(221, 164, 70, .14);
+  background: color-mix(in srgb, var(--gold-400) 14%, transparent);
 }
 
 .story-heading-actions button.story-delete:hover {
-  color: #a43d30;
-  background: rgba(189, 78, 49, .09);
+  color: var(--coral-600);
+  background: color-mix(in srgb, var(--coral-500) 12%, transparent);
 }
 
 .story-heading-actions button span {
@@ -535,11 +535,11 @@
 
 .story-mention-summary {
   padding: 9px 10px;
-  border: 1px solid rgba(57, 119, 108, .18);
+  border: 1px solid color-mix(in srgb, var(--sage-500) 22%, transparent);
   border-radius: 10px;
   display: grid;
   gap: 7px;
-  background: rgba(57, 119, 108, .06);
+  background: color-mix(in srgb, var(--sage-500) 8%, transparent);
 }
 
 .story-mention-summary > div:first-child {
@@ -778,15 +778,15 @@
 .app-shell.dark .story-form-heading strong,
 .app-shell.dark .series-reference-heading strong,
 .app-shell.dark .story-series-label strong {
-  color: #f3eae3;
+  color: var(--ink-900);
 }
 
 .app-shell.dark .story-planner-view {
-  color: #e7dfe2;
-  border-color: rgba(255, 255, 255, .1);
+  color: var(--workspace-on-panel);
+  border-color: var(--workspace-border);
   background:
-    radial-gradient(circle at 100% 0, rgba(221, 164, 70, .1), transparent 30%),
-    #2b2025;
+    radial-gradient(circle at 100% 0, color-mix(in srgb, var(--workspace-focus) 14%, transparent), transparent 30%),
+    var(--workspace-panel);
 }
 
 .app-shell.dark .story-tabs,
@@ -797,8 +797,9 @@
 .app-shell.dark .story-tools label,
 .app-shell.dark .story-scope-toggle,
 .app-shell.dark .series-reference-card dl > div {
-  background: #402f36;
-  border-color: rgba(255, 255, 255, .1);
+  color: var(--text-900);
+  background: var(--workspace-panel-alt);
+  border-color: var(--workspace-border);
 }
 
 .has-pinned-right .story-studio-head > div:first-child > span,

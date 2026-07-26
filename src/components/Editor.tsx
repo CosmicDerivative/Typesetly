@@ -59,10 +59,18 @@ import {
 } from '../editor/extensions'
 import { Dialog } from './Dialog'
 import { processImageFile } from '../images/process'
+import { dataUrlToBlob } from '../library/images'
+import { storeNewImage } from '../library/store'
+import { useResolvedImageSrc } from '../library/useResolvedImageSrc'
 import { buildCalloutNode, replaceCalloutRange } from '../editor/callouts'
 import { smartDashForInsertion, smartQuoteForInsertion } from '../editor/smartQuotes'
 import { FONT_FAMILY_GROUPS } from '../themes/fonts'
-import { externalProofreadingEnabled, findTextOccurrences } from '../editor/find'
+import {
+  externalProofreadingEnabled,
+  FindHighlight,
+  findHighlightKey,
+  findTextOccurrences,
+} from '../editor/find'
 
 const TEXT_SIZES = [9, 10, 11, 12, 13, 14, 16, 18, 20, 22, 24, 28, 32, 36, 42, 48, 64]
 const TEXT_COLORS = ['#221a1e', '#5b3345', '#a53f35', '#b96e18', '#2f6f52', '#206a83', '#315aa8', '#714a9f', '#767676', '#ffffff']
@@ -126,6 +134,7 @@ export function EditorPane() {
   const {
     activeChapter,
     project,
+    projectHydrated,
     updateChapterContent,
     updateChapterTitle,
     updateChapterSubtitle,
@@ -170,10 +179,13 @@ export function EditorPane() {
   const [presetName, setPresetName] = useState('')
   const [quoteOpen, setQuoteOpen] = useState(false)
   const [quoteAttribution, setQuoteAttribution] = useState('')
-  const imageRef = useRef<HTMLInputElement>(null)
+  const imageRefInput = useRef<HTMLInputElement>(null)
   const blockRangeRef = useRef<{ from: number; to: number } | null>(null)
   const activeChapterId = activeChapter?.id
   const activeChapterContent = activeChapter?.content
+  const chapterOrnamentSource =
+    activeChapter?.imageDataUrl || activeTheme.chapterHeading.sharedImageDataUrl
+  const chapterOrnamentSrc = useResolvedImageSrc(chapterOrnamentSource)
   const allowExternalProofreading = externalProofreadingEnabled(
     project?.editorPrefs.externalProofreading ?? 'auto',
     activeChapterContent?.length ?? 0,
@@ -204,6 +216,7 @@ export function EditorPane() {
       HangingIndentBlock,
       AttributedQuote,
       TextAppearance,
+      FindHighlight,
     ],
     content: activeChapter?.content || '<p></p>',
     onUpdate: ({ editor: ed }) => {
@@ -311,14 +324,34 @@ export function EditorPane() {
       })
       const range = ranges[detail.occurrence]
       if (!range) return
-      const transaction = detail.replaceWith === undefined
+      // Select/replace and paint a decoration highlight without focusing the
+      // editor — Find/Replace keeps keyboard focus so Enter advances matches.
+      let transaction = detail.replaceWith === undefined
         ? editor.state.tr.setSelection(TextSelection.create(editor.state.doc, range.from, range.to))
         : editor.state.tr.insertText(detail.replaceWith, range.from, range.to)
+      if (detail.replaceWith === undefined) {
+        transaction = transaction.setMeta(findHighlightKey, {
+          matches: ranges,
+          activeIndex: detail.occurrence,
+        })
+      } else {
+        transaction = transaction.setMeta(findHighlightKey, null)
+      }
       editor.view.dispatch(transaction.scrollIntoView())
-      editor.view.focus()
+      window.requestAnimationFrame(() => {
+        const highlight = editor.view.dom.querySelector('.find-match-highlight')
+        highlight?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      })
+    }
+    const clearFindHighlight = () => {
+      editor.view.dispatch(editor.state.tr.setMeta(findHighlightKey, null))
     }
     window.addEventListener('typesetly:find-match', findMatch)
-    return () => window.removeEventListener('typesetly:find-match', findMatch)
+    window.addEventListener('typesetly:find-clear', clearFindHighlight)
+    return () => {
+      window.removeEventListener('typesetly:find-match', findMatch)
+      window.removeEventListener('typesetly:find-clear', clearFindHighlight)
+    }
   }, [activeChapterId, editor])
 
   useEffect(() => {
@@ -340,6 +373,10 @@ export function EditorPane() {
 
   if (!project || !activeChapter) {
     return <div className="editor-pane empty">Select a chapter to begin.</div>
+  }
+
+  if (!projectHydrated) {
+    return <div className="editor-pane empty">Opening manuscript…</div>
   }
 
   const isFrontOrSpecial =
@@ -530,10 +567,15 @@ export function EditorPane() {
   const insertImage = async (file: File) => {
     try {
       const processed = await processImageFile(file)
+      // Persist the picture as an IndexedDB blob and reference it through a
+      // session object URL, keeping base64 bytes out of the chapter HTML.
+      const blob = dataUrlToBlob(processed.dataUrl)
+      if (!blob) throw new Error('The selected image is not supported.')
+      const stored = await storeNewImage(project.id, blob)
       editor?.chain().focus().insertContent({
         type: 'manuscriptImage',
         attrs: {
-          src: processed.dataUrl,
+          src: stored.url,
           alt: '',
           caption: '',
           layout: 'inline',
@@ -565,7 +607,7 @@ export function EditorPane() {
 
   const openImageSettings = () => {
     if (!editor?.isActive('manuscriptImage')) {
-      imageRef.current?.click()
+      imageRefInput.current?.click()
       return
     }
     const attrs = editor.getAttributes('manuscriptImage')
@@ -854,7 +896,7 @@ export function EditorPane() {
           <button type="button" className="tb" title="Split chapter at cursor" disabled={activeChapter.type !== 'chapter'} onClick={splitAtCursor}><Scissors size={15} /></button>
           <button type="button" className="tb" title="Focus" onClick={() => document.documentElement.requestFullscreen?.()}><Maximize2 size={15} /></button>
           <input
-            ref={imageRef}
+            ref={imageRefInput}
             hidden
             type="file"
             accept="image/png,image/jpeg,image/webp,image/gif"
@@ -887,10 +929,9 @@ export function EditorPane() {
               !activeChapter.options.hideChapterImage &&
               (activeChapter.imageDataUrl || activeTheme.chapterHeading.sharedImageDataUrl) && (
               <div className="chapter-ornament" aria-hidden>
-                <img
-                  src={activeChapter.imageDataUrl || activeTheme.chapterHeading.sharedImageDataUrl}
-                  alt=""
-                />
+                {chapterOrnamentSrc && (
+                  <img src={chapterOrnamentSrc} alt="" />
+                )}
               </div>
             )}
             <div className="chapter-titles">
@@ -1002,7 +1043,10 @@ export function EditorPane() {
           <span>{saveStatus === 'saved' ? 'Saved' : saveStatus === 'error' ? 'Save failed' : 'Saving…'}</span>
         </div>
         <div className="status-center">
-          <button type="button" className="status-btn" onClick={() => void import('../export/docx').then(({ exportProjectToDocx }) => exportProjectToDocx(project))}>
+          <button type="button" className="status-btn" onClick={() => void (async () => {
+            const [{ exportProjectToDocx }, { prepareForExport }] = await Promise.all([import('../export/docx'), import('../export/prepare')])
+            await exportProjectToDocx(await prepareForExport(project))
+          })()}>
             <FileDown size={14} /> Export .docx
           </button>
           <button

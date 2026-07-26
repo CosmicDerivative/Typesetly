@@ -28,6 +28,7 @@ export function Header() {
     setMode,
     goHome,
     downloadSnapshot,
+    rightPanel,
     setRightPanel,
     sidebarOpen,
     setSidebarOpen,
@@ -106,10 +107,15 @@ export function Header() {
         activateMode('publish')
       } else if (modifier && !event.shiftKey && key === 'f') {
         event.preventDefault()
-        // Search is a working tool, not a transient popover. Give it a stable
-        // side column by default; compact layouts still auto-unpin in App.
-        setPinnedRightPanel('find')
-        setRightPanel('find')
+        // Toggle Find: open (and pin) when closed; close when already open.
+        // Ctrl+F and Cmd+F both reach here via ctrlKey || metaKey.
+        if (rightPanel === 'find') {
+          setPinnedRightPanel('none')
+          setRightPanel(mode === 'publish' ? 'preview' : 'none')
+        } else {
+          setPinnedRightPanel('find')
+          setRightPanel('find')
+        }
       } else if (modifier && key === ',') {
         event.preventDefault()
         if (pinnedRightPanel !== 'none') setPinnedRightPanel('settings')
@@ -166,8 +172,10 @@ export function Header() {
     deleteScene,
     downloadSnapshot,
     duplicateChapter,
+    mode,
     moveChapterBy,
     pinnedRightPanel,
+    rightPanel,
     setRightPanel,
     setPinnedRightPanel,
     setSidebarOpen,

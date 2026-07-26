@@ -60,6 +60,11 @@ export interface Chapter {
   title: string
   subtitle: string
   content: string
+  /**
+   * Word count captured when the chapter was last saved. Lets closed books
+   * report totals without keeping their chapter HTML in memory.
+   */
+  wordCount?: number
   type: PageType
   partId?: string
   /**
@@ -141,6 +146,12 @@ export interface DocumentRevision {
   createdAt: string
   chapters: Array<Pick<Chapter, 'id' | 'title' | 'subtitle' | 'content'>>
 }
+
+/**
+ * Lightweight listing of a named revision. Full chapter copies live in their
+ * own IndexedDB store and load only when compared or restored.
+ */
+export type DocumentRevisionMeta = Pick<DocumentRevision, 'id' | 'name' | 'createdAt'>
 
 export interface TrackedChange {
   id: string
@@ -426,7 +437,7 @@ export interface BookProject {
   schemaVersion?: number
   masterPages?: Chapter[]
   comments?: EditorialComment[]
-  revisions?: DocumentRevision[]
+  revisions?: DocumentRevisionMeta[]
   trackChanges?: boolean
   trackedChanges?: TrackedChange[]
   calloutPresets?: CalloutPreset[]
@@ -444,9 +455,18 @@ export interface LibraryState {
   themes: BookTheme[]
 }
 
+/**
+ * Snapshot files stay fully self-contained: chapter HTML, named revisions,
+ * and images (as data URLs) are all inlined so a snapshot can be restored on
+ * any device or older Typesetly release.
+ */
+export type SnapshotBook = Omit<BookProject, 'revisions'> & {
+  revisions?: DocumentRevision[]
+}
+
 export interface SnapshotFile {
   version: 3
-  books: BookProject[]
+  books: SnapshotBook[]
   themes: BookTheme[]
   exportedAt: string
 }
@@ -505,7 +525,9 @@ export const defaultEditorPrefs = (): EditorPrefs => ({
   workspaceTheme: 'parchment',
   darkMode: false,
   spellcheck: true,
-  externalProofreading: 'auto',
+  // External proofreading extensions such as LanguageTool scan the whole
+  // document DOM and can multiply memory usage; writers opt in per book.
+  externalProofreading: 'off',
   recoveryIntervalMinutes: 5,
   paragraphStyle: 'indent',
   textAlign: 'left',

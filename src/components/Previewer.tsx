@@ -9,6 +9,7 @@ import { preflightBook } from '../export/preflight'
 import { DEVICE_PROFILES, profileDescription, renderedDeviceWidth } from '../preview/devices'
 import { estimateBookPages, readingTimeMinutes } from '../layout/pagination'
 import { DrawerControls } from './DrawerControls'
+import { useResolvedImageSrc } from '../library/useResolvedImageSrc'
 
 export function Previewer() {
   const {
@@ -37,6 +38,10 @@ export function Previewer() {
   const pageFlowRef = useRef<HTMLDivElement>(null)
   const swipeStartXRef = useRef<number | null>(null)
   const preflight = useMemo(() => project ? preflightBook(project, activeTheme) : [], [activeTheme, project])
+  const previewOrnamentSrc = useResolvedImageSrc(
+    activeChapter?.imageDataUrl || activeTheme.chapterHeading.sharedImageDataUrl,
+  )
+  const sceneBreakImageSrc = useResolvedImageSrc(activeTheme.sceneBreak.customImageDataUrl)
 
   useEffect(() => {
     const name = activeTheme.typography.embeddedFontName
@@ -328,10 +333,7 @@ export function Previewer() {
               !activeChapter.options.hideChapterImage &&
               (activeChapter.imageDataUrl || theme.chapterHeading.sharedImageDataUrl) && (
                 <div className="preview-ornament" aria-hidden>
-                  <img
-                    src={activeChapter.imageDataUrl || theme.chapterHeading.sharedImageDataUrl}
-                    alt=""
-                  />
+                  {previewOrnamentSrc && <img src={previewOrnamentSrc} alt="" />}
                 </div>
               )}
 
@@ -385,7 +387,9 @@ export function Previewer() {
                     if (theme.sceneBreak.style === 'none') return <div key={i} className="scene-none" />
                     if (theme.sceneBreak.style === 'space') return <div key={i} className="scene-space" />
                     if (theme.sceneBreak.customImageDataUrl) {
-                      return <img key={i} className="scene-image" src={theme.sceneBreak.customImageDataUrl} alt="" />
+                      return sceneBreakImageSrc
+                        ? <img key={i} className="scene-image" src={sceneBreakImageSrc} alt="" />
+                        : null
                     }
                     return (
                       <p key={i} className="scene-ornament" style={{ fontSize: theme.sceneBreak.size }}>
@@ -532,7 +536,8 @@ export function Previewer() {
               setExportMessage('')
               try {
                 const { exportProjectToEpub } = await import('../export/epub')
-                const result = await exportProjectToEpub(project, theme)
+                const { prepareForExport } = await import('../export/prepare')
+                const result = await exportProjectToEpub(await prepareForExport(project), await prepareForExport(theme))
                 setExportMessage(result.warnings?.join(' ') || 'EPUB exported.')
               } catch (error) {
                 setExportMessage(error instanceof Error ? error.message : 'EPUB export failed.')
@@ -551,7 +556,8 @@ export function Previewer() {
               setExportMessage('')
               try {
                 const { exportProjectToPdf } = await import('../export/pdf')
-                const result = await exportProjectToPdf(project, theme)
+                const { prepareForExport } = await import('../export/prepare')
+                const result = await exportProjectToPdf(await prepareForExport(project), await prepareForExport(theme))
                 setExportMessage(result.warnings?.join(' ') || 'PDF exported.')
               } catch (error) {
                 setExportMessage(error instanceof Error ? error.message : 'PDF export failed.')
