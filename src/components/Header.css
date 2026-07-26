@@ -302,6 +302,41 @@
   font-weight: 700;
 }
 
+.update-button:disabled {
+  cursor: wait;
+  opacity: .72;
+}
+
+.update-button.update-available {
+  width: auto;
+  grid-auto-flow: column;
+  gap: 6px;
+  padding-inline: 9px;
+  border-color: rgba(57, 119, 108, .28);
+  color: var(--sage-600);
+  background: rgba(57, 119, 108, .11);
+}
+
+.update-button.update-available:hover {
+  border-color: var(--sage-500);
+  color: var(--paper-50);
+  background: var(--sage-500);
+}
+
+.update-label {
+  font-size: 10px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.update-spinner {
+  animation: update-spin .9s linear infinite;
+}
+
+@keyframes update-spin {
+  to { transform: rotate(360deg); }
+}
+
 .wiki-button {
   display: inline-flex;
   align-items: center;
@@ -343,8 +378,14 @@
 
   .app-wordmark,
   .edit-details-btn,
-  .wiki-button span {
+  .wiki-button span,
+  .update-label {
     display: none;
+  }
+
+  .update-button.update-available {
+    width: 34px;
+    padding: 0;
   }
 }
 
@@ -419,5 +460,9 @@
   .header-right .icon-btn:not(:first-child),
   .sidebar-toggle {
     display: none;
+  }
+
+  .header-right .icon-btn.update-button.update-available {
+    display: grid;
   }
 }

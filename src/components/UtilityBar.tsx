@@ -125,7 +125,7 @@ export function UtilityBar() {
         <button
         type="button"
         className={rightPanel === 'quotes' ? 'util active' : 'util'}
-        title="Smart quotes"
+        title="Smart punctuation"
         onClick={() => toggle('quotes')}
       >
         <Quote size={16} />

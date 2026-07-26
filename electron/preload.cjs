@@ -7,4 +7,11 @@ contextBridge.exposeInMainWorld('typesetly', {
   chooseScrivenerSyncFolder: () => ipcRenderer.invoke('choose-scrivener-sync-folder'),
   readScrivenerSyncFolder: (payload) => ipcRenderer.invoke('read-scrivener-sync-folder', payload),
   writeScrivenerSyncFiles: (payload) => ipcRenderer.invoke('write-scrivener-sync-files', payload),
+  checkForUpdates: (payload) => ipcRenderer.invoke('check-for-updates', payload),
+  downloadLatestInstaller: () => ipcRenderer.invoke('download-latest-installer'),
+  onUpdateDownloadProgress: (callback) => {
+    const listener = (_event, payload) => callback(payload)
+    ipcRenderer.on('update-download-progress', listener)
+    return () => ipcRenderer.removeListener('update-download-progress', listener)
+  },
 })

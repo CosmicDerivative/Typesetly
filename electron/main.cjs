@@ -1,8 +1,20 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog, net, shell } = require('electron')
 const path = require('path')
 const fs = require('fs')
+const { createHash, randomUUID } = require('node:crypto')
+const { Readable, Transform } = require('node:stream')
+const { pipeline } = require('node:stream/promises')
+const {
+  GITHUB_RELEASES_API,
+  describeRelease,
+  parseChecksumFile,
+  selectChecksumAsset,
+} = require('./updater.cjs')
 
 const isDev = !app.isPackaged
+const RELEASE_CACHE_DURATION = 5 * 60 * 1000
+let cachedRelease
+let cachedReleaseAt = 0
 
 function windowStatePath() {
   return path.join(app.getPath('userData'), 'window-state.json')
@@ -94,6 +106,148 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
+})
+
+async function fetchLatestRelease(force = false) {
+  if (!force && cachedRelease && Date.now() - cachedReleaseAt < RELEASE_CACHE_DURATION) {
+    return cachedRelease
+  }
+  const response = await net.fetch(GITHUB_RELEASES_API, {
+    headers: {
+      Accept: 'application/vnd.github+json',
+      'User-Agent': `Typesetly/${app.getVersion()}`,
+      'X-GitHub-Api-Version': '2022-11-28',
+    },
+  })
+  if (!response.ok) {
+    throw new Error(`GitHub update check failed (${response.status}).`)
+  }
+  const release = await response.json()
+  cachedRelease = release
+  cachedReleaseAt = Date.now()
+  return release
+}
+
+function sendDownloadProgress(event, payload) {
+  if (!event.sender.isDestroyed()) {
+    event.sender.send('update-download-progress', payload)
+  }
+}
+
+ipcMain.handle('check-for-updates', async (_event, payload = {}) => {
+  try {
+    const release = await fetchLatestRelease(Boolean(payload?.force))
+    return describeRelease(release, app.getVersion(), process.platform, process.arch)
+  } catch (error) {
+    return {
+      ok: false,
+      currentVersion: app.getVersion(),
+      error: error instanceof Error ? error.message : 'Typesetly could not check for updates.',
+    }
+  }
+})
+
+ipcMain.handle('download-latest-installer', async (event) => {
+  let temporaryPath
+  try {
+    const release = await fetchLatestRelease(true)
+    const status = describeRelease(release, app.getVersion(), process.platform, process.arch)
+    if (!status.updateAvailable) {
+      return { ok: false, error: `Typesetly ${status.currentVersion} is already up to date.` }
+    }
+    if (!status.installer) {
+      return {
+        ok: false,
+        error: `Typesetly ${status.latestVersion} does not include an installer for this device.`,
+      }
+    }
+
+    const checksumAsset = selectChecksumAsset(release.assets)
+    if (!checksumAsset) {
+      throw new Error('The release checksum file is missing, so the installer was not downloaded.')
+    }
+    const checksumResponse = await net.fetch(checksumAsset.browser_download_url)
+    if (!checksumResponse.ok) {
+      throw new Error(`The release checksum could not be downloaded (${checksumResponse.status}).`)
+    }
+    const expectedHash = parseChecksumFile(await checksumResponse.text(), status.installer.name)
+    if (!expectedHash) {
+      throw new Error('The selected installer is not listed in the release checksum file.')
+    }
+
+    const owner = BrowserWindow.fromWebContents(event.sender)
+    const saveOptions = {
+      title: `Download Typesetly ${status.latestVersion}`,
+      defaultPath: path.join(app.getPath('downloads'), status.installer.name),
+      buttonLabel: 'Download',
+    }
+    const choice = owner
+      ? await dialog.showSaveDialog(owner, saveOptions)
+      : await dialog.showSaveDialog(saveOptions)
+    if (choice.canceled || !choice.filePath) return { ok: false, canceled: true }
+
+    const response = await net.fetch(status.installer.url, {
+      headers: { 'User-Agent': `Typesetly/${app.getVersion()}` },
+    })
+    if (!response.ok || !response.body) {
+      throw new Error(`The installer download failed (${response.status}).`)
+    }
+
+    const total = Number(response.headers.get('content-length')) || status.installer.size || 0
+    let received = 0
+    let lastPercent = -1
+    const hash = createHash('sha256')
+    temporaryPath = path.join(
+      app.getPath('temp'),
+      `typesetly-update-${randomUUID()}-${path.basename(status.installer.name)}`,
+    )
+    const progress = new Transform({
+      transform(chunk, _encoding, callback) {
+        received += chunk.length
+        hash.update(chunk)
+        const percent = total ? Math.min(100, Math.round((received / total) * 100)) : 0
+        if (percent !== lastPercent) {
+          lastPercent = percent
+          sendDownloadProgress(event, { received, total, percent })
+        }
+        callback(null, chunk)
+      },
+    })
+
+    await pipeline(
+      Readable.fromWeb(response.body),
+      progress,
+      fs.createWriteStream(temporaryPath, { flags: 'wx' }),
+    )
+    const actualHash = hash.digest('hex').toLowerCase()
+    if (actualHash !== expectedHash) {
+      throw new Error('Installer verification failed. The downloaded file was discarded.')
+    }
+
+    fs.copyFileSync(temporaryPath, choice.filePath)
+    fs.unlinkSync(temporaryPath)
+    temporaryPath = undefined
+    sendDownloadProgress(event, { received, total: total || received, percent: 100 })
+    shell.showItemInFolder(choice.filePath)
+    return {
+      ok: true,
+      filePath: choice.filePath,
+      version: status.latestVersion,
+      verified: true,
+    }
+  } catch (error) {
+    if (temporaryPath && fs.existsSync(temporaryPath)) {
+      try {
+        fs.unlinkSync(temporaryPath)
+      } catch {
+        // A failed cleanup should not hide the actual download error.
+      }
+    }
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : 'The installer could not be downloaded.',
+    }
+  }
 })
 
 ipcMain.handle('save-docx', async (_event, { defaultName, buffer }) => {

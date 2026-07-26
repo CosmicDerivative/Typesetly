@@ -18,6 +18,7 @@ import type { AppMode } from '../types'
 import { BookDetailsModal } from './BookDetailsModal'
 import './Header.css'
 import { Dialog } from './Dialog'
+import { DesktopUpdateButton } from './DesktopUpdateButton'
 import { Wiki } from './Wiki'
 
 export function Header() {
@@ -272,6 +273,7 @@ export function Header() {
           >
             <HardDrive size={18} strokeWidth={1.75} />
           </button>
+          <DesktopUpdateButton placement="header" />
           <button className="icon-btn" title="Help" aria-label="Open help" type="button" onClick={() => setHelpOpen(true)}>
             <CircleHelp size={18} strokeWidth={1.75} />
           </button>

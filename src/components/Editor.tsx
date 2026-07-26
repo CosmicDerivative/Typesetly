@@ -58,7 +58,7 @@ import {
 import { Dialog } from './Dialog'
 import { processImageFile } from '../images/process'
 import { buildCalloutNode, replaceCalloutRange } from '../editor/callouts'
-import { smartQuoteForInsertion } from '../editor/smartQuotes'
+import { smartDashForInsertion, smartQuoteForInsertion } from '../editor/smartQuotes'
 
 function formatTimer(seconds: number) {
   const m = Math.floor(seconds / 60)
@@ -200,10 +200,15 @@ export function EditorPane() {
       transformPastedHTML: sanitizePastedHtml,
       handleTextInput(view, from, to, text) {
         if (!project?.editorPrefs.smartQuotes) return false
+        const previousCharacter = view.state.doc.textBetween(Math.max(0, from - 1), from)
         if (text === '"' || text === "'") {
-          const previousCharacter = view.state.doc.textBetween(Math.max(0, from - 1), from)
           const converted = smartQuoteForInsertion(text, previousCharacter)
           view.dispatch(view.state.tr.insertText(converted, from, to))
+          return true
+        }
+        const dash = smartDashForInsertion(text, previousCharacter)
+        if (dash) {
+          view.dispatch(view.state.tr.insertText(dash.text, from - dash.deleteBefore, to))
           return true
         }
         return false

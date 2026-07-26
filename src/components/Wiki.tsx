@@ -132,6 +132,11 @@ const WIKI_SECTIONS: WikiSection[] = [
         keywords: 'bold italic link image footnote format',
       },
       {
+        question: 'How do smart quotes and dashes work?',
+        answer: 'With Smart Punctuation enabled, straight quotation marks are converted as you type. Two consecutive hyphens become an en dash (–), while a third hyphen upgrades it to an em dash (—). Disable Smart Punctuation from the Quotes drawer when you need literal repeated hyphens.',
+        keywords: 'smart punctuation quote apostrophe hyphen en dash em dash',
+      },
+      {
         question: 'How do text messages and callouts work?',
         answer: 'Choose Special block and select the desired block. Text messages can store message text, sender, direction, and iOS or Android appearance. Existing message and callout blocks can be selected and edited without nesting or replacing unrelated text.',
         keywords: 'bubble chat message callout sender',
@@ -217,7 +222,7 @@ const WIKI_SECTIONS: WikiSection[] = [
       },
       {
         question: 'What do editor settings affect?',
-        answer: 'Editor settings change the Draft experience, including font, size, line height, paragraph appearance, alignment, typewriter scrolling, spellcheck, smart quotes, and workspace appearance. Choose from 16 light and dark palettes such as Parchment, Sepia, Solarized Light, Midnight, Forest, Nord, and High Contrast. The selection is saved with the manuscript and does not replace the Design theme used for exported books or the reader appearance selected in Preview.',
+        answer: 'Editor settings change the Draft experience, including font, size, line height, paragraph appearance, alignment, typewriter scrolling, spellcheck, smart punctuation, and workspace appearance. Choose from 16 light and dark palettes such as Parchment, Sepia, Solarized Light, Midnight, Forest, Nord, and High Contrast. The selection is saved with the manuscript and does not replace the Design theme used for exported books or the reader appearance selected in Preview.',
         keywords: 'settings font dark spellcheck typewriter',
       },
     ],
@@ -288,6 +293,11 @@ const WIKI_SECTIONS: WikiSection[] = [
         question: 'How do I build the desktop application?',
         answer: 'Install Node.js and dependencies, then use npm.cmd start for desktop development. Package with npm.cmd run package:win on Windows, npm run package:mac on macOS, or npm run package:linux on Linux. The README covers signing and distribution.',
         keywords: 'electron desktop build package installer',
+      },
+      {
+        question: 'How does the desktop updater work?',
+        answer: 'The desktop application checks the official Typesetly GitHub repository for the newest stable release after startup. When a newer compatible build exists, Get version appears in the header. Choose it to select a download location. Typesetly downloads the installer for the current operating system and processor, verifies its SHA-256 checksum against the release manifest, and reveals the finished file without running it automatically.',
+        keywords: 'desktop update latest github installer download checksum version',
       },
     ],
   },

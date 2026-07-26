@@ -44,6 +44,31 @@ export function smartQuoteForInsertion(
   return opening ? '‘' : '’'
 }
 
+export interface SmartDashInsertion {
+  deleteBefore: number
+  text: string
+}
+
+/**
+ * Returns the replacement when typed text completes a common dash sequence.
+ * Browsers normally deliver one character at a time, while IMEs and assistive
+ * input can deliver a phrase at once, so both paths are normalized here.
+ */
+export function smartDashForInsertion(
+  text: string,
+  previousCharacter: string,
+): SmartDashInsertion | undefined {
+  if (!text.includes('-')) return undefined
+  const includePrevious = previousCharacter === '-' || previousCharacter === '–'
+  const combined = `${includePrevious ? previousCharacter : ''}${text}`
+  const converted = combined
+    .replace(/---/g, '—')
+    .replace(/--/g, '–')
+    .replace(/–-/g, '—')
+  if (converted === combined) return undefined
+  return { deleteBefore: includePrevious ? 1 : 0, text: converted }
+}
+
 const NEGATIVE_CONTRACTION_STEMS = new Set([
   'ain',
   'aren',

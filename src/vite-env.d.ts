@@ -30,6 +30,28 @@ declare global {
         folderPath: string
         files: Array<{ relativePath: string; text: string }>
       }) => Promise<{ ok: boolean; written?: number; error?: string }>
+      checkForUpdates: (payload?: { force?: boolean }) => Promise<{
+        ok: boolean
+        currentVersion: string
+        latestVersion?: string
+        updateAvailable?: boolean
+        releaseUrl?: string
+        installer?: { name: string; url: string; size: number }
+        error?: string
+      }>
+      downloadLatestInstaller: () => Promise<{
+        ok: boolean
+        canceled?: boolean
+        filePath?: string
+        version?: string
+        verified?: boolean
+        error?: string
+      }>
+      onUpdateDownloadProgress: (callback: (progress: {
+        received: number
+        total: number
+        percent: number
+      }) => void) => () => void
     }
   }
 }

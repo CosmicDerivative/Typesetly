@@ -483,7 +483,7 @@ export function SmartQuotesPanel() {
   return (
     <aside className="side-panel">
       <div className="sp-head">
-        <strong>Smart Quotes</strong>
+        <strong>Smart Punctuation</strong>
         <DrawerControls panel="quotes" />
       </div>
       <label className="check-row">
@@ -492,7 +492,7 @@ export function SmartQuotesPanel() {
           checked={project.editorPrefs.smartQuotes}
           onChange={(e) => updateEditorPrefs({ smartQuotes: e.target.checked })}
         />
-        Convert quotes while typing
+        Convert quotes and typed dashes
       </label>
       <button type="button" className="primary full" onClick={applyAll}>
         Apply smart quotes to whole book

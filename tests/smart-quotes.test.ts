@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   repairLegacyRtfQuoteDamage,
+  smartDashForInsertion,
   smartenPunctuation,
   smartQuoteForInsertion,
 } from '../src/editor/smartQuotes.ts'
@@ -19,6 +20,17 @@ test('live smart quote insertion distinguishes apostrophes from opening quotes',
   assert.equal(smartQuoteForInsertion("'", ' '), '‘')
   assert.equal(smartQuoteForInsertion('"', ''), '“')
   assert.equal(smartQuoteForInsertion('"', 'd'), '”')
+})
+
+test('live smart punctuation stages double and triple hyphens as en and em dashes', () => {
+  assert.deepEqual(smartDashForInsertion('-', '-'), { deleteBefore: 1, text: '–' })
+  assert.deepEqual(smartDashForInsertion('-', '–'), { deleteBefore: 1, text: '—' })
+  assert.deepEqual(
+    smartDashForInsertion('one--two --- three', ''),
+    { deleteBefore: 0, text: 'one–two — three' },
+  )
+  assert.equal(smartDashForInsertion('-', 'a'), undefined)
+  assert.equal(smartDashForInsertion('x', '-'), undefined)
 })
 
 test('legacy Scrivener repair restores unambiguous swallowed letters', () => {

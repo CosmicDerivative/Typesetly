@@ -4,6 +4,7 @@ import { useApp } from '../BookContext'
 import { TYPESETLY_LOGO_URL } from '../branding'
 import { countBookWords } from '../data'
 import './Home.css'
+import { DesktopUpdateButton } from './DesktopUpdateButton'
 import { Dialog } from './Dialog'
 import type { ImportReport } from '../types'
 
@@ -123,6 +124,7 @@ export function Home() {
           </div>
         </div>
         <div className="home-actions">
+          <DesktopUpdateButton placement="home" />
           <button type="button" className="ghost" onClick={() => restoreRef.current?.click()}>
             Restore snapshot
           </button>

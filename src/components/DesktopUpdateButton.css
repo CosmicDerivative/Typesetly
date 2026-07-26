@@ -1,0 +1,25 @@
+.home-update-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  color: var(--text-700);
+  font: inherit;
+}
+
+.home-update-button.update-available {
+  border-color: rgba(57, 119, 108, .35);
+  color: var(--sage-600);
+  background: rgba(57, 119, 108, .11);
+}
+
+.home-update-button:disabled {
+  cursor: wait;
+  opacity: .72;
+}
+
+.home-update-button .update-label {
+  font-size: 11px;
+  font-weight: 700;
+}
