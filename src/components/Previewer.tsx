@@ -31,7 +31,10 @@ export function Previewer() {
   const [readerFontScale, setReaderFontScale] = useState(1)
   const [readerAppearance, setReaderAppearance] = useState<'light' | 'sepia' | 'dark'>('light')
   const [readerFontMode, setReaderFontMode] = useState<'device' | 'book'>('device')
+  const [screenWidth, setScreenWidth] = useState(1)
   const screenRef = useRef<HTMLDivElement>(null)
+  const pageFlowRef = useRef<HTMLDivElement>(null)
+  const swipeStartXRef = useRef<number | null>(null)
   const preflight = useMemo(() => project ? preflightBook(project, activeTheme) : [], [activeTheme, project])
 
   useEffect(() => {
@@ -74,23 +77,45 @@ export function Previewer() {
 
   useEffect(() => {
     const screen = screenRef.current
-    if (!screen) return
-    screen.scrollTop = 0
+    const pageFlow = pageFlowRef.current
+    if (!screen || !pageFlow) return
     setScreenPage(1)
     const measure = () => {
-      // Screen previews paginate from measured rendered height, so font
-      // scaling and device aspect ratios affect the navigation count.
-      const pages = Math.max(1, Math.ceil(screen.scrollHeight / Math.max(1, screen.clientHeight)))
+      // CSS columns fragment the manuscript into fixed reader screens. Their
+      // measured horizontal flow responds to the device, orientation, and font.
+      const width = Math.max(1, screen.clientWidth)
+      const pages = Math.max(1, Math.ceil((pageFlow.scrollWidth - 1) / width))
+      setScreenWidth(width)
       setScreenPages(pages)
+      setScreenPage((current) => Math.min(current, pages))
     }
     const observer = new ResizeObserver(measure)
     observer.observe(screen)
-    const frame = window.requestAnimationFrame(measure)
+    observer.observe(pageFlow)
+    let settleFrame = 0
+    const frame = window.requestAnimationFrame(() => {
+      measure()
+      settleFrame = window.requestAnimationFrame(measure)
+    })
+    const settleTimer = window.setTimeout(measure, 160)
+    void document.fonts.ready.then(() => window.requestAnimationFrame(measure))
     return () => {
       observer.disconnect()
       window.cancelAnimationFrame(frame)
+      window.cancelAnimationFrame(settleFrame)
+      window.clearTimeout(settleTimer)
     }
-  }, [activeChapter?.id, activeChapter?.content, landscape, previewDevice, activeTheme])
+  }, [
+    activeChapter?.id,
+    activeChapter?.content,
+    landscape,
+    mode,
+    previewDevice,
+    rightPanel,
+    activeTheme,
+    readerFontMode,
+    readerFontScale,
+  ])
 
   if ((mode !== 'publish' && rightPanel !== 'preview') || !project) return null
 
@@ -99,6 +124,9 @@ export function Previewer() {
   const canNext = chapterIndex >= 0 && chapterIndex < bodyChapters.length - 1
   const theme = activeTheme
   const deviceClass = `device ${profile.family} ${profile.color ? 'color-screen' : 'eink-screen'}`
+  const goToScreen = (page: number) => {
+    setScreenPage(Math.max(1, Math.min(screenPages, page)))
+  }
 
   let firstPara = true
   const heading = activeChapter ? headingParts(project, activeChapter, theme) : null
@@ -196,9 +224,32 @@ export function Previewer() {
           <div
             ref={screenRef}
             className={`device-screen reader-${readerAppearance} ${activeChapter?.options.invertTextColor ? 'light-text' : ''}`}
-            onScroll={(event) => {
-              const screen = event.currentTarget
-              setScreenPage(Math.min(screenPages, Math.floor(screen.scrollTop / Math.max(1, screen.clientHeight)) + 1))
+            role="group"
+            tabIndex={0}
+            aria-label={`Reader screen ${screenPage} of ${screenPages}`}
+            onKeyDown={(event) => {
+              if (event.key === 'ArrowLeft' || event.key === 'PageUp') {
+                event.preventDefault()
+                goToScreen(screenPage - 1)
+              }
+              if (event.key === 'ArrowRight' || event.key === 'PageDown' || event.key === ' ') {
+                event.preventDefault()
+                goToScreen(screenPage + 1)
+              }
+            }}
+            onPointerDown={(event) => {
+              swipeStartXRef.current = event.clientX
+            }}
+            onPointerUp={(event) => {
+              const startX = swipeStartXRef.current
+              swipeStartXRef.current = null
+              if (startX == null) return
+              const distance = event.clientX - startX
+              if (Math.abs(distance) < 36) return
+              goToScreen(screenPage + (distance < 0 ? 1 : -1))
+            }}
+            onPointerCancel={() => {
+              swipeStartXRef.current = null
             }}
             style={{
               fontFamily: readerFont,
@@ -216,11 +267,23 @@ export function Previewer() {
               ...(previewDevice === 'Print'
                 ? {
                     aspectRatio: `${theme.print.trimWidthIn} / ${theme.print.trimHeightIn}`,
-                    padding: `${theme.print.marginTop * 18}px ${theme.print.marginOutside * 18}px ${theme.print.marginBottom * 18}px ${theme.print.marginInside * 18}px`,
                   }
                 : {}),
             } as CSSProperties}
           >
+            <div
+              ref={pageFlowRef}
+              className="preview-page-flow"
+              style={{
+                transform: `translate3d(-${(screenPage - 1) * screenWidth}px, 0, 0)`,
+                ...(previewDevice === 'Print'
+                  ? {
+                      padding: `${theme.print.marginTop * 18}px ${theme.print.marginOutside * 18}px ${theme.print.marginBottom * 18}px ${theme.print.marginInside * 18}px`,
+                      '--page-column-gap': `${(theme.print.marginOutside + theme.print.marginInside) * 18}px`,
+                    }
+                  : {}),
+              } as CSSProperties}
+            >
             {previewDevice === 'Print' &&
               activeChapter &&
               !activeChapter.options.hideHeaderFooter &&
@@ -406,6 +469,25 @@ export function Previewer() {
                 </section>
               )}
             </div>
+            </div>
+            <button
+              type="button"
+              className="device-page-zone previous"
+              aria-label="Turn to previous preview screen"
+              disabled={screenPage <= 1}
+              onClick={() => goToScreen(screenPage - 1)}
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <button
+              type="button"
+              className="device-page-zone next"
+              aria-label="Turn to next preview screen"
+              disabled={screenPage >= screenPages}
+              onClick={() => goToScreen(screenPage + 1)}
+            >
+              <ChevronRight size={18} />
+            </button>
           </div>
         </div>
       </div>
@@ -469,11 +551,7 @@ export function Previewer() {
           type="button"
           aria-label="Previous preview screen"
           disabled={screenPage <= 1}
-          onClick={() => {
-            const screen = screenRef.current
-            if (!screen) return
-            screen.scrollTo({ top: Math.max(0, (screenPage - 2) * screen.clientHeight), behavior: 'smooth' })
-          }}
+          onClick={() => goToScreen(screenPage - 1)}
         >
           <ChevronLeft size={13} />
         </button>
@@ -487,11 +565,7 @@ export function Previewer() {
           type="button"
           aria-label="Next preview screen"
           disabled={screenPage >= screenPages}
-          onClick={() => {
-            const screen = screenRef.current
-            if (!screen) return
-            screen.scrollTo({ top: screenPage * screen.clientHeight, behavior: 'smooth' })
-          }}
+          onClick={() => goToScreen(screenPage + 1)}
         >
           <ChevronRight size={13} />
         </button>
