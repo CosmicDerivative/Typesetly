@@ -31,7 +31,7 @@ type OrganizeDrag =
   | { kind: 'scene'; chapterId: string; sceneIndex: number }
 
 type OrganizeDropHint =
-  | { kind: 'page'; targetId: string; placement: 'before' | 'after' }
+  | { kind: 'page'; targetId: string; placement: 'before' | 'after' | 'inside' }
   | { kind: 'scene'; chapterId: string; sceneIndex: number; placement: 'before' | 'after' }
 
 type OrganizerLane = 'opening' | 'main' | 'closing'
@@ -70,6 +70,7 @@ export function Organizer() {
     setActiveChapter,
     setMode,
     addChapter,
+    addChapterToPart,
     addPart,
     addPage,
     addScene,
@@ -169,6 +170,12 @@ export function Organizer() {
     if (sectionForPage(source) === 'main') return (source.type === 'part') === (target.type === 'part')
     return true
   }
+
+  const canDropPageInside = (source: Chapter, target: Chapter) =>
+    source.type === 'chapter' &&
+    target.type === 'part' &&
+    source.id !== target.id &&
+    sectionForPage(source) === 'main'
 
   const describeDragItem = (item: OrganizeDrag) => {
     if (item.kind === 'page') return pageById.get(item.pageId)?.title || 'page'
@@ -378,6 +385,15 @@ export function Organizer() {
           }
           if (item.kind === 'page') {
             const source = pageById.get(item.pageId)
+            if (source && canDropPageInside(source, page)) {
+              event.preventDefault()
+              event.dataTransfer.dropEffect = 'move'
+              activateDropHint(
+                { kind: 'page', targetId: page.id, placement: 'inside' },
+                `Place ${source.title} inside ${page.title}`,
+              )
+              return
+            }
             if (source && canDropPage(source, page)) {
               event.preventDefault()
               event.dataTransfer.dropEffect = 'move'
@@ -413,6 +429,11 @@ export function Organizer() {
             return
           } else if (item.kind === 'page') {
             const source = pageById.get(item.pageId)
+            if (source && canDropPageInside(source, page)) {
+              moveChapterRelative(source.id, page.id, 'inside')
+              finishDrag(`Moved ${source.title} inside ${page.title}.`)
+              return
+            }
             if (source && canDropPage(source, page)) {
               const bounds = event.currentTarget.getBoundingClientRect()
               const placement = event.clientY < bounds.top + bounds.height / 2 ? 'before' : 'after'
@@ -479,7 +500,13 @@ export function Organizer() {
         </div>
 
         <div className="organizer-card-meta">
-          <span>{countWords(page.content).toLocaleString()} words</span>
+          {page.type !== 'part' && <span>{countWords(page.content).toLocaleString()} words</span>}
+          {page.type === 'part' && (
+            <span>
+              {project.chapters.filter((candidate) => candidate.partId === page.id).length} chapter
+              {project.chapters.filter((candidate) => candidate.partId === page.id).length === 1 ? '' : 's'}
+            </span>
+          )}
           {page.partId && <span>In {partById.get(page.partId) || 'Part'}</span>}
           {page.type === 'chapter' && <span>{scenes.length} scene{scenes.length === 1 ? '' : 's'}</span>}
         </div>
@@ -630,6 +657,70 @@ export function Organizer() {
     },
   ]
 
+  const renderMainText = () => {
+    const topLevelPages = bodyChapters.filter((page) => page.type === 'part' || !page.partId)
+
+    if (!topLevelPages.length) {
+      return (
+        <div className={`organizer-empty${dragItem ? ' drag-aware' : ''}`}>
+          {dragItem ? 'Drop a chapter into the main text.' : 'No pages in this section.'}
+        </div>
+      )
+    }
+
+    return (
+      <>
+        {topLevelPages.map((page) => {
+          const childChapters = page.type === 'part'
+            ? bodyChapters.filter((candidate) => candidate.partId === page.id)
+            : []
+
+          return (
+            <Fragment key={page.id}>
+              {renderPageDropGap(page, 'before')}
+              {page.type === 'part' ? (
+                <section
+                  className={`organizer-part${
+                    dropHint?.kind === 'page' &&
+                    dropHint.targetId === page.id &&
+                    dropHint.placement === 'inside'
+                      ? ' is-drop-target'
+                      : ''
+                  }`}
+                >
+                  {renderPage(page)}
+                  <div className="organizer-part-contents">
+                    <div className="organizer-part-label">
+                      <span>Chapters in this part</span>
+                      <button type="button" onClick={() => addChapterToPart(page.id)}>
+                        <Plus size={11} /> Add chapter
+                      </button>
+                    </div>
+                    {childChapters.length ? (
+                      childChapters.map((chapter) => (
+                        <Fragment key={chapter.id}>
+                          {renderPageDropGap(chapter, 'before')}
+                          {renderPage(chapter)}
+                        </Fragment>
+                      ))
+                    ) : (
+                      <div className="organizer-part-empty">
+                        Drag a chapter onto this Part, or add one here.
+                      </div>
+                    )}
+                    {childChapters.length > 0 &&
+                      renderPageDropGap(childChapters[childChapters.length - 1], 'after')}
+                  </div>
+                </section>
+              ) : renderPage(page)}
+            </Fragment>
+          )
+        })}
+        {renderPageDropGap(topLevelPages[topLevelPages.length - 1], 'after')}
+      </>
+    )
+  }
+
   return (
     <section
       className={`organizer${dragItem ? ' drag-in-progress' : ''}`}
@@ -667,7 +758,7 @@ export function Organizer() {
               <strong>{lane.pages.length}</strong>
             </header>
             <div className="organizer-stack">
-              {lane.pages.length ? (
+              {lane.key === 'main' ? renderMainText() : lane.pages.length ? (
                 <>
                   {lane.pages.map((page) => (
                     <Fragment key={page.id}>

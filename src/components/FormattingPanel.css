@@ -116,6 +116,15 @@
   letter-spacing: .08em;
 }
 
+.ts-kicker-image {
+  display: block;
+  width: auto;
+  max-width: 56%;
+  max-height: 28px;
+  margin-bottom: 5px;
+  object-fit: contain;
+}
+
 .ts-title {
   margin-bottom: 10px;
   line-height: 1.15;

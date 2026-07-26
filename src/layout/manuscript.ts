@@ -157,12 +157,30 @@ export function headingParts(project: BookProject, chapter: Chapter, theme: Book
     chapter.options.numbered &&
     theme.chapterHeading.showNumber &&
     theme.chapterHeading.numberView !== 'none'
+  const title = theme.chapterHeading.showTitle && !chapter.options.hideChapterHeading ? chapter.title : ''
   return {
     number: showNumber ? formatChapterNumber(index, theme.chapterHeading.numberView) : '',
-    title: theme.chapterHeading.showTitle && !chapter.options.hideChapterHeading ? chapter.title : '',
+    // Newly created chapters use "Chapter N" as an editable placeholder. If
+    // the selected design already renders that same chapter label, printing it
+    // again produces a visibly duplicated heading.
+    title: showNumber && isGenericChapterTitle(title, index) ? '' : title,
     subtitle:
       theme.chapterHeading.showSubtitle && !chapter.options.hideChapterHeading ? chapter.subtitle : '',
   }
+}
+
+export function isGenericChapterTitle(title: string, index: number) {
+  const normalized = title
+    .trim()
+    .toLocaleLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim()
+  if (!normalized) return false
+  return new Set([
+    `chapter ${index}`,
+    `chapter ${toRoman(index).toLocaleLowerCase()}`,
+    `chapter ${numberWords(index).toLocaleLowerCase().replace(/-/g, ' ')}`,
+  ]).has(normalized)
 }
 
 export function formatChapterNumber(index: number, style: BookTheme['chapterHeading']['numberView']) {

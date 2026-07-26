@@ -158,7 +158,7 @@
 }
 
 .preview-number {
-  margin: 0 0 4px;
+  margin: 0 0 .75em;
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -378,6 +378,14 @@
 
 .preview-print-header {
   top: 7px;
+}
+
+.preview-print-header.left {
+  text-align: left;
+}
+
+.preview-print-header.right {
+  text-align: right;
 }
 
 .preview-print-footer {

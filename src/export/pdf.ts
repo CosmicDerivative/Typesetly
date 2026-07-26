@@ -1,6 +1,7 @@
 import { saveAs } from 'file-saver'
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage } from 'pdf-lib'
 import { exportableChapters, headingParts, parseManuscript } from '../layout/manuscript'
+import { layoutShowsPageNumber, runningHeaderText } from '../layout/runningHeaders'
 import type { BookProject, BookTheme, Chapter, ExportResult } from '../types'
 import { pdfSafeText } from './pdfText'
 import { preflightBook } from './preflight'
@@ -76,8 +77,16 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
   const serifBold = await documentValue.embedFont(StandardFonts.TimesRomanBold)
   const sans = await documentValue.embedFont(StandardFonts.Helvetica)
   const sansBold = await documentValue.embedFont(StandardFonts.HelveticaBold)
-  const bodyFont = /sans|helvetica|source/i.test(theme.typography.bodyFont) ? sans : serif
-  const headingFont = /sans|helvetica|source/i.test(theme.chapterHeading.titleFont) ? sansBold : serifBold
+  const pdfFont = (family: string, bold = false) => {
+    const sansFamily = /sans|helvetica|source|arial|avenir|inter|roboto|lato|verdana|tahoma/i.test(family)
+    return sansFamily ? (bold ? sansBold : sans) : (bold ? serifBold : serif)
+  }
+  const bodyFont = pdfFont(theme.typography.bodyFont)
+  const headingFont = pdfFont(theme.chapterHeading.titleFont, theme.chapterHeading.titleWeight === 'bold')
+  const numberFont = pdfFont(theme.chapterHeading.numberFont)
+  const subtitleFont = pdfFont(theme.chapterHeading.subtitleFont)
+  const subheadingFont = pdfFont(theme.subheading.font, theme.subheading.weight === 'bold')
+  const headerFooterFont = pdfFont(theme.headerFooter.font)
   const replacedPdfCharacters = new Set<string>()
   const safeText = (text: string, font: PDFFont) => {
     const safe = pdfSafeText(text, font.getCharacterSet())
@@ -134,35 +143,39 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
     const author = project.details.author
     const chapter = activeChapter.title
     const center = (text: string, yPosition: number) => {
-      const printable = safeText(text, bodyFont)
+      const printable = safeText(text, headerFooterFont)
       page.drawText(printable, {
-        x: (pageWidth - bodyFont.widthOfTextAtSize(printable, size)) / 2,
+        x: (pageWidth - headerFooterFont.widthOfTextAtSize(printable, size)) / 2,
         y: yPosition,
         size,
-        font: bodyFont,
+        font: headerFooterFont,
         color,
       })
     }
     if (!activeChapter.options.hideHeaderFooter) {
-      if (theme.headerFooter.layout === 'page-center' && !activeChapter.options.hidePageNumber) {
-        center(String(pageNumber), margin.bottom / 2)
-      } else if (theme.headerFooter.layout !== 'none') {
+      if (theme.headerFooter.layout !== 'none') {
         const odd = pageNumber % 2 === 1
-        const headerText =
-          theme.headerFooter.layout === 'chapter-page'
-            ? chapter
-            : odd
-              ? title
-              : author || title
-        const printableHeader = safeText(headerText, bodyFont)
-        page.drawText(printableHeader, {
-          x: odd ? pageWidth - margin.right - bodyFont.widthOfTextAtSize(printableHeader, size) : margin.left,
-          y: pageHeight - margin.top / 2,
-          size,
-          font: bodyFont,
-          color,
-        })
-        if (!activeChapter.options.hidePageNumber) center(String(pageNumber), margin.bottom / 2)
+        const headerText = runningHeaderText(
+          theme.headerFooter.layout,
+          { title, author, chapter },
+          pageNumber,
+        )
+        if (headerText) {
+          const printableHeader = safeText(headerText, headerFooterFont)
+          page.drawText(printableHeader, {
+            x: odd ? pageWidth - margin.right - headerFooterFont.widthOfTextAtSize(printableHeader, size) : margin.left,
+            y: pageHeight - margin.top / 2,
+            size,
+            font: headerFooterFont,
+            color,
+          })
+        }
+        if (
+          layoutShowsPageNumber(theme.headerFooter.layout) &&
+          !activeChapter.options.hidePageNumber
+        ) {
+          center(String(pageNumber), margin.bottom / 2)
+        }
       }
     }
     if (pageFootnotes.length) {
@@ -359,10 +372,11 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
   }
 
   const startChapter = (chapter: Chapter) => {
-    activeChapter = chapter
     chapterNoteNumber = 0
-    if (!pageNumber) newPage()
-    else newPage()
+    newPage()
+    // newPage finalizes the page it is leaving, so the previous chapter must
+    // remain active until that page's running header and footnotes are drawn.
+    activeChapter = chapter
     if (chapter.options.beginOn !== 'either') {
       const needsOdd = chapter.options.beginOn === 'right'
       const isOdd = pageNumber % 2 === 1
@@ -432,7 +446,14 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
     }
     if (!chapter.options.hideChapterHeading) {
       y -= lineHeight
-      if (heading.number) drawLine(`Chapter ${heading.number}`, { align: theme.chapterHeading.titleAlign, size: theme.chapterHeading.numberSize })
+      if (heading.number) drawLine(`Chapter ${heading.number}`, {
+        font: numberFont,
+        align: theme.chapterHeading.titleAlign,
+        size: theme.chapterHeading.numberSize,
+      })
+      if (heading.number && heading.title) {
+        y -= Math.max(8, theme.chapterHeading.titleSize * .28)
+      }
       if (heading.title) {
         const titleSize = chapter.options.useSmallerChapterTitle
           ? theme.chapterHeading.titleSize * 0.75
@@ -442,7 +463,11 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
           drawLine(line, { font: headingFont, size: titleSize, align: theme.chapterHeading.titleAlign })
         }
       }
-      if (heading.subtitle) drawLine(heading.subtitle, { size: theme.chapterHeading.subtitleSize, align: theme.chapterHeading.titleAlign })
+      if (heading.subtitle) drawLine(heading.subtitle, {
+        font: subtitleFont,
+        size: theme.chapterHeading.subtitleSize,
+        align: theme.chapterHeading.titleAlign,
+      })
       y -= lineHeight
     }
 
@@ -483,7 +508,7 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
         const key = `h${Math.min(Math.max(block.level, 2), 6)}Size` as 'h2Size'
         ensureSpace(lineHeight * (theme.print.keepSubheadings ? 3 : 1))
         y -= lineHeight * 0.4
-        drawLine(block.text, { font: serifBold, size: theme.subheading[key] * fontSize, align: theme.subheading.align })
+        drawLine(block.text, { font: subheadingFont, size: theme.subheading[key] * fontSize, align: theme.subheading.align })
       } else if (block.type === 'callout') {
         registerPageFootnotes(block.text)
         if (block.variant === 'message') {
@@ -540,15 +565,16 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
       if (theme.notes.printPlacement === 'book-end') allBookNotes.push(...notes)
       else if (theme.notes.printPlacement === 'chapter-end') {
         y -= lineHeight
-        drawLine('Notes', { font: serifBold, size: fontSize + 2 })
+        drawLine('Notes', { font: subheadingFont, size: fontSize + 2 })
         for (const note of notes) drawParagraph(`${note.number}. ${note.text}`, true)
       }
     }
   }
 
   if (allBookNotes.length) {
-    activeChapter = makeNotesChapter()
     newPage()
+    activeChapter = makeNotesChapter()
+    chapterOpeningPages.add(pageNumber)
     drawLine('Notes', { font: headingFont, size: Math.min(theme.chapterHeading.titleSize, 30), align: 'center' })
     y -= lineHeight
     for (const note of allBookNotes) drawParagraph(`${note.number}. ${note.text}`, true)

@@ -955,16 +955,29 @@ export function FormattingPanel() {
                     fontSize: `${Math.max(9.5, Math.min(13, theme.typography.bodySize * .96))}px`,
                   }}
                 >
-                  {(theme.chapterHeading.imageEnabled || chapterNumber) && (
+                  {theme.chapterHeading.sharedImageDataUrl && (
+                    <img
+                      className="ts-kicker-image"
+                      src={theme.chapterHeading.sharedImageDataUrl}
+                      alt=""
+                      style={{
+                        marginInline:
+                          theme.chapterHeading.imageAlign === 'center'
+                            ? 'auto'
+                            : theme.chapterHeading.imageAlign === 'right'
+                              ? 'auto 0'
+                              : '0 auto',
+                      }}
+                    />
+                  )}
+                  {chapterNumber && (
                     <div
                       className="ts-kicker"
                       style={{
                         fontFamily: fontStack(theme.chapterHeading.numberFont),
-                        textAlign: theme.chapterHeading.imageAlign,
+                        textAlign: theme.chapterHeading.titleAlign,
                       }}
                     >
-                      {theme.chapterHeading.imageEnabled ? '❧' : ''}
-                      {theme.chapterHeading.imageEnabled && chapterNumber ? '  ' : ''}
                       {chapterNumber}
                     </div>
                   )}

@@ -4,6 +4,7 @@ import { useApp } from '../BookContext'
 import type { PreviewDevice } from '../types'
 import './Previewer.css'
 import { decorateFirstSentenceHtml, headingParts, parseManuscript, type ManuscriptBlock } from '../layout/manuscript'
+import { layoutShowsPageNumber, runningHeaderAlignment, runningHeaderText } from '../layout/runningHeaders'
 import { preflightBook } from '../export/preflight'
 import { DEVICE_PROFILES, profileDescription, renderedDeviceWidth } from '../preview/devices'
 import { estimateBookPages, readingTimeMinutes } from '../layout/pagination'
@@ -286,19 +287,38 @@ export function Previewer() {
             >
             {previewDevice === 'Print' &&
               activeChapter &&
+              screenPage > 1 &&
               !activeChapter.options.hideHeaderFooter &&
               theme.headerFooter.layout !== 'none' && (
                 <>
-                  {theme.headerFooter.layout !== 'page-center' && (
-                    <div className="preview-print-header" style={{ fontFamily: theme.headerFooter.font, fontSize: theme.headerFooter.size }}>
-                      {theme.headerFooter.layout === 'chapter-page'
-                        ? activeChapter.title
-                        : project.details.title}
+                  {runningHeaderText(
+                    theme.headerFooter.layout,
+                    {
+                      title: project.details.title,
+                      author: project.details.author,
+                      chapter: activeChapter.title,
+                    },
+                    screenPage,
+                  ) && (
+                    <div
+                      className={`preview-print-header ${runningHeaderAlignment(screenPage)}`}
+                      style={{ fontFamily: theme.headerFooter.font, fontSize: theme.headerFooter.size }}
+                    >
+                      {runningHeaderText(
+                        theme.headerFooter.layout,
+                        {
+                          title: project.details.title,
+                          author: project.details.author,
+                          chapter: activeChapter.title,
+                        },
+                        screenPage,
+                      )}
                     </div>
                   )}
-                  {!activeChapter.options.hidePageNumber && (
+                  {layoutShowsPageNumber(theme.headerFooter.layout) &&
+                    !activeChapter.options.hidePageNumber && (
                     <div className="preview-print-footer" style={{ fontFamily: theme.headerFooter.font, fontSize: theme.headerFooter.size }}>
-                      1
+                      {screenPage}
                     </div>
                   )}
                 </>
