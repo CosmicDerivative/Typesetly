@@ -51,7 +51,7 @@ export function DrawerControls({ panel, hidePin = false, onClose }: DrawerContro
       {!hidePin && (
         <button
           type="button"
-          className={pinned ? 'drawer-control pinned' : 'drawer-control'}
+          className={pinned ? 'drawer-control pin-control pinned' : 'drawer-control pin-control'}
           aria-label={pinned ? 'Unpin window' : 'Pin window'}
           title={pinned ? 'Unpin window' : 'Pin window'}
           onClick={togglePin}

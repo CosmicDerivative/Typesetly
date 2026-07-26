@@ -17,6 +17,7 @@
   box-shadow: 0 -8px 24px rgba(52, 30, 38, .07);
   overflow: hidden;
   backdrop-filter: blur(12px);
+  container-type: inline-size;
 }
 
 .utility-bar-track {
@@ -26,25 +27,17 @@
   height: 100%;
   margin-inline: auto;
   padding: 5px 2px;
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(56px, auto);
+  display: flex;
   align-items: center;
-  justify-content: start;
+  justify-content: center;
   gap: 2px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  overscroll-behavior-inline: contain;
-  scrollbar-width: none;
-}
-
-.utility-bar-track::-webkit-scrollbar {
-  display: none;
+  overflow: hidden;
 }
 
 .util {
-  width: 100%;
+  width: auto;
   min-width: 56px;
+  flex: 0 0 auto;
   height: 36px;
   padding: 0 9px;
   border: 1px solid transparent;
@@ -87,6 +80,7 @@
 
 .util-spacer {
   width: 1px;
+  flex: 0 0 1px;
   height: 25px;
   margin-inline: 4px;
   background: var(--line);
@@ -120,6 +114,27 @@
   background: rgba(255, 255, 255, .13);
 }
 
+@container (max-width: 720px) {
+  .utility-bar-track {
+    width: 100%;
+    margin: 0;
+  }
+
+  .util {
+    min-width: 0;
+    flex: 1 1 0;
+    padding-inline: 4px;
+  }
+
+  .util span {
+    display: none;
+  }
+
+  .util-spacer {
+    margin-inline: 2px;
+  }
+}
+
 @media (max-width: 760px) {
   .utility-bar {
     height: 46px;
@@ -130,11 +145,11 @@
     width: 100%;
     margin: 0;
     padding: 4px 2px;
-    grid-auto-columns: 42px;
   }
 
   .util {
-    min-width: 42px;
+    min-width: 0;
+    flex: 1 1 0;
     height: 36px;
     padding: 0;
   }

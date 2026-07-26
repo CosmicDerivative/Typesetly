@@ -2,27 +2,30 @@ import { Heart, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useApp } from '../BookContext'
 import { TRIM_SIZES } from '../themes/presets'
+import { FONT_FAMILIES, FONT_FAMILY_GROUPS, fontStack } from '../themes/fonts'
 import type { BookTheme } from '../types'
 import './FormattingPanel.css'
 import { Dialog } from './Dialog'
 import { processImageFile } from '../images/process'
-
-function previewFontStack(font: string) {
-  const normalized = font.toLocaleLowerCase()
-  if (normalized.includes('source sans')) return `"${font}", "Segoe UI", Arial, sans-serif`
-  if (normalized.includes('libre baskerville')) return `"${font}", Georgia, serif`
-  if (normalized.includes('palatino')) return `"${font}", Palatino, "Book Antiqua", Georgia, serif`
-  if (normalized.includes('garamond')) return `${font}, "Times New Roman", Georgia, serif`
-  if (normalized.includes('times')) return `"${font}", "Times New Roman", serif`
-  if (normalized.includes('georgia')) return `${font}, Georgia, serif`
-  return `"${font}", Georgia, serif`
-}
 
 function previewChapterNumber(theme: BookTheme) {
   if (!theme.chapterHeading.showNumber || theme.chapterHeading.numberView === 'none') return ''
   if (theme.chapterHeading.numberView === 'roman') return 'CHAPTER I'
   if (theme.chapterHeading.numberView === 'words') return 'CHAPTER ONE'
   return 'CHAPTER 1'
+}
+
+function fontOptions(current: string) {
+  return (
+    <>
+      {!FONT_FAMILIES.includes(current) && <option>{current}</option>}
+      {FONT_FAMILY_GROUPS.map((group) => (
+        <optgroup key={group.label} label={group.label}>
+          {group.fonts.map((font) => <option key={font}>{font}</option>)}
+        </optgroup>
+      ))}
+    </>
+  )
 }
 
 export function FormattingPanel() {
@@ -188,6 +191,80 @@ export function FormattingPanel() {
                 }
               />
             </label>
+            <label>
+              Title font
+              <select
+                value={t.chapterHeading.titleFont}
+                onChange={(event) => updateEditingTheme({
+                  chapterHeading: { ...t.chapterHeading, titleFont: event.target.value },
+                })}
+              >
+                {fontOptions(t.chapterHeading.titleFont)}
+              </select>
+            </label>
+            <label>
+              Title weight
+              <select
+                value={t.chapterHeading.titleWeight}
+                onChange={(event) => updateEditingTheme({
+                  chapterHeading: {
+                    ...t.chapterHeading,
+                    titleWeight: event.target.value as typeof t.chapterHeading.titleWeight,
+                  },
+                })}
+              >
+                <option value="normal">Regular</option>
+                <option value="bold">Bold</option>
+              </select>
+            </label>
+            <div className="compact-grid">
+              <label>
+                Number font
+                <select
+                  value={t.chapterHeading.numberFont}
+                  onChange={(event) => updateEditingTheme({
+                    chapterHeading: { ...t.chapterHeading, numberFont: event.target.value },
+                  })}
+                >
+                  {fontOptions(t.chapterHeading.numberFont)}
+                </select>
+              </label>
+              <label>
+                Number size
+                <input
+                  type="number"
+                  min={7}
+                  max={36}
+                  value={t.chapterHeading.numberSize}
+                  onChange={(event) => updateEditingTheme({
+                    chapterHeading: { ...t.chapterHeading, numberSize: Number(event.target.value) },
+                  })}
+                />
+              </label>
+              <label>
+                Subtitle font
+                <select
+                  value={t.chapterHeading.subtitleFont}
+                  onChange={(event) => updateEditingTheme({
+                    chapterHeading: { ...t.chapterHeading, subtitleFont: event.target.value },
+                  })}
+                >
+                  {fontOptions(t.chapterHeading.subtitleFont)}
+                </select>
+              </label>
+              <label>
+                Subtitle size
+                <input
+                  type="number"
+                  min={7}
+                  max={32}
+                  value={t.chapterHeading.subtitleSize}
+                  onChange={(event) => updateEditingTheme({
+                    chapterHeading: { ...t.chapterHeading, subtitleSize: Number(event.target.value) },
+                  })}
+                />
+              </label>
+            </div>
           </section>
 
           <section className="fv-card">
@@ -250,6 +327,88 @@ export function FormattingPanel() {
                 <option value="left">Left</option>
               </select>
             </label>
+            <label>
+              First-sentence styling
+              <select
+                value={t.paragraph.firstSentenceMode}
+                onChange={(event) => updateEditingTheme({
+                  paragraph: {
+                    ...t.paragraph,
+                    firstSentenceMode: event.target.value as typeof t.paragraph.firstSentenceMode,
+                  },
+                })}
+              >
+                <option value="chapter">Chapter openings only</option>
+                <option value="chapter-and-scene">Chapter and scene openings</option>
+              </select>
+            </label>
+          </section>
+
+          <section className="fv-card">
+            <h3>Subheading Hierarchy</h3>
+            <label>
+              Font
+              <select
+                value={t.subheading.font}
+                onChange={(event) => updateEditingTheme({
+                  subheading: { ...t.subheading, font: event.target.value },
+                })}
+              >
+                {fontOptions(t.subheading.font)}
+              </select>
+            </label>
+            <div className="compact-grid">
+              <label>
+                Weight
+                <select
+                  value={t.subheading.weight}
+                  onChange={(event) => updateEditingTheme({
+                    subheading: {
+                      ...t.subheading,
+                      weight: event.target.value as typeof t.subheading.weight,
+                    },
+                  })}
+                >
+                  <option value="normal">Regular</option>
+                  <option value="bold">Bold</option>
+                </select>
+              </label>
+              <label>
+                Alignment
+                <select
+                  value={t.subheading.align}
+                  onChange={(event) => updateEditingTheme({
+                    subheading: {
+                      ...t.subheading,
+                      align: event.target.value as typeof t.subheading.align,
+                    },
+                  })}
+                >
+                  <option value="left">Left</option>
+                  <option value="center">Center</option>
+                  <option value="right">Right</option>
+                </select>
+              </label>
+            </div>
+            <div className="heading-size-grid">
+              {([2, 3, 4, 5, 6] as const).map((level) => {
+                const key = `h${level}Size` as const
+                return (
+                  <label key={level}>
+                    H{level}
+                    <input
+                      type="number"
+                      min={8}
+                      max={36}
+                      value={t.subheading[key]}
+                      onChange={(event) => updateEditingTheme({
+                        subheading: { ...t.subheading, [key]: Number(event.target.value) },
+                      })}
+                    />
+                  </label>
+                )
+              })}
+            </div>
           </section>
 
           <section className="fv-card">
@@ -436,19 +595,7 @@ export function FormattingPanel() {
                   })
                 }
               >
-                <option>Palatino Linotype</option>
-                <option>Garamond</option>
-                <option>Georgia</option>
-                <option>Times New Roman</option>
-                <option>Libre Baskerville</option>
-                <option>Source Sans 3</option>
-                <option>Arial</option>
-                <option>Book Antiqua</option>
-                <option>Cambria</option>
-                <option>Charter</option>
-                <option>Courier New</option>
-                <option>OpenDyslexic</option>
-                <option>Verdana</option>
+                {fontOptions(t.typography.bodyFont)}
               </select>
             </label>
             <label>
@@ -546,6 +693,19 @@ export function FormattingPanel() {
 
           <section className="fv-card">
             <h3>Notes</h3>
+            <label>
+              Note size
+              <input
+                type="number"
+                min={7}
+                max={18}
+                step={0.5}
+                value={t.notes.fontSize}
+                onChange={(event) => updateEditingTheme({
+                  notes: { ...t.notes, fontSize: Number(event.target.value) },
+                })}
+              />
+            </label>
             <label>
               ePub placement
               <select
@@ -686,6 +846,34 @@ export function FormattingPanel() {
                 <option value="author-title-page">Author / Title / Page</option>
               </select>
             </label>
+            {t.headerFooter.layout !== 'none' && (
+              <div className="compact-grid">
+                <label>
+                  Header font
+                  <select
+                    value={t.headerFooter.font}
+                    onChange={(event) => updateEditingTheme({
+                      headerFooter: { ...t.headerFooter, font: event.target.value },
+                    })}
+                  >
+                    {fontOptions(t.headerFooter.font)}
+                  </select>
+                </label>
+                <label>
+                  Header size
+                  <input
+                    type="number"
+                    min={6}
+                    max={18}
+                    step={0.5}
+                    value={t.headerFooter.size}
+                    onChange={(event) => updateEditingTheme({
+                      headerFooter: { ...t.headerFooter, size: Number(event.target.value) },
+                    })}
+                  />
+                </label>
+              </div>
+            )}
             <label>
               Layout priority
               <select
@@ -763,7 +951,7 @@ export function FormattingPanel() {
                 <div
                   className="theme-sample"
                   style={{
-                    fontFamily: previewFontStack(theme.typography.bodyFont),
+                    fontFamily: fontStack(theme.typography.bodyFont),
                     fontSize: `${Math.max(9.5, Math.min(13, theme.typography.bodySize * .96))}px`,
                   }}
                 >
@@ -771,7 +959,7 @@ export function FormattingPanel() {
                     <div
                       className="ts-kicker"
                       style={{
-                        fontFamily: previewFontStack(theme.chapterHeading.numberFont),
+                        fontFamily: fontStack(theme.chapterHeading.numberFont),
                         textAlign: theme.chapterHeading.imageAlign,
                       }}
                     >
@@ -784,7 +972,7 @@ export function FormattingPanel() {
                     <div
                       className="ts-title"
                       style={{
-                        fontFamily: previewFontStack(theme.chapterHeading.titleFont),
+                        fontFamily: fontStack(theme.chapterHeading.titleFont),
                         fontSize: `${Math.max(13, Math.min(18, theme.chapterHeading.titleSize * .55))}px`,
                         fontWeight: theme.chapterHeading.titleWeight === 'bold' ? 700 : 400,
                         textAlign: theme.chapterHeading.titleAlign,

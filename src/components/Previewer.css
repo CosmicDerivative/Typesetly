@@ -106,6 +106,10 @@
   align-items: center;
 }
 
+.reader-font-select {
+  grid-column: 1 / -1;
+}
+
 .reader-controls button,
 .reader-controls select {
   height: 26px;
@@ -486,7 +490,8 @@
 
 .device {
   box-sizing: border-box;
-  width: var(--device-width, 280px);
+  width: min(var(--device-width, 420px), calc(100% - 12px));
+  min-width: min(var(--device-width, 420px), calc(100% - 12px));
   background: #252a30;
   border: 1px solid #11151a;
   border-radius: var(--device-radius, 10px);

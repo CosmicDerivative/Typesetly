@@ -48,3 +48,9 @@
   color: var(--ink-950);
   background: var(--gold-400);
 }
+
+@media (max-width: 980px) {
+  .drawer-control.pin-control {
+    display: none;
+  }
+}

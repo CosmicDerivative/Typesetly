@@ -14,6 +14,7 @@ test('every preview target has a positive, device-specific screen profile', () =
     assert.ok(profile.logicalHeight > 0)
     assert.ok(profile.nativeWidth > 0)
     assert.ok(profile.nativeHeight > 0)
+    assert.ok(profile.readerFont.length > 5)
   }
   assert.notEqual(
     DEVICE_PROFILES.iPhone.logicalWidth / DEVICE_PROFILES.iPhone.logicalHeight,
@@ -29,6 +30,9 @@ test('e-ink profiles remain distinct from color tablet and phone previews', () =
   }
   assert.equal(DEVICE_PROFILES.iPad.color, true)
   assert.equal(DEVICE_PROFILES.iPhone.family, 'phone')
+  assert.match(DEVICE_PROFILES.iPhone.readerFont, /apple-system/)
+  assert.match(DEVICE_PROFILES.Paperwhite.readerFont, /Bookerly/)
+  assert.match(DEVICE_PROFILES.Galaxy.readerFont, /Roboto/)
 })
 
 test('preview frames reflect physical device size and orientation', () => {
@@ -39,6 +43,8 @@ test('preview frames reflect physical device size and orientation', () => {
 
   assert.ok(iPadWidth > fireWidth)
   assert.ok(formaWidth > kindleWidth)
+  assert.ok(iPadWidth >= 500)
+  assert.ok(kindleWidth >= 340)
   assert.ok(renderedDeviceWidth(DEVICE_PROFILES.iPad, 6, true) > iPadWidth)
   assert.notEqual(renderedDeviceWidth(DEVICE_PROFILES.Print, 5, false), renderedDeviceWidth(DEVICE_PROFILES.Print, 7, false))
 })

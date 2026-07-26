@@ -29,10 +29,11 @@ import {
   Superscript,
   Smartphone,
   Scissors,
+  Type,
   Underline as UnderlineIcon,
   Undo2,
 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { v4 as uuid } from 'uuid'
 import { useApp } from '../BookContext'
 import { countBookWords, countWords } from '../data'
@@ -52,6 +53,7 @@ import {
   SmallCaps,
   Subscript,
   SuperscriptText,
+  TextAppearance,
   HangingIndentBlock,
   VerseBlock,
 } from '../editor/extensions'
@@ -59,6 +61,20 @@ import { Dialog } from './Dialog'
 import { processImageFile } from '../images/process'
 import { buildCalloutNode, replaceCalloutRange } from '../editor/callouts'
 import { smartDashForInsertion, smartQuoteForInsertion } from '../editor/smartQuotes'
+import { FONT_FAMILY_GROUPS } from '../themes/fonts'
+
+const TEXT_SIZES = [9, 10, 11, 12, 13, 14, 16, 18, 20, 22, 24, 28, 32, 36, 42, 48, 64]
+const TEXT_COLORS = ['#221a1e', '#5b3345', '#a53f35', '#b96e18', '#2f6f52', '#206a83', '#315aa8', '#714a9f', '#767676', '#ffffff']
+const HIGHLIGHT_COLORS = ['#fff0a8', '#ffd3c5', '#f5c8dc', '#d9c8f3', '#c9dcff', '#bfe9e3', '#d8edb5', '#e4e4e4']
+const TRACKING_OPTIONS = [
+  { value: '-0.04em', label: 'Very tight' },
+  { value: '-0.02em', label: 'Tight' },
+  { value: '', label: 'Normal' },
+  { value: '0.025em', label: 'Open' },
+  { value: '0.06em', label: 'Wide' },
+  { value: '0.1em', label: 'Very wide' },
+  { value: '0.16em', label: 'Display' },
+]
 
 function formatTimer(seconds: number) {
   const m = Math.floor(seconds / 60)
@@ -131,6 +147,7 @@ export function EditorPane() {
   const [noteOpen, setNoteOpen] = useState(false)
   const [noteValue, setNoteValue] = useState('')
   const [wordMenu, setWordMenu] = useState(false)
+  const [textOptionsOpen, setTextOptionsOpen] = useState(false)
   const [imageOpen, setImageOpen] = useState(false)
   const [imageAlt, setImageAlt] = useState('')
   const [imageCaption, setImageCaption] = useState('')
@@ -181,6 +198,7 @@ export function EditorPane() {
       VerseBlock,
       HangingIndentBlock,
       AttributedQuote,
+      TextAppearance,
     ],
     content: activeChapter?.content || '<p></p>',
     onUpdate: ({ editor: ed }) => {
@@ -262,6 +280,7 @@ export function EditorPane() {
       if (!target) return
       if (!target.closest('.chapter-settings, .chapter-options')) setOptionsOpen(false)
       if (!target.closest('.wordcount-btn, .wordcount-menu')) setWordMenu(false)
+      if (!target.closest('.text-options-wrap')) setTextOptionsOpen(false)
     }
     document.addEventListener('pointerdown', closePopoverMenus)
     return () => document.removeEventListener('pointerdown', closePopoverMenus)
@@ -443,6 +462,24 @@ export function EditorPane() {
     if (value === 'clear') chain.unsetAllMarks().run()
   }
 
+  const applyTextAppearance = (
+    attribute: 'fontFamily' | 'fontSize' | 'color' | 'backgroundColor' | 'letterSpacing' | 'textTransform',
+    value: string,
+  ) => {
+    if (!editor) return
+    const current = editor.getAttributes('textAppearance')
+    const next = { ...current, [attribute]: value || null }
+    if (Object.values(next).every((entry) => !entry)) {
+      editor.chain().focus().unsetMark('textAppearance').run()
+    } else {
+      editor.chain().focus().setMark('textAppearance', next).run()
+    }
+  }
+
+  const clearTextAppearance = () => {
+    editor?.chain().focus().unsetMark('textAppearance').run()
+  }
+
   const insertImage = async (file: File) => {
     try {
       const processed = await processImageFile(file)
@@ -511,6 +548,17 @@ export function EditorPane() {
   }
 
   const prefs = project.editorPrefs
+  const textAppearance = editor?.getAttributes('textAppearance') || {}
+  const hasTextAppearance = Object.values(textAppearance).some(Boolean)
+  const selectedTextColor =
+    typeof textAppearance.color === 'string' && /^#[0-9a-f]{6}$/i.test(textAppearance.color)
+      ? textAppearance.color
+      : '#221a1e'
+  const selectedHighlight =
+    typeof textAppearance.backgroundColor === 'string'
+    && /^#[0-9a-f]{6}$/i.test(textAppearance.backgroundColor)
+      ? textAppearance.backgroundColor
+      : '#fff0a8'
 
   const splitAtCursor = () => {
     if (!editor || !activeChapter || activeChapter.type !== 'chapter') return
@@ -532,27 +580,178 @@ export function EditorPane() {
     <section className="editor-pane">
       <div className="editor-toolbar">
         <span className="toolbar-brand">Draft desk</span>
-        <div className="toolbar-group">
+        <div className="toolbar-group toolbar-character">
           <button type="button" className={editor?.isActive('bold') ? 'tb active' : 'tb'} onClick={() => editor?.chain().focus().toggleBold().run()} title="Bold"><Bold size={15} strokeWidth={2.4} /></button>
           <button type="button" className={editor?.isActive('italic') ? 'tb active' : 'tb'} onClick={() => editor?.chain().focus().toggleItalic().run()} title="Italic"><Italic size={15} /></button>
           <button type="button" className={editor?.isActive('underline') ? 'tb active' : 'tb'} onClick={() => editor?.chain().focus().toggleUnderline().run()} title="Underline"><UnderlineIcon size={15} /></button>
           <button type="button" className={editor?.isActive('strike') ? 'tb active' : 'tb'} onClick={() => editor?.chain().focus().toggleStrike().run()} title="Strikethrough"><Strikethrough size={15} /></button>
           <button type="button" className={editor?.isActive('code') ? 'tb active' : 'tb'} onClick={() => editor?.chain().focus().toggleCode().run()} title="Inline code"><Code2 size={15} /></button>
-          <select
-            className="toolbar-menu"
-            value=""
-            aria-label="More text formatting"
-            title="More text formatting"
-            onChange={(event) => applyTextTool(event.target.value)}
-          >
-            <option value="">More text</option>
-            <option value="smallCaps">Small caps</option>
-            <option value="sansSerif">Sans serif</option>
-            <option value="monospace">Monospace</option>
-            <option value="subscript">Subscript</option>
-            <option value="superscriptText">Superscript</option>
-            <option value="clear">Clear character formatting</option>
-          </select>
+          <div className="text-options-wrap">
+            <button
+              type="button"
+              className={hasTextAppearance ? 'typography-button active' : 'typography-button'}
+              aria-expanded={textOptionsOpen}
+              aria-haspopup="dialog"
+              title="Advanced typography"
+              onClick={() => setTextOptionsOpen((open) => !open)}
+            >
+              <Type size={15} />
+              <span>Typography</span>
+            </button>
+            {textOptionsOpen && (
+              <div className="text-options-popover" role="dialog" aria-label="Advanced typography">
+                <div className="text-options-heading">
+                  <div>
+                    <strong>Text appearance</strong>
+                    <span>Apply to the selection or your next typed text.</span>
+                  </div>
+                  <button type="button" onClick={clearTextAppearance} disabled={!hasTextAppearance}>
+                    Reset
+                  </button>
+                </div>
+                <div className="text-quick-styles" aria-label="Quick character styles">
+                  <button
+                    type="button"
+                    className={editor?.isActive('smallCaps') ? 'active' : ''}
+                    onClick={() => applyTextTool('smallCaps')}
+                  >
+                    Small caps
+                  </button>
+                  <button
+                    type="button"
+                    className={editor?.isActive('subscript') ? 'active' : ''}
+                    onClick={() => applyTextTool('subscript')}
+                  >
+                    Subscript
+                  </button>
+                  <button
+                    type="button"
+                    className={editor?.isActive('superscriptText') ? 'active' : ''}
+                    onClick={() => applyTextTool('superscriptText')}
+                  >
+                    Superscript
+                  </button>
+                  <button
+                    type="button"
+                    className={editor?.isActive('monospace') ? 'active' : ''}
+                    onClick={() => applyTextTool('monospace')}
+                  >
+                    Monospace
+                  </button>
+                  <button type="button" onClick={() => applyTextTool('clear')}>
+                    Clear all
+                  </button>
+                </div>
+                <div className="text-options-grid">
+                  <label>
+                    Font family
+                    <select
+                      value={String(textAppearance.fontFamily || '')}
+                      onChange={(event) => applyTextAppearance('fontFamily', event.target.value)}
+                    >
+                      <option value="">Theme font</option>
+                      {FONT_FAMILY_GROUPS.map((group) => (
+                        <optgroup key={group.label} label={group.label}>
+                          {group.fonts.map((font) => <option key={font}>{font}</option>)}
+                        </optgroup>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Size
+                    <select
+                      value={String(textAppearance.fontSize || '')}
+                      onChange={(event) => applyTextAppearance('fontSize', event.target.value)}
+                    >
+                      <option value="">Theme size</option>
+                      {TEXT_SIZES.map((size) => (
+                        <option key={size} value={`${size}px`}>{size} px</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Letter spacing
+                    <select
+                      value={String(textAppearance.letterSpacing || '')}
+                      onChange={(event) => applyTextAppearance('letterSpacing', event.target.value)}
+                    >
+                      {TRACKING_OPTIONS.map((option) => (
+                        <option key={option.label} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Letter case
+                    <select
+                      value={String(textAppearance.textTransform || '')}
+                      onChange={(event) => applyTextAppearance('textTransform', event.target.value)}
+                    >
+                      <option value="">As typed</option>
+                      <option value="uppercase">UPPERCASE</option>
+                      <option value="lowercase">lowercase</option>
+                      <option value="capitalize">Title Case</option>
+                    </select>
+                  </label>
+                </div>
+                <div className="text-color-section">
+                  <span>Text color</span>
+                  <div className="text-swatches">
+                    {TEXT_COLORS.map((color) => (
+                      <button
+                        key={color}
+                        type="button"
+                        className={textAppearance.color === color ? 'selected' : ''}
+                        style={{ '--swatch': color } as CSSProperties}
+                        aria-label={`Text color ${color}`}
+                        title={color}
+                        onClick={() => applyTextAppearance('color', color)}
+                      />
+                    ))}
+                    <label className="custom-color" title="Custom text color">
+                      <input
+                        type="color"
+                        value={selectedTextColor}
+                        aria-label="Custom text color"
+                        onChange={(event) => applyTextAppearance('color', event.target.value)}
+                      />
+                      +
+                    </label>
+                    <button type="button" className="clear-color" onClick={() => applyTextAppearance('color', '')}>
+                      Default
+                    </button>
+                  </div>
+                </div>
+                <div className="text-color-section">
+                  <span>Highlight</span>
+                  <div className="text-swatches">
+                    {HIGHLIGHT_COLORS.map((color) => (
+                      <button
+                        key={color}
+                        type="button"
+                        className={textAppearance.backgroundColor === color ? 'selected' : ''}
+                        style={{ '--swatch': color } as CSSProperties}
+                        aria-label={`Highlight color ${color}`}
+                        title={color}
+                        onClick={() => applyTextAppearance('backgroundColor', color)}
+                      />
+                    ))}
+                    <label className="custom-color" title="Custom highlight color">
+                      <input
+                        type="color"
+                        value={selectedHighlight}
+                        aria-label="Custom highlight color"
+                        onChange={(event) => applyTextAppearance('backgroundColor', event.target.value)}
+                      />
+                      +
+                    </label>
+                    <button type="button" className="clear-color" onClick={() => applyTextAppearance('backgroundColor', '')}>
+                      None
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
         <div className="toolbar-divider" />
         <div className="style-select-wrap">

@@ -21,6 +21,60 @@ export const Monospace = styleMark('monospace', 'font-family: monospace')
 export const Subscript = styleMark('subscript', 'vertical-align: sub; font-size: 0.8em', 'sub')
 export const SuperscriptText = styleMark('superscriptText', 'vertical-align: super; font-size: 0.8em', 'sup')
 
+const textAppearanceAttribute = (cssProperty: keyof CSSStyleDeclaration) => ({
+  default: null,
+  parseHTML: (element: HTMLElement) => element.style[cssProperty] || null,
+})
+
+/**
+ * Stores flexible character-level typography without baking it into the book
+ * theme. These inline styles survive HTML/EPUB output and are translated by
+ * the editable DOCX exporter where the target format supports them.
+ */
+export const TextAppearance = Mark.create({
+  name: 'textAppearance',
+  addAttributes() {
+    return {
+      fontFamily: textAppearanceAttribute('fontFamily'),
+      fontSize: textAppearanceAttribute('fontSize'),
+      color: textAppearanceAttribute('color'),
+      backgroundColor: textAppearanceAttribute('backgroundColor'),
+      letterSpacing: textAppearanceAttribute('letterSpacing'),
+      textTransform: textAppearanceAttribute('textTransform'),
+    }
+  },
+  parseHTML: () => [
+    { tag: 'span[data-typesetly-mark="textAppearance"]' },
+  ],
+  renderHTML: ({ HTMLAttributes }) => {
+    const {
+      fontFamily,
+      fontSize,
+      color,
+      backgroundColor,
+      letterSpacing,
+      textTransform,
+      ...rest
+    } = HTMLAttributes
+    const style = [
+      fontFamily && `font-family:${fontFamily}`,
+      fontSize && `font-size:${fontSize}`,
+      color && `color:${color}`,
+      backgroundColor && `background-color:${backgroundColor}`,
+      letterSpacing && `letter-spacing:${letterSpacing}`,
+      textTransform && `text-transform:${textTransform}`,
+    ].filter(Boolean).join(';')
+    return [
+      'span',
+      mergeAttributes(rest, {
+        'data-typesetly-mark': 'textAppearance',
+        style,
+      }),
+      0,
+    ]
+  },
+})
+
 function styledBlock(name: string, tag: string) {
   return Node.create({
     name,

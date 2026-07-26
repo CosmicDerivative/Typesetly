@@ -23,6 +23,29 @@ function base64Bytes(dataUrl: string) {
   return { bytes, type: match[1] === 'jpeg' ? 'jpg' : match[1] as 'png' | 'jpg' | 'gif' }
 }
 
+function wordColor(value?: string) {
+  if (!value) return undefined
+  const hex = /^#([0-9a-f]{6})$/i.exec(value)
+  if (hex) return hex[1].toUpperCase()
+  const rgb = /^rgba?\(\s*(\d+)\D+(\d+)\D+(\d+)/i.exec(value)
+  if (!rgb) return undefined
+  return rgb.slice(1, 4)
+    .map((part) => Math.max(0, Math.min(255, Number(part))).toString(16).padStart(2, '0'))
+    .join('')
+    .toUpperCase()
+}
+
+function transformedText(value: string, transform?: string) {
+  if (transform === 'uppercase') return value.toLocaleUpperCase()
+  if (transform === 'lowercase') return value.toLocaleLowerCase()
+  if (transform === 'capitalize') {
+    return value.replace(/\p{L}[\p{L}\p{M}'\u2019-]*/gu, (word) =>
+      `${word.charAt(0).toLocaleUpperCase()}${word.slice(1).toLocaleLowerCase()}`,
+    )
+  }
+  return value
+}
+
 function runsFromElement(element: HTMLElement): Array<TextRun | ExternalHyperlink> {
   const output: Array<TextRun | ExternalHyperlink> = []
   const visit = (node: Node, marks: {
@@ -34,12 +57,17 @@ function runsFromElement(element: HTMLElement): Array<TextRun | ExternalHyperlin
     subScript?: boolean
     smallCaps?: boolean
     font?: string
+    size?: number
+    color?: string
+    backgroundColor?: string
+    characterSpacing?: number
+    textTransform?: string
   } = {}) => {
     if (node.nodeType === Node.TEXT_NODE) {
       if (node.textContent) {
         output.push(
           new TextRun({
-            text: node.textContent,
+            text: transformedText(node.textContent, marks.textTransform),
             bold: marks.bold,
             italics: marks.italics,
             underline: marks.underline ? { type: UnderlineType.SINGLE } : undefined,
@@ -48,7 +76,12 @@ function runsFromElement(element: HTMLElement): Array<TextRun | ExternalHyperlin
             subScript: marks.subScript,
             smallCaps: marks.smallCaps,
             font: marks.font || 'Times New Roman',
-            size: 24,
+            size: marks.size || 24,
+            color: wordColor(marks.color),
+            shading: wordColor(marks.backgroundColor)
+              ? { fill: wordColor(marks.backgroundColor) }
+              : undefined,
+            characterSpacing: marks.characterSpacing,
           }),
         )
       }
@@ -77,7 +110,29 @@ function runsFromElement(element: HTMLElement): Array<TextRun | ExternalHyperlin
         ? 'Courier New'
         : child.dataset.typesetlyMark === 'sansSerif'
           ? 'Arial'
-          : marks.font,
+          : child.dataset.typesetlyMark === 'textAppearance' && child.style.fontFamily
+            ? child.style.fontFamily.replaceAll(/["']/g, '')
+            : marks.font,
+      size:
+        child.dataset.typesetlyMark === 'textAppearance' && child.style.fontSize
+          ? Math.max(2, Math.round(Number.parseFloat(child.style.fontSize) * 1.5))
+          : marks.size,
+      color:
+        child.dataset.typesetlyMark === 'textAppearance' && child.style.color
+          ? child.style.color
+          : marks.color,
+      backgroundColor:
+        child.dataset.typesetlyMark === 'textAppearance' && child.style.backgroundColor
+          ? child.style.backgroundColor
+          : marks.backgroundColor,
+      characterSpacing:
+        child.dataset.typesetlyMark === 'textAppearance' && child.style.letterSpacing
+          ? Math.round(Number.parseFloat(child.style.letterSpacing) * 240)
+          : marks.characterSpacing,
+      textTransform:
+        child.dataset.typesetlyMark === 'textAppearance' && child.style.textTransform
+          ? child.style.textTransform
+          : marks.textTransform,
     }
     for (const grandchild of Array.from(child.childNodes || [])) visit(grandchild, next)
   }

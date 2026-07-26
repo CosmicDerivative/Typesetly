@@ -394,3 +394,64 @@
   border-radius: 9px;
   background: var(--paper-100);
 }
+
+/* The Design workspace uses chrome tokens; recipe cards intentionally remain
+   paper previews so their typography stays legible in every workspace theme. */
+.fv-head {
+  color: var(--workspace-on-deep);
+  background:
+    radial-gradient(circle at 90% -20%, color-mix(in srgb, var(--workspace-focus) 25%, transparent), transparent 38%),
+    var(--workspace-deep);
+}
+
+.fv-head h2 {
+  color: var(--workspace-on-deep);
+}
+
+.fv-head p {
+  color: color-mix(in srgb, var(--workspace-on-deep) 66%, transparent);
+}
+
+.fv-actions .primary {
+  color: var(--workspace-active-ink);
+  background: var(--workspace-focus);
+}
+
+.fv-actions .ghost {
+  border-color: color-mix(in srgb, var(--workspace-on-deep) 22%, transparent);
+  color: var(--workspace-on-deep);
+  background: color-mix(in srgb, var(--workspace-on-deep) 8%, transparent);
+}
+
+.theme-sample {
+  color: #3b1f2d;
+  background:
+    linear-gradient(135deg, rgba(216, 170, 88, .08), transparent 45%),
+    #fffdf9;
+}
+
+.theme-sample .ts-kicker {
+  color: #7a6870;
+}
+
+.theme-sample .ts-title,
+.theme-sample p {
+  color: #3b1f2d;
+}
+
+.theme-meta {
+  color: var(--text-900);
+  background: var(--workspace-panel);
+}
+
+.heading-size-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(44px, 1fr));
+  gap: 7px;
+}
+
+@media (max-width: 560px) {
+  .heading-size-grid {
+    grid-template-columns: repeat(3, minmax(54px, 1fr));
+  }
+}

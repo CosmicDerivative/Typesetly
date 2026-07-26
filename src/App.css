@@ -693,9 +693,9 @@
   top: auto;
   bottom: auto;
   left: auto;
-  width: clamp(250px, 23vw, 320px);
+  width: var(--pinned-left-width, 292px);
   height: auto;
-  flex: 0 0 clamp(250px, 23vw, 320px);
+  flex: 0 0 var(--pinned-left-width, 292px);
   align-self: stretch;
   margin: 12px 0 12px 12px;
   border-color: var(--line);
@@ -710,10 +710,10 @@
   top: auto;
   right: auto;
   bottom: auto;
-  width: clamp(300px, 28vw, 400px);
+  width: var(--pinned-right-width, 360px);
   height: auto;
   max-width: none;
-  flex: 0 0 clamp(300px, 28vw, 400px);
+  flex: 0 0 var(--pinned-right-width, 360px);
   align-self: stretch;
   margin: 12px 12px 12px 0;
   border-radius: 17px;
@@ -721,12 +721,12 @@
 }
 
 .has-pinned-left .workspace > .utility-bar {
-  left: calc(clamp(250px, 23vw, 320px) + 12px);
+  left: calc(var(--pinned-left-width, 292px) + 22px);
   width: auto;
 }
 
 .has-pinned-right .workspace > .utility-bar {
-  right: calc(clamp(300px, 28vw, 400px) + 12px);
+  right: calc(var(--pinned-right-width, 360px) + 22px);
   width: auto;
 }
 
@@ -738,6 +738,93 @@
 
 .workspace-draft .editor-scroll {
   padding-bottom: 98px;
+}
+
+.pinned-panel-resizer {
+  position: relative;
+  z-index: 4;
+  width: 10px;
+  min-width: 10px;
+  align-self: stretch;
+  cursor: col-resize;
+  touch-action: none;
+  outline: none;
+}
+
+.pinned-panel-resizer::after {
+  position: absolute;
+  top: 22px;
+  bottom: 118px;
+  left: 4px;
+  width: 2px;
+  border-radius: 999px;
+  background: transparent;
+  content: "";
+  transition: background .16s ease, box-shadow .16s ease;
+}
+
+.pinned-panel-resizer:hover::after,
+.pinned-panel-resizer:focus-visible::after,
+.resizing-pinned-panel .pinned-panel-resizer::after {
+  background: var(--workspace-focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--workspace-focus) 18%, transparent);
+}
+
+.resizing-pinned-panel,
+.resizing-pinned-panel * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+@media (max-width: 980px) {
+  .has-pinned-left .workspace > .left-sidebar {
+    position: absolute;
+    z-index: 55;
+    top: 9px;
+    bottom: 104px;
+    left: 9px;
+    right: auto;
+    width: min(var(--pinned-left-width, 292px), calc(50% - 14px));
+    height: auto;
+    max-width: none;
+    margin: 0;
+  }
+
+  .has-pinned-right .workspace > .side-panel,
+  .has-pinned-right .workspace > .previewer.preview-drawer {
+    position: absolute;
+    z-index: 55;
+    top: 9px;
+    right: 9px;
+    bottom: 104px;
+    left: auto;
+    width: min(var(--pinned-right-width, 360px), calc(50% - 14px));
+    height: auto;
+    max-width: none;
+    margin: 0;
+  }
+
+  .pinned-panel-resizer {
+    position: absolute;
+    top: 9px;
+    bottom: 104px;
+    align-self: auto;
+  }
+
+  .pinned-panel-resizer.left {
+    left: min(calc(var(--pinned-left-width, 292px) + 9px), calc(50% - 5px));
+  }
+
+  .pinned-panel-resizer.right {
+    right: min(calc(var(--pinned-right-width, 360px) + 9px), calc(50% - 5px));
+  }
+
+  .has-pinned-left .workspace > .utility-bar,
+  .has-pinned-right .workspace > .utility-bar {
+    right: 0;
+    left: 0;
+    width: 100%;
+  }
 }
 
 @media (max-width: 640px) {
@@ -761,5 +848,9 @@
     height: auto;
     max-width: none;
     margin: 0;
+  }
+
+  .pinned-panel-resizer {
+    display: none;
   }
 }

@@ -30,6 +30,7 @@ export function Previewer() {
   const [screenPages, setScreenPages] = useState(1)
   const [readerFontScale, setReaderFontScale] = useState(1)
   const [readerAppearance, setReaderAppearance] = useState<'light' | 'sepia' | 'dark'>('light')
+  const [readerFontMode, setReaderFontMode] = useState<'device' | 'book'>('device')
   const screenRef = useRef<HTMLDivElement>(null)
   const preflight = useMemo(() => project ? preflightBook(project, activeTheme) : [], [activeTheme, project])
 
@@ -62,6 +63,10 @@ export function Previewer() {
   const profileWidth = landscape ? portraitHeight : portraitWidth
   const profileHeight = landscape ? portraitWidth : portraitHeight
   const renderedWidth = renderedDeviceWidth(profile, activeTheme.print.trimWidthIn, landscape)
+  const readerFont =
+    previewDevice === 'Print' || readerFontMode === 'book'
+      ? activeTheme.typography.bodyFont
+      : profile.readerFont
   const bookPages = useMemo(
     () => project ? estimateBookPages(project, activeTheme, profile) : 1,
     [activeTheme, profile, project],
@@ -120,6 +125,7 @@ export function Previewer() {
 
       <div className="preview-controls">
         <select
+          aria-label="Preview device"
           value={previewDevice}
           onChange={(e) => setPreviewDevice(e.target.value as PreviewDevice)}
         >
@@ -155,10 +161,23 @@ export function Previewer() {
             <button type="button" onClick={() => setReaderFontScale((value) => Math.max(.8, Number((value - .1).toFixed(1))))}>A−</button>
             <span>{Math.round(readerFontScale * 100)}%</span>
             <button type="button" onClick={() => setReaderFontScale((value) => Math.min(1.5, Number((value + .1).toFixed(1))))}>A+</button>
-            <select value={readerAppearance} onChange={(event) => setReaderAppearance(event.target.value as typeof readerAppearance)}>
+            <select
+              aria-label="Reader color mode"
+              value={readerAppearance}
+              onChange={(event) => setReaderAppearance(event.target.value as typeof readerAppearance)}
+            >
               <option value="light">Light</option>
               <option value="sepia">Sepia</option>
               <option value="dark">Dark</option>
+            </select>
+            <select
+              className="reader-font-select"
+              aria-label="Reader font"
+              value={readerFontMode}
+              onChange={(event) => setReaderFontMode(event.target.value as typeof readerFontMode)}
+            >
+              <option value="device">Device native font</option>
+              <option value="book">Book design font</option>
             </select>
           </div>
         )}
@@ -182,7 +201,7 @@ export function Previewer() {
               setScreenPage(Math.min(screenPages, Math.floor(screen.scrollTop / Math.max(1, screen.clientHeight)) + 1))
             }}
             style={{
-              fontFamily: theme.typography.bodyFont,
+              fontFamily: readerFont,
               fontSize: previewDevice === 'Print'
                 ? `${theme.print.largePrint ? Math.max(14, theme.typography.bodySize) : theme.typography.bodySize}pt`
                 : `${16 * readerFontScale}px`,
@@ -256,7 +275,9 @@ export function Previewer() {
                   className="preview-title"
                   style={{
                     textAlign: theme.chapterHeading.titleAlign,
-                    fontFamily: theme.chapterHeading.titleFont,
+                    fontFamily: readerFontMode === 'book' || previewDevice === 'Print'
+                      ? theme.chapterHeading.titleFont
+                      : profile.readerFont,
                     fontSize: previewDevice === 'Print'
                       ? `${activeChapter.options.useSmallerChapterTitle ? theme.chapterHeading.titleSize * .75 : theme.chapterHeading.titleSize}pt`
                       : `${Math.max(18, Math.min(34, theme.chapterHeading.titleSize * .82)) * readerFontScale}px`,
@@ -337,7 +358,9 @@ export function Previewer() {
                             ? `${(theme.subheading[`h${Math.min(Math.max(b.level || 2, 2), 6)}` as 'h2Size'] || 1.15) * theme.typography.bodySize}pt`
                             : `${(theme.subheading[`h${Math.min(Math.max(b.level || 2, 2), 6)}` as 'h2Size'] || 1.15) * 16 * readerFontScale}px`,
                           textAlign: theme.subheading.align,
-                          fontFamily: theme.subheading.font,
+                          fontFamily: readerFontMode === 'book' || previewDevice === 'Print'
+                            ? theme.subheading.font
+                            : profile.readerFont,
                         }}
                       >
                         {b.text}

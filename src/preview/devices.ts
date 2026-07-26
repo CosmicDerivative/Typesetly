@@ -13,6 +13,7 @@ export interface DeviceProfile {
   color: boolean
   bezel: number
   cornerRadius: number
+  readerFont: string
 }
 
 // Logical dimensions drive CSS layout; native dimensions and PPI are shown to
@@ -31,6 +32,7 @@ export const DEVICE_PROFILES: Record<PreviewDevice, DeviceProfile> = {
     color: true,
     bezel: 10,
     cornerRadius: 14,
+    readerFont: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif',
   },
   iPhone: {
     id: 'iPhone',
@@ -45,6 +47,7 @@ export const DEVICE_PROFILES: Record<PreviewDevice, DeviceProfile> = {
     color: true,
     bezel: 7,
     cornerRadius: 28,
+    readerFont: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif',
   },
   Galaxy: {
     id: 'Galaxy',
@@ -59,6 +62,7 @@ export const DEVICE_PROFILES: Record<PreviewDevice, DeviceProfile> = {
     color: true,
     bezel: 6,
     cornerRadius: 22,
+    readerFont: 'Roboto, "Noto Sans", Arial, sans-serif',
   },
   Paperwhite: {
     id: 'Paperwhite',
@@ -73,6 +77,7 @@ export const DEVICE_PROFILES: Record<PreviewDevice, DeviceProfile> = {
     color: false,
     bezel: 12,
     cornerRadius: 7,
+    readerFont: 'Bookerly, "Amazon Ember", Georgia, serif',
   },
   Oasis: {
     id: 'Oasis',
@@ -87,6 +92,7 @@ export const DEVICE_PROFILES: Record<PreviewDevice, DeviceProfile> = {
     color: false,
     bezel: 14,
     cornerRadius: 6,
+    readerFont: 'Bookerly, "Amazon Ember", Georgia, serif',
   },
   Kindle: {
     id: 'Kindle',
@@ -101,6 +107,7 @@ export const DEVICE_PROFILES: Record<PreviewDevice, DeviceProfile> = {
     color: false,
     bezel: 13,
     cornerRadius: 7,
+    readerFont: 'Bookerly, "Amazon Ember", Georgia, serif',
   },
   Fire: {
     id: 'Fire',
@@ -115,6 +122,7 @@ export const DEVICE_PROFILES: Record<PreviewDevice, DeviceProfile> = {
     color: true,
     bezel: 11,
     cornerRadius: 9,
+    readerFont: 'Roboto, "Amazon Ember", Arial, sans-serif',
   },
   'Glowlight 3': {
     id: 'Glowlight 3',
@@ -129,6 +137,7 @@ export const DEVICE_PROFILES: Record<PreviewDevice, DeviceProfile> = {
     color: false,
     bezel: 15,
     cornerRadius: 8,
+    readerFont: 'Amasis, Malabar, Georgia, serif',
   },
   Forma: {
     id: 'Forma',
@@ -143,6 +152,7 @@ export const DEVICE_PROFILES: Record<PreviewDevice, DeviceProfile> = {
     color: false,
     bezel: 14,
     cornerRadius: 7,
+    readerFont: '"Rakuten Serif", "Kobo Nickel", Georgia, serif',
   },
   Print: {
     id: 'Print',
@@ -155,6 +165,7 @@ export const DEVICE_PROFILES: Record<PreviewDevice, DeviceProfile> = {
     color: true,
     bezel: 0,
     cornerRadius: 0,
+    readerFont: 'Georgia, serif',
   },
 }
 
@@ -177,10 +188,10 @@ export function renderedDeviceWidth(
 ) {
   const physicalScreenWidth = profile.ppi ? profile.nativeWidth / profile.ppi : 0
   const portraitWidth =
-    profile.family === 'phone' ? Math.min(230, Math.max(190, physicalScreenWidth * 78))
-      : profile.family === 'tablet' ? Math.min(320, Math.max(220, physicalScreenWidth * 45))
-        : profile.family === 'print' ? Math.min(360, Math.max(240, printTrimWidthIn * 48))
-          : Math.min(300, Math.max(220, physicalScreenWidth * 58))
+    profile.family === 'phone' ? Math.min(330, Math.max(250, physicalScreenWidth * 120))
+      : profile.family === 'tablet' ? Math.min(560, Math.max(360, physicalScreenWidth * 86))
+        : profile.family === 'print' ? Math.min(540, Math.max(360, printTrimWidthIn * 80))
+          : Math.min(540, Math.max(340, physicalScreenWidth * 110))
   const orientationScale = landscape
     ? Math.min(1.45, profile.logicalHeight / profile.logicalWidth)
     : 1
