@@ -149,7 +149,6 @@ export function Previewer() {
         </div>
         <DrawerControls
           panel="preview"
-          hidePin={mode === 'publish'}
           onClose={mode === 'publish' ? () => {
             setMode('draft')
             setRightPanel('none')

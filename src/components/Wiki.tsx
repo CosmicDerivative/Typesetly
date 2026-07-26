@@ -59,7 +59,7 @@ const WIKI_SECTIONS: WikiSection[] = [
       },
       {
         question: 'What is Plan for?',
-        answer: 'Plan is the full-page Story Studio for characters, worldbuilding, series continuity, live manuscript mentions, sticky-note links, and the relationship Mind map. Its controls and typography are sized for focused planning. Use Pin beside Draft when you want the compact Story reference drawer while writing.',
+        answer: 'Plan is the full-page Story Studio for characters, worldbuilding, series continuity, live manuscript mentions, sticky-note links, and the relationship Mind map. Its controls and typography are sized for focused planning. From Plan, choose Open beside Draft when you want the compact Story reference drawer while writing, or use the Plan command on the shelf to open that drawer without leaving Draft.',
         keywords: 'plan story studio full page character worldbuilding continuity mind map',
       },
       {
@@ -161,21 +161,21 @@ const WIKI_SECTIONS: WikiSection[] = [
   {
     id: 'tools',
     title: 'Command shelf and windows',
-    description: 'Open, pin, switch, and dismiss supporting tools.',
+    description: 'Open, switch, and dismiss supporting tools.',
     entries: [
       {
         question: 'What is the command shelf?',
-        answer: 'The shelf above the status bar opens Outline, Review, History, Find, Goals, Plan, Notes, Settings, Quotes, and Proof. Plan switches to its dedicated workspace; the other tools open drawers. An active command is highlighted.',
-        keywords: 'shelf dock commands toolbar',
+        answer: 'The shelf above the status bar opens Outline, Review, History, Find, Goals, Plan, Notes, Settings, Quotes, and Proof. Each command toggles its docked panel open or closed beside the manuscript. Plan on the shelf opens the compact Story Studio drawer; the top Plan tab still opens the full-page workspace. An active command is highlighted.',
+        keywords: 'shelf dock commands toolbar toggle',
       },
       {
-        question: 'How do I pin and unpin a window?',
-        answer: 'Open a window and select its pin icon. A pinned Outline becomes a persistent left column; another pinned tool becomes a persistent right column. Typesetly remembers both pinned positions across refreshes and application restarts. Selecting another right-side tool swaps that persistent column to the new tool. Select the unpin icon to return it to a floating window. The X button closes it.',
-        keywords: 'pin unpin persistent remember restart refresh window panel drawer',
+        question: 'How do tool panels stay open?',
+        answer: 'Opening Outline docks it as a left column; opening another tool docks it as a right column. The manuscript stays clear and usable—panels do not dim or blur the editor. Typesetly remembers which panels were open across refreshes. Select the same command again or use the X button to close a panel.',
+        keywords: 'dock panel open close remember restart refresh window drawer toggle',
       },
       {
-        question: 'Why does a pinned window overlay the editor on a narrow screen?',
-        answer: 'Below the compact-width breakpoint, keeping two permanent columns would make the writing canvas unusably narrow. Pinned windows therefore remain open as persistent overlays until unpinned or closed.',
+        question: 'What happens on a narrow screen?',
+        answer: 'Below the compact-width breakpoint, keeping two permanent columns would make the writing canvas unusably narrow. Open panels therefore remain available as overlays until closed, without dimming the editor behind a blur scrim.',
         keywords: 'responsive mobile resize narrow overlay',
       },
       {
@@ -190,8 +190,8 @@ const WIKI_SECTIONS: WikiSection[] = [
       },
       {
         question: 'How does the Story Bible work?',
-        answer: 'Open Plan from the workspace navigation or command shelf to launch the full-page Story Studio. The Characters tab stores identity, role, appearance, voice, motivation, conflict, arc, relationship notes, notes, and tags. The World tab stores categorized places, cultures, organizations, history, magic, technology, creatures, objects, rules, connection notes, notes, and tags. Choose Pin beside Draft to turn Story Studio into a compact reference column while you write. All records save with the book and are included in snapshots.',
-        keywords: 'story studio bible character worldbuilding lore planning centered pin',
+        answer: 'Open Plan from the top workspace navigation for the full-page Story Studio, or use Plan on the command shelf for a compact reference column while drafting. The Characters tab stores identity, role, appearance, voice, motivation, conflict, arc, relationship notes, notes, and tags. The World tab stores categorized places, cultures, organizations, history, magic, technology, creatures, objects, rules, connection notes, notes, and tags. From the full Plan view, choose Open beside Draft to keep writing with the drawer open. All records save with the book and are included in snapshots.',
+        keywords: 'story studio bible character worldbuilding lore planning drawer',
       },
       {
         question: 'How do live mentions and the Mind map work?',
@@ -200,8 +200,8 @@ const WIKI_SECTIONS: WikiSection[] = [
       },
       {
         question: 'How do Sticky Notes work?',
-        answer: 'Open Notes from the command shelf to create color-coded notes for the whole book, a page, a scene, a character, or a worldbuilding record. Attach selection captures highlighted manuscript text as a quoted reference. Note badges in Outline reopen the relevant context, while note buttons in Story open or create a linked note. A pinned Notes drawer stays beside the manuscript and its pinned position is remembered after restart. Linked character and world notes can pull a fresh Story Bible snapshot into the note.',
-        keywords: 'sticky note margin selection highlight attach chapter scene character world pin',
+        answer: 'Open Notes from the command shelf to create color-coded notes for the whole book, a page, a scene, a character, or a worldbuilding record. Attach selection captures highlighted manuscript text as a quoted reference. Note badges in Outline reopen the relevant context, while note buttons in Story open or create a linked note. A Notes drawer stays beside the manuscript until you close it. Linked character and world notes can pull a fresh Story Bible snapshot into the note.',
+        keywords: 'sticky note margin selection highlight attach chapter scene character world',
       },
     ],
   },

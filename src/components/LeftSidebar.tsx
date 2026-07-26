@@ -97,8 +97,6 @@ export function LeftSidebar() {
     emptyTrash,
     addStickyNote,
     setRightPanel,
-    pinnedRightPanel,
-    setPinnedRightPanel,
   } = useApp()
   const [menuOpen, setMenuOpen] = useState(false)
   const [pageMenuId, setPageMenuId] = useState<string | null>(null)
@@ -271,7 +269,6 @@ export function LeftSidebar() {
     sceneIndex?: number
     noteId?: string
   }) => {
-    if (pinnedRightPanel !== 'none') setPinnedRightPanel('notes')
     setRightPanel('notes')
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {

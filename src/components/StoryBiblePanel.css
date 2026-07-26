@@ -17,7 +17,7 @@
   box-shadow: var(--shadow-card);
 }
 
-.plan-pin-action {
+.plan-open-draft-action {
   width: auto !important;
   height: 34px !important;
   padding: 0 11px !important;
@@ -33,7 +33,7 @@
   font-weight: 800;
 }
 
-.plan-pin-action:hover {
+.plan-open-draft-action:hover {
   color: var(--paper-50) !important;
   border-color: var(--ink-800) !important;
   background: var(--ink-800) !important;
@@ -883,7 +883,7 @@
     display: none;
   }
 
-  .plan-pin-action {
+  .plan-open-draft-action {
     width: 34px !important;
     padding: 0 !important;
     justify-content: center;

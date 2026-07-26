@@ -4,7 +4,7 @@ import {
   Copy,
   Globe,
   Network,
-  Pin,
+  PanelRight,
   Plus,
   Search,
   StickyNote as StickyNoteIcon,
@@ -106,7 +106,6 @@ export function StoryBiblePanel() {
     project,
     mode,
     rightPanel,
-    pinnedRightPanel,
     addCharacter,
     updateCharacter,
     deleteCharacter,
@@ -121,8 +120,6 @@ export function StoryBiblePanel() {
     setMode,
     setRightPanel,
     setSidebarOpen,
-    sidebarPinned,
-    setPinnedRightPanel,
     openBook,
   } = useApp()
   const workspace = mode === 'plan'
@@ -253,11 +250,9 @@ export function StoryBiblePanel() {
     setActiveChapter(chapterId)
     if (workspace) {
       setMode('draft')
-      setSidebarOpen(sidebarPinned)
-      setRightPanel(pinnedRightPanel !== 'none' ? pinnedRightPanel : 'none')
       return
     }
-    if (pinnedRightPanel !== 'story') setRightPanel('none')
+    setRightPanel('none')
   }
 
   const openSeriesBook = (bookId: string) => {
@@ -265,11 +260,7 @@ export function StoryBiblePanel() {
     if (!workspace) return
     setMode('plan')
     setSidebarOpen(false)
-    setRightPanel(
-      pinnedRightPanel !== 'none' && pinnedRightPanel !== 'story'
-        ? pinnedRightPanel
-        : 'none',
-    )
+    setRightPanel('none')
   }
 
   const openLinkedNotes = (
@@ -292,7 +283,6 @@ export function StoryBiblePanel() {
       body: startingText,
       color: 'sage',
     })
-    if (pinnedRightPanel !== 'none') setPinnedRightPanel('notes')
     setRightPanel('notes')
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
@@ -325,15 +315,13 @@ export function StoryBiblePanel() {
           {workspace ? (
             <button
               type="button"
-              className="plan-pin-action"
+              className="plan-open-draft-action"
               onClick={() => {
-                setPinnedRightPanel('story')
                 setRightPanel('story')
                 setMode('draft')
-                setSidebarOpen(sidebarPinned)
               }}
             >
-              <Pin size={14} /> Pin beside Draft
+              <PanelRight size={14} /> Open beside Draft
             </button>
           ) : (
             <DrawerControls panel="story" />

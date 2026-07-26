@@ -19,10 +19,6 @@
   overflow: hidden;
 }
 
-.sidebar-scrim {
-  display: none;
-}
-
 .app-loading {
   min-height: 100vh;
   display: grid;
@@ -174,16 +170,6 @@
 }
 
 @media (max-width: 760px) {
-  .sidebar-scrim {
-    position: absolute;
-    z-index: 25;
-    inset: 0 44px 0 0;
-    display: block;
-    border: 0;
-    background: rgba(20, 29, 38, .28);
-    backdrop-filter: blur(1px);
-  }
-
   .left-sidebar {
     position: absolute;
     z-index: 26;
@@ -494,10 +480,6 @@
 }
 
 @media (max-width: 760px) {
-  .sidebar-scrim {
-    inset: 0 64px 0 0;
-  }
-
   .left-sidebar {
     width: min(320px, calc(100% - 64px));
   }
@@ -574,25 +556,6 @@
   box-shadow: 0 24px 70px rgba(43, 21, 32, .28);
 }
 
-.sidebar-scrim,
-.panel-scrim {
-  position: absolute;
-  inset: 0;
-  display: block;
-  border: 0;
-  background: rgba(40, 22, 31, .2);
-  backdrop-filter: blur(2px);
-  cursor: default;
-}
-
-.sidebar-scrim {
-  z-index: 51;
-}
-
-.panel-scrim {
-  z-index: 54;
-}
-
 .workspace > .side-panel {
   position: absolute;
   z-index: 55;
@@ -649,11 +612,6 @@
 }
 
 @media (max-width: 760px) {
-  .sidebar-scrim,
-  .panel-scrim {
-    inset: 0;
-  }
-
   .workspace > .left-sidebar,
   .workspace > .side-panel,
   .workspace > .previewer.preview-drawer {

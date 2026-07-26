@@ -30,11 +30,6 @@
   background: var(--paper-200);
 }
 
-.drawer-control.pinned {
-  color: var(--paper-50);
-  background: var(--sage-500);
-}
-
 .left-sidebar .drawer-control {
   color: rgba(255, 253, 249, .65);
 }
@@ -42,15 +37,4 @@
 .left-sidebar .drawer-control:hover {
   color: var(--paper-50);
   background: rgba(255, 255, 255, .1);
-}
-
-.left-sidebar .drawer-control.pinned {
-  color: var(--ink-950);
-  background: var(--gold-400);
-}
-
-@media (max-width: 980px) {
-  .drawer-control.pin-control {
-    display: none;
-  }
 }

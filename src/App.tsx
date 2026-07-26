@@ -23,7 +23,7 @@ import { isDarkWorkspaceTheme, resolveWorkspaceTheme } from './themes/workspaceT
 import './App.css'
 import './workspace-themes.css'
 
-const PINNED_PANEL_SIZE_KEY = 'typesetly-pinned-panel-sizes-v1'
+const PANEL_SIZE_KEY = 'typesetly-pinned-panel-sizes-v1'
 const DEFAULT_LEFT_PANEL_WIDTH = 292
 const DEFAULT_RIGHT_PANEL_WIDTH = 360
 
@@ -33,9 +33,9 @@ function clampPanelWidth(side: 'left' | 'right', value: number) {
   return Math.round(Math.min(maximum, Math.max(minimum, value)))
 }
 
-function readPinnedPanelSizes() {
+function readPanelSizes() {
   try {
-    const saved = JSON.parse(localStorage.getItem(PINNED_PANEL_SIZE_KEY) || '{}') as {
+    const saved = JSON.parse(localStorage.getItem(PANEL_SIZE_KEY) || '{}') as {
       left?: unknown
       right?: unknown
     }
@@ -58,41 +58,13 @@ function Workspace() {
     saveStatus,
     saveError,
     sidebarOpen,
-    setSidebarOpen,
     rightPanel,
-    setRightPanel,
-    sidebarPinned,
-    setSidebarPinned,
-    pinnedRightPanel,
-    setPinnedRightPanel,
   } = useApp()
-  const [panelSizes, setPanelSizes] = useState(readPinnedPanelSizes)
+  const [panelSizes, setPanelSizes] = useState(readPanelSizes)
 
   useEffect(() => {
-    localStorage.setItem(PINNED_PANEL_SIZE_KEY, JSON.stringify(panelSizes))
+    localStorage.setItem(PANEL_SIZE_KEY, JSON.stringify(panelSizes))
   }, [panelSizes])
-
-  useEffect(() => {
-    const compactWorkspace = window.matchMedia('(max-width: 980px)')
-    const unpinForCompactWorkspace = () => {
-      if (!compactWorkspace.matches) return
-      if (pinnedRightPanel !== 'none') {
-        setPinnedRightPanel('none')
-        if (sidebarPinned) setSidebarOpen(false)
-      }
-      if (sidebarPinned) setSidebarPinned(false)
-    }
-
-    unpinForCompactWorkspace()
-    compactWorkspace.addEventListener('change', unpinForCompactWorkspace)
-    return () => compactWorkspace.removeEventListener('change', unpinForCompactWorkspace)
-  }, [
-    pinnedRightPanel,
-    setPinnedRightPanel,
-    setSidebarOpen,
-    setSidebarPinned,
-    sidebarPinned,
-  ])
 
   if (loading) {
     return (
@@ -108,9 +80,9 @@ function Workspace() {
     project.editorPrefs.workspaceTheme,
     project.editorPrefs.darkMode,
   )
-  const hasPinnedRight =
+  const hasDockedLeft = sidebarOpen
+  const hasDockedRight =
     rightPanel !== 'none'
-    && rightPanel === pinnedRightPanel
     && !(mode === 'publish' && rightPanel === 'preview')
 
   const beginPanelResize = (
@@ -160,23 +132,15 @@ function Workspace() {
         'app-shell',
         `workspace-${mode}`,
         `theme-${workspaceTheme}`,
-        sidebarOpen && sidebarPinned ? 'has-pinned-left' : '',
-        hasPinnedRight ? 'has-pinned-right' : '',
+        hasDockedLeft ? 'has-pinned-left' : '',
+        hasDockedRight ? 'has-pinned-right' : '',
         isDarkWorkspaceTheme(workspaceTheme) ? 'dark' : '',
       ].filter(Boolean).join(' ')}
     >
       <Header />
       <div className="workspace">
-        {sidebarOpen && !sidebarPinned && (
-          <button
-            type="button"
-            className="sidebar-scrim"
-            aria-label="Close navigation"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
         {sidebarOpen && <LeftSidebar />}
-        {sidebarOpen && sidebarPinned && (
+        {hasDockedLeft && (
           <div
             className="pinned-panel-resizer left"
             role="separator"
@@ -196,12 +160,12 @@ function Workspace() {
         {mode === 'plan' && <StoryBiblePanel />}
         {mode === 'organize' && <Organizer />}
         {mode === 'design' && <div className="formatting-host"><FormattingPanel /></div>}
-        {hasPinnedRight && (
+        {hasDockedRight && (
           <div
             className="pinned-panel-resizer right"
             role="separator"
             tabIndex={0}
-            aria-label="Resize pinned tool panel"
+            aria-label="Resize tool panel"
             aria-orientation="vertical"
             aria-valuemin={280}
             aria-valuemax={620}
@@ -210,16 +174,6 @@ function Workspace() {
             onPointerDown={(event) => beginPanelResize('right', event)}
             onKeyDown={(event) => resizePanelByKeyboard('right', event.key)}
             onDoubleClick={() => setPanelSizes((current) => ({ ...current, right: DEFAULT_RIGHT_PANEL_WIDTH }))}
-          />
-        )}
-        {rightPanel !== 'none' &&
-          rightPanel !== 'preview' &&
-          rightPanel !== pinnedRightPanel && (
-          <button
-            type="button"
-            className="panel-scrim"
-            aria-label="Close tool drawer"
-            onClick={() => setRightPanel(mode === 'publish' ? 'preview' : 'none')}
           />
         )}
         <Previewer />

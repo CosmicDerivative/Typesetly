@@ -58,8 +58,6 @@ export interface AppContextValue {
   breakDuration: number
   rightPanel: RightPanel
   sidebarOpen: boolean
-  sidebarPinned: boolean
-  pinnedRightPanel: RightPanel
   editingTheme: BookTheme | null
   frontMatter: Chapter[]
   bodyChapters: Chapter[]
@@ -69,8 +67,6 @@ export interface AppContextValue {
   setPreviewDevice: (device: PreviewDevice) => void
   setRightPanel: (panel: RightPanel) => void
   setSidebarOpen: (open: boolean) => void
-  setSidebarPinned: (pinned: boolean) => void
-  setPinnedRightPanel: (panel: RightPanel) => void
   openBook: (id: string) => void
   goHome: () => void
   createBook: (title?: string) => void

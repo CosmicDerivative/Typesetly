@@ -10,7 +10,7 @@ import {
   StickyNote,
   Target,
 } from 'lucide-react'
-import { useApp } from '../BookContext'
+import { useApp, type RightPanel } from '../BookContext'
 import './UtilityBar.css'
 
 export function UtilityBar() {
@@ -18,141 +18,115 @@ export function UtilityBar() {
     rightPanel,
     setRightPanel,
     mode,
-    setMode,
     sidebarOpen,
     setSidebarOpen,
-    sidebarPinned,
-    pinnedRightPanel,
-    setPinnedRightPanel,
   } = useApp()
 
-  const toggle = (panel: typeof rightPanel) => {
-    if (!sidebarPinned) setSidebarOpen(false)
-    if (panel === 'find') {
-      if (rightPanel === 'find') {
-        setPinnedRightPanel('none')
-        setRightPanel(mode === 'publish' ? 'preview' : 'none')
-      } else {
-        setPinnedRightPanel('find')
-        setRightPanel('find')
-      }
-      return
-    }
-    if (pinnedRightPanel !== 'none') {
-      setPinnedRightPanel(panel)
-      setRightPanel(panel)
-      return
-    }
-    setRightPanel(rightPanel === panel ? (mode === 'publish' ? 'preview' : 'none') : panel)
+  const closedPanel = (): RightPanel => (mode === 'publish' ? 'preview' : 'none')
+
+  const toggle = (panel: Exclude<RightPanel, 'none'>) => {
+    setRightPanel(rightPanel === panel ? closedPanel() : panel)
   }
 
   return (
     <aside className="utility-bar" aria-label="Writing tools">
       <div className="utility-bar-track">
         <button
-        type="button"
-        className={sidebarOpen ? 'util active' : 'util'}
-        title="Open manuscript map"
-        onClick={() => {
-          if (pinnedRightPanel === 'none') setRightPanel('none')
-          setSidebarOpen(sidebarPinned ? true : !sidebarOpen)
-        }}
-      >
-        <PanelLeft size={16} strokeWidth={2} />
-        <span>Outline</span>
+          type="button"
+          className={sidebarOpen ? 'util active' : 'util'}
+          title={sidebarOpen ? 'Close manuscript map' : 'Open manuscript map'}
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+        >
+          <PanelLeft size={16} strokeWidth={2} />
+          <span>Outline</span>
         </button>
         <button
-        type="button"
-        className={rightPanel === 'editorial' ? 'util active' : 'util'}
-        title="Comments and tracked changes"
-        onClick={() => toggle('editorial')}
-      >
-        <MessageSquareText size={16} />
-        <span>Review</span>
+          type="button"
+          className={rightPanel === 'editorial' ? 'util active' : 'util'}
+          title="Comments and tracked changes"
+          onClick={() => toggle('editorial')}
+        >
+          <MessageSquareText size={16} />
+          <span>Review</span>
         </button>
         <button
-        type="button"
-        className={rightPanel === 'revisions' ? 'util active' : 'util'}
-        title="Version history"
-        onClick={() => toggle('revisions')}
-      >
-        <History size={16} />
-        <span>History</span>
+          type="button"
+          className={rightPanel === 'revisions' ? 'util active' : 'util'}
+          title="Version history"
+          onClick={() => toggle('revisions')}
+        >
+          <History size={16} />
+          <span>History</span>
         </button>
         <button
-        type="button"
-        className={rightPanel === 'find' ? 'util active' : 'util'}
-        title="Find and replace"
-        onClick={() => toggle('find')}
-      >
-        <Search size={16} />
-        <span>Find</span>
+          type="button"
+          className={rightPanel === 'find' ? 'util active' : 'util'}
+          title="Find and replace"
+          onClick={() => toggle('find')}
+        >
+          <Search size={16} />
+          <span>Find</span>
         </button>
         <button
-        type="button"
-        className={rightPanel === 'goals' ? 'util active' : 'util'}
-        title="Writing goals"
-        onClick={() => toggle('goals')}
-      >
-        <Target size={16} />
-        <span>Goals</span>
+          type="button"
+          className={rightPanel === 'goals' ? 'util active' : 'util'}
+          title="Writing goals"
+          onClick={() => toggle('goals')}
+        >
+          <Target size={16} />
+          <span>Goals</span>
         </button>
         <button
-        type="button"
-        className={mode === 'plan' ? 'util active' : 'util'}
-        title="Open the Plan workspace"
-        onClick={() => {
-          setMode('plan')
-          setSidebarOpen(false)
-          setRightPanel(
-            pinnedRightPanel !== 'none' && pinnedRightPanel !== 'story'
-              ? pinnedRightPanel
-              : 'none',
-          )
-        }}
-      >
-        <BookOpen size={16} />
-        <span>Plan</span>
+          type="button"
+          className={rightPanel === 'story' ? 'util active' : 'util'}
+          title="Story Studio reference"
+          onClick={() => toggle('story')}
+        >
+          <BookOpen size={16} />
+          <span>Plan</span>
         </button>
         <button
-        type="button"
-        className={rightPanel === 'notes' ? 'util active' : 'util'}
-        title="Contextual sticky notes"
-        onClick={() => toggle('notes')}
-      >
-        <StickyNote size={16} />
-        <span>Notes</span>
+          type="button"
+          className={rightPanel === 'notes' ? 'util active' : 'util'}
+          title="Contextual sticky notes"
+          onClick={() => toggle('notes')}
+        >
+          <StickyNote size={16} />
+          <span>Notes</span>
         </button>
         <button
-        type="button"
-        className={rightPanel === 'settings' ? 'util active' : 'util'}
-        title="Editor settings"
-        onClick={() => toggle('settings')}
-      >
-        <Crosshair size={16} />
-        <span>Settings</span>
+          type="button"
+          className={rightPanel === 'settings' ? 'util active' : 'util'}
+          title="Editor settings"
+          onClick={() => toggle('settings')}
+        >
+          <Crosshair size={16} />
+          <span>Settings</span>
         </button>
         <button
-        type="button"
-        className={rightPanel === 'quotes' ? 'util active' : 'util'}
-        title="Smart punctuation"
-        onClick={() => toggle('quotes')}
-      >
-        <Quote size={16} />
-        <span>Quotes</span>
+          type="button"
+          className={rightPanel === 'quotes' ? 'util active' : 'util'}
+          title="Smart punctuation"
+          onClick={() => toggle('quotes')}
+        >
+          <Quote size={16} />
+          <span>Quotes</span>
         </button>
         <div className="util-spacer" aria-hidden="true" />
         <button
-        type="button"
-        className={rightPanel === 'preview' ? 'util active' : 'util'}
-        title="Open reader proof"
-        onClick={() => {
-          if (mode === 'publish') setRightPanel('preview')
-          else toggle('preview')
-        }}
-      >
-        <SquareStack size={16} />
-        <span>Proof</span>
+          type="button"
+          className={rightPanel === 'preview' ? 'util active' : 'util'}
+          title="Open reader proof"
+          onClick={() => {
+            if (mode === 'publish') {
+              setRightPanel('preview')
+              return
+            }
+            toggle('preview')
+          }}
+        >
+          <SquareStack size={16} />
+          <span>Proof</span>
         </button>
       </div>
     </aside>

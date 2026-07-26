@@ -1,25 +1,25 @@
-.wiki-backdrop {
+﻿.wiki-backdrop {
   position: fixed;
   z-index: 140;
   inset: 0;
   display: grid;
   place-items: center;
   padding: 22px;
-  background: rgba(39, 20, 29, .7);
+  background: color-mix(in srgb, var(--workspace-deep) 70%, transparent);
 }
 
 .wiki {
   width: min(1050px, 100%);
   height: min(780px, calc(100dvh - 44px));
   min-height: 0;
-  border: 1px solid rgba(255, 255, 255, .16);
+  border: 1px solid var(--workspace-border);
   border-radius: 8px 26px 26px 26px;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   overflow: hidden;
-  color: var(--text-900);
-  background: var(--paper-50);
-  box-shadow: 0 30px 90px rgba(28, 11, 19, .4);
+  color: var(--workspace-on-panel);
+  background: var(--workspace-panel);
+  box-shadow: 0 30px 90px color-mix(in srgb, var(--workspace-deep) 40%, transparent);
 }
 
 .wiki-head {
@@ -28,10 +28,10 @@
   gap: 18px;
   align-items: center;
   padding: 17px 20px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--workspace-border);
   background:
-    linear-gradient(90deg, rgba(215, 100, 67, .08), transparent 35%),
-    var(--paper-50);
+    linear-gradient(90deg, color-mix(in srgb, var(--workspace-focus) 12%, transparent), transparent 35%),
+    var(--workspace-panel);
 }
 
 .wiki-title {
@@ -46,8 +46,8 @@
   border-radius: 13px 13px 13px 4px;
   display: grid;
   place-items: center;
-  color: var(--paper-50);
-  background: var(--ink-900);
+  color: var(--workspace-on-deep);
+  background: var(--workspace-deep);
 }
 
 .wiki-title small {
@@ -68,18 +68,18 @@
   min-width: 0;
   height: 39px;
   padding: 0 12px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--workspace-border);
   border-radius: 12px;
   display: flex;
   align-items: center;
   gap: 8px;
-  color: var(--text-500);
-  background: var(--paper-100);
+  color: var(--workspace-muted);
+  background: var(--workspace-panel-alt);
 }
 
 .wiki-search:focus-within {
-  border-color: var(--coral-500);
-  box-shadow: 0 0 0 3px rgba(215, 100, 67, .1);
+  border-color: var(--workspace-focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--workspace-focus) 18%, transparent);
 }
 
 .wiki-search input {
@@ -87,7 +87,7 @@
   min-width: 0;
   border: 0;
   outline: 0;
-  color: var(--text-900);
+  color: var(--workspace-on-panel);
   background: transparent;
   font: inherit;
   font-size: 12px;
@@ -101,14 +101,14 @@
   border-radius: 11px;
   display: grid;
   place-items: center;
-  color: var(--text-500);
+  color: var(--workspace-muted);
   background: transparent;
   cursor: pointer;
 }
 
 .wiki-close:hover {
   color: var(--coral-600);
-  background: var(--paper-200);
+  background: var(--workspace-panel-alt);
 }
 
 .wiki-layout {
@@ -120,17 +120,17 @@
 .wiki-nav {
   min-height: 0;
   padding: 20px 15px;
-  border-right: 1px solid rgba(255, 255, 255, .08);
+  border-right: 1px solid color-mix(in srgb, var(--workspace-on-deep) 12%, transparent);
   overflow: auto;
-  color: rgba(255, 253, 249, .78);
+  color: color-mix(in srgb, var(--workspace-on-deep) 78%, transparent);
   background:
-    radial-gradient(circle at 20% 0, rgba(215, 100, 67, .18), transparent 34%),
-    var(--ink-900);
+    radial-gradient(circle at 20% 0, color-mix(in srgb, var(--workspace-focus) 18%, transparent), transparent 34%),
+    var(--workspace-deep);
 }
 
 .wiki-nav > p {
   margin: 0 8px 9px;
-  color: var(--gold-400);
+  color: var(--workspace-focus);
   font-size: 8px;
   font-weight: 800;
   letter-spacing: .13em;
@@ -154,32 +154,32 @@
 
 .wiki-nav > button:hover,
 .wiki-nav > button.active {
-  color: var(--paper-50);
-  background: rgba(255, 255, 255, .08);
+  color: var(--workspace-on-deep);
+  background: color-mix(in srgb, var(--workspace-on-deep) 10%, transparent);
 }
 
 .wiki-nav > button.active {
-  box-shadow: inset 3px 0 0 var(--gold-400);
+  box-shadow: inset 3px 0 0 var(--workspace-focus);
 }
 
 .wiki-quickstart {
   margin: 18px 5px 0;
   padding: 12px;
-  border: 1px solid rgba(255, 255, 255, .1);
+  border: 1px solid color-mix(in srgb, var(--workspace-on-deep) 12%, transparent);
   border-radius: 13px 13px 13px 4px;
   display: grid;
   gap: 5px;
-  background: rgba(255, 255, 255, .055);
+  background: color-mix(in srgb, var(--workspace-on-deep) 6%, transparent);
 }
 
 .wiki-quickstart strong {
   margin-bottom: 2px;
-  color: var(--paper-50);
+  color: var(--workspace-on-deep);
   font: 650 12px/1.2 'Fraunces', Georgia, serif;
 }
 
 .wiki-quickstart span {
-  color: rgba(255, 253, 249, .55);
+  color: color-mix(in srgb, var(--workspace-on-deep) 55%, transparent);
   font-size: 9px;
 }
 
@@ -189,7 +189,7 @@
   padding: 25px 28px 40px;
   overflow: auto;
   scroll-behavior: smooth;
-  background: var(--paper-100);
+  background: var(--workspace-panel-alt);
 }
 
 .wiki-section {
@@ -213,7 +213,7 @@
 
 .wiki-section-head p {
   margin: 3px 0 0;
-  color: var(--text-500);
+  color: var(--workspace-muted);
   font-size: 10px;
 }
 
@@ -223,19 +223,19 @@
 }
 
 .wiki-entries details {
-  border: 1px solid var(--line);
+  border: 1px solid var(--workspace-border);
   border-radius: 12px 12px 12px 4px;
   overflow: hidden;
-  background: var(--paper-50);
+  background: var(--workspace-panel);
 }
 
 .wiki-entries details[open] {
-  border-color: rgba(215, 100, 67, .34);
+  border-color: color-mix(in srgb, var(--workspace-focus) 42%, var(--workspace-border));
 }
 
 .wiki-entries summary {
   padding: 11px 14px;
-  color: var(--text-900);
+  color: var(--workspace-on-panel);
   cursor: pointer;
   font-size: 12px;
   font-weight: 700;
@@ -243,13 +243,13 @@
 
 .wiki-entries details[open] summary {
   color: var(--coral-600);
-  background: rgba(215, 100, 67, .045);
+  background: color-mix(in srgb, var(--workspace-focus) 8%, transparent);
 }
 
 .wiki-entries details p {
   margin: 0;
   padding: 0 14px 14px;
-  color: var(--text-700);
+  color: var(--workspace-muted);
   font-size: 11px;
   line-height: 1.65;
 }
@@ -260,38 +260,38 @@
   place-content: center;
   justify-items: center;
   gap: 10px;
-  color: var(--text-500);
+  color: var(--workspace-muted);
   text-align: center;
 }
 
 .wiki-empty button {
   padding: 7px 10px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--workspace-border);
   border-radius: 9px;
   color: var(--coral-600);
-  background: var(--paper-50);
+  background: var(--workspace-panel);
   cursor: pointer;
 }
 
 .wiki-footer {
   min-height: 38px;
   padding: 0 18px;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--workspace-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  color: var(--text-500);
-  background: var(--paper-50);
+  color: var(--workspace-muted);
+  background: var(--workspace-panel);
   font-size: 9px;
 }
 
 .wiki-footer kbd {
   padding: 2px 5px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--workspace-border);
   border-radius: 5px;
-  color: var(--text-700);
-  background: var(--paper-100);
+  color: var(--workspace-on-panel);
+  background: var(--workspace-panel-alt);
   font: inherit;
 }
 
@@ -299,29 +299,29 @@
 .app-shell.dark .wiki-head,
 .app-shell.dark .wiki-footer,
 .app-shell.dark .wiki-entries details {
-  color: #f1e9e2;
-  background-color: #35252c;
-  border-color: rgba(255, 255, 255, .1);
+  color: var(--workspace-on-panel);
+  background-color: var(--workspace-panel);
+  border-color: var(--workspace-border);
 }
 
 .app-shell.dark .wiki-content {
-  background-color: #24171d;
+  background-color: var(--workspace-canvas);
 }
 
 .app-shell.dark .wiki-title h2,
 .app-shell.dark .wiki-section-head h3,
 .app-shell.dark .wiki-entries summary,
 .app-shell.dark .wiki-search input {
-  color: #f3eae3;
+  color: var(--ink-900);
 }
 
 .app-shell.dark .wiki-search {
-  border-color: rgba(255, 255, 255, .11);
-  background: #402f36;
+  border-color: var(--workspace-border);
+  background: var(--workspace-panel-alt);
 }
 
 .app-shell.dark .wiki-entries details p {
-  color: rgba(243, 234, 227, .72);
+  color: var(--workspace-muted);
 }
 
 @media (max-width: 760px) {
@@ -356,7 +356,7 @@
     min-width: 0;
     padding: 7px 9px;
     border-right: 0;
-    border-bottom: 1px solid rgba(255, 255, 255, .08);
+    border-bottom: 1px solid color-mix(in srgb, var(--workspace-on-deep) 12%, transparent);
     display: flex;
     gap: 4px;
     overflow-x: auto;
@@ -382,7 +382,7 @@
   }
 
   .wiki-nav > button.active {
-    box-shadow: inset 0 -2px 0 var(--gold-400);
+    box-shadow: inset 0 -2px 0 var(--workspace-focus);
   }
 
   .wiki-content {

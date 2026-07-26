@@ -78,34 +78,45 @@ import {
 } from './notes/sceneNotes'
 import { applyHabitWordDelta } from './goals/habitWords'
 
-const PINNED_LAYOUT_KEY = 'typesetly-pinned-layout-v1'
+const PANEL_LAYOUT_KEY = 'typesetly-pinned-layout-v1'
 
-function readPinnedLayout(): { sidebarPinned: boolean; pinnedRightPanel: RightPanel } {
+const VALID_RIGHT_PANELS: RightPanel[] = [
+  'none',
+  'preview',
+  'find',
+  'goals',
+  'settings',
+  'quotes',
+  'editorial',
+  'revisions',
+  'story',
+  'notes',
+]
+
+function readPanelLayout(): { sidebarOpen: boolean; rightPanel: RightPanel } {
   try {
-    const value = JSON.parse(localStorage.getItem(PINNED_LAYOUT_KEY) || '{}') as {
+    const value = JSON.parse(localStorage.getItem(PANEL_LAYOUT_KEY) || '{}') as {
+      sidebarOpen?: unknown
+      rightPanel?: unknown
       sidebarPinned?: unknown
       pinnedRightPanel?: unknown
     }
-    const validRightPanels: RightPanel[] = [
-      'none',
-      'preview',
-      'find',
-      'goals',
-      'settings',
-      'quotes',
-      'editorial',
-      'revisions',
-      'story',
-      'notes',
-    ]
+    const rightPanelCandidate =
+      typeof value.rightPanel === 'string'
+        ? value.rightPanel
+        : typeof value.pinnedRightPanel === 'string'
+          ? value.pinnedRightPanel
+          : 'none'
     return {
-      sidebarPinned: value.sidebarPinned === true,
-      pinnedRightPanel: validRightPanels.includes(value.pinnedRightPanel as RightPanel)
-        ? value.pinnedRightPanel as RightPanel
+      sidebarOpen:
+        value.sidebarOpen === true
+        || (value.sidebarOpen === undefined && value.sidebarPinned === true),
+      rightPanel: VALID_RIGHT_PANELS.includes(rightPanelCandidate as RightPanel)
+        ? rightPanelCandidate as RightPanel
         : 'none',
     }
   } catch {
-    return { sidebarPinned: false, pinnedRightPanel: 'none' }
+    return { sidebarOpen: false, rightPanel: 'none' }
   }
 }
 
@@ -217,7 +228,7 @@ function downloadJson(name: string, value: unknown) {
 }
 
 export function BookProvider({ children }: { children: ReactNode }) {
-  const initialPinnedLayout = useMemo(readPinnedLayout, [])
+  const initialPanelLayout = useMemo(readPanelLayout, [])
   const [books, setBooks] = useState<BookProject[]>([])
   const [openBookId, setOpenBookId] = useState<string | null>(null)
   const [themes, setThemes] = useState<BookTheme[]>(PRESET_THEMES)
@@ -232,10 +243,8 @@ export function BookProvider({ children }: { children: ReactNode }) {
   const [timerPhase, setTimerPhase] = useState<'sprint' | 'break'>('sprint')
   const [sprintDuration, setSprintDurationState] = useState(25 * 60)
   const [breakDuration, setBreakDurationState] = useState(5 * 60)
-  const [rightPanel, setRightPanel] = useState<RightPanel>(initialPinnedLayout.pinnedRightPanel)
-  const [sidebarOpen, setSidebarOpen] = useState(initialPinnedLayout.sidebarPinned)
-  const [sidebarPinned, setSidebarPinned] = useState(initialPinnedLayout.sidebarPinned)
-  const [pinnedRightPanel, setPinnedRightPanel] = useState<RightPanel>(initialPinnedLayout.pinnedRightPanel)
+  const [rightPanel, setRightPanel] = useState<RightPanel>(initialPanelLayout.rightPanel)
+  const [sidebarOpen, setSidebarOpen] = useState(initialPanelLayout.sidebarOpen)
   const [editingTheme, setEditingTheme] = useState<BookTheme | null>(null)
   const hydrated = useRef(false)
   const saveGeneration = useRef(0)
@@ -276,12 +285,12 @@ export function BookProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem(PINNED_LAYOUT_KEY, JSON.stringify({ sidebarPinned, pinnedRightPanel }))
+      localStorage.setItem(PANEL_LAYOUT_KEY, JSON.stringify({ sidebarOpen, rightPanel }))
     } catch {
       // A hardened browser may disable localStorage. Book data still persists
       // independently through IndexedDB.
     }
-  }, [pinnedRightPanel, sidebarPinned])
+  }, [rightPanel, sidebarOpen])
 
   useEffect(() => {
     let active = true
@@ -611,8 +620,6 @@ export function BookProvider({ children }: { children: ReactNode }) {
     breakDuration,
     rightPanel,
     sidebarOpen,
-    sidebarPinned,
-    pinnedRightPanel,
     editingTheme,
     frontMatter,
     bodyChapters,
@@ -622,13 +629,9 @@ export function BookProvider({ children }: { children: ReactNode }) {
     setPreviewDevice,
     setRightPanel,
     setSidebarOpen,
-    setSidebarPinned,
-    setPinnedRightPanel,
     openBook: (id: string) => {
       setOpenBookId(id)
       setMode('draft')
-      setRightPanel(pinnedRightPanel)
-      setSidebarOpen(sidebarPinned)
     },
     goHome: () => setOpenBookId(null),
     createBook: (title?: string) => {

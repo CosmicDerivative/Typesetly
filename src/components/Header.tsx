@@ -32,9 +32,6 @@ export function Header() {
     setRightPanel,
     sidebarOpen,
     setSidebarOpen,
-    sidebarPinned,
-    pinnedRightPanel,
-    setPinnedRightPanel,
     activeChapter,
     addChapter,
     addPart,
@@ -49,22 +46,15 @@ export function Header() {
   const closeWiki = useCallback(() => setWikiOpen(false), [])
   const activateMode = useCallback((nextMode: AppMode) => {
     setMode(nextMode)
-    setSidebarOpen(nextMode === 'plan' ? false : sidebarPinned)
-    setRightPanel(
-      nextMode === 'plan' && pinnedRightPanel === 'story'
-        ? 'none'
-        : pinnedRightPanel !== 'none'
-        ? pinnedRightPanel
-        : nextMode === 'publish'
-          ? 'preview'
-          : 'none',
-    )
+    if (nextMode === 'plan') setSidebarOpen(false)
+    if (nextMode === 'plan' && rightPanel === 'story') setRightPanel('none')
+    else if (nextMode === 'publish' && rightPanel === 'none') setRightPanel('preview')
+    else if (nextMode !== 'publish' && rightPanel === 'preview') setRightPanel('none')
   }, [
-    pinnedRightPanel,
+    rightPanel,
     setMode,
     setRightPanel,
     setSidebarOpen,
-    sidebarPinned,
   ])
 
   useEffect(() => {
@@ -107,22 +97,19 @@ export function Header() {
         activateMode('publish')
       } else if (modifier && !event.shiftKey && key === 'f') {
         event.preventDefault()
-        // Toggle Find: open (and pin) when closed; close when already open.
+        // Toggle Find: open when closed; close when already open.
         // Ctrl+F and Cmd+F both reach here via ctrlKey || metaKey.
-        if (rightPanel === 'find') {
-          setPinnedRightPanel('none')
-          setRightPanel(mode === 'publish' ? 'preview' : 'none')
-        } else {
-          setPinnedRightPanel('find')
-          setRightPanel('find')
-        }
+        setRightPanel(
+          rightPanel === 'find'
+            ? (mode === 'publish' ? 'preview' : 'none')
+            : 'find',
+        )
       } else if (modifier && key === ',') {
         event.preventDefault()
-        if (pinnedRightPanel !== 'none') setPinnedRightPanel('settings')
-        setRightPanel('settings')
+        setRightPanel(rightPanel === 'settings' ? (mode === 'publish' ? 'preview' : 'none') : 'settings')
       } else if (modifier && key === '\\') {
         event.preventDefault()
-        setSidebarOpen(sidebarPinned ? true : !sidebarOpen)
+        setSidebarOpen(!sidebarOpen)
       } else if (modifier && !event.shiftKey && key === 'n') {
         event.preventDefault()
         addChapter()
@@ -174,13 +161,10 @@ export function Header() {
     duplicateChapter,
     mode,
     moveChapterBy,
-    pinnedRightPanel,
     rightPanel,
     setRightPanel,
-    setPinnedRightPanel,
     setSidebarOpen,
     sidebarOpen,
-    sidebarPinned,
   ])
 
   if (!project) return null
