@@ -19,7 +19,11 @@ import {
   saveRevision,
   upsertBook,
 } from './library/store'
-import { convertPageType, nextChapterTitle } from './manuscript/pageTypes'
+import {
+  convertPageType,
+  nextChapterTitle,
+  normalizeNamedMatterPage,
+} from './manuscript/pageTypes'
 import { cloneTheme, getThemeById, PRESET_THEMES } from './themes/presets'
 import {
   isDarkWorkspaceTheme,
@@ -98,6 +102,7 @@ function readPinnedLayout(): { sidebarPinned: boolean; pinnedRightPanel: RightPa
  * this boundary lets components assume optional arrays and options exist.
  */
 function normalizeBook(book: BookProject): BookProject {
+  const shouldNormalizeNamedMatter = (book.schemaVersion || 0) < 4
   const partIds = new Set(book.chapters.filter((chapter) => chapter.type === 'part').map((chapter) => chapter.id))
   const manuscriptFolders = (book.manuscriptFolders || []).map((folder, index) => ({
     id: folder.id || uuid(),
@@ -111,7 +116,7 @@ function normalizeBook(book: BookProject): BookProject {
   )
   return {
     ...book,
-    schemaVersion: 3,
+    schemaVersion: 4,
     goals: { ...defaultGoals(), ...book.goals },
     editorPrefs: {
       ...defaultEditorPrefs(),
@@ -137,26 +142,31 @@ function normalizeBook(book: BookProject): BookProject {
     manuscriptFolders,
     trackChanges: book.trackChanges || false,
     themeId: book.themeId || 'theme-classic',
-    chapters: book.chapters.map((chapter, index) => ({
-      ...chapter,
-      sortOrder: chapter.sortOrder ?? index,
-      partId: chapter.partId && partIds.has(chapter.partId) ? chapter.partId : undefined,
-      folderId:
-        !(chapter.partId && partIds.has(chapter.partId)) &&
-        chapter.folderId &&
-        folderIds.has(chapter.folderId)
-          ? chapter.folderId
-          : undefined,
-      options: { ...defaultChapterOptions(), ...chapter.options },
-      subtitle: chapter.subtitle ?? '',
-      imageAlt: chapter.imageAlt ?? '',
-      imageCaption: chapter.imageCaption ?? '',
-      imageLayout: chapter.imageLayout ?? 'inline',
-      imageWidthPx: chapter.imageWidthPx ?? 0,
-      imageHeightPx: chapter.imageHeightPx ?? 0,
-      imageBytes: chapter.imageBytes ?? 0,
-      sceneTitles: chapter.sceneTitles || [],
-    })),
+    chapters: book.chapters.map((sourceChapter, index) => {
+      const chapter = shouldNormalizeNamedMatter
+        ? normalizeNamedMatterPage(sourceChapter)
+        : sourceChapter
+      return {
+        ...chapter,
+        sortOrder: chapter.sortOrder ?? index,
+        partId: chapter.partId && partIds.has(chapter.partId) ? chapter.partId : undefined,
+        folderId:
+          !(chapter.partId && partIds.has(chapter.partId)) &&
+          chapter.folderId &&
+          folderIds.has(chapter.folderId)
+            ? chapter.folderId
+            : undefined,
+        options: { ...defaultChapterOptions(), ...chapter.options },
+        subtitle: chapter.subtitle ?? '',
+        imageAlt: chapter.imageAlt ?? '',
+        imageCaption: chapter.imageCaption ?? '',
+        imageLayout: chapter.imageLayout ?? 'inline',
+        imageWidthPx: chapter.imageWidthPx ?? 0,
+        imageHeightPx: chapter.imageHeightPx ?? 0,
+        imageBytes: chapter.imageBytes ?? 0,
+        sceneTitles: chapter.sceneTitles || [],
+      }
+    }),
   }
 }
 

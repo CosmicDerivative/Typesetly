@@ -9,6 +9,7 @@ import {
   convertPageType,
   inferPageTypeFromTitle,
   nextChapterTitle,
+  normalizeNamedMatterPage,
   numberedChapterOrdinal,
   pageSection,
 } from '../src/manuscript/pageTypes.ts'
@@ -32,6 +33,23 @@ test('unambiguous imported matter titles do not become numbered chapters', () =>
   assert.equal(inferPageTypeFromTitle('  EPILOGUE:  '), 'epilogue')
   assert.equal(inferPageTypeFromTitle('Acknowledgments'), 'acknowledgements')
   assert.equal(inferPageTypeFromTitle('Chapter 1: Prologue'), 'chapter')
+})
+
+test('legacy chapters with exact matter titles migrate before preview and export', () => {
+  const project = createEmptyBook()
+  const legacyPrologue = project.chapters.find((page) => page.type === 'chapter')!
+  legacyPrologue.title = 'Prologue'
+  legacyPrologue.partId = 'legacy-part'
+  legacyPrologue.folderId = 'legacy-folder'
+
+  const migrated = normalizeNamedMatterPage(legacyPrologue)
+  assert.equal(migrated.type, 'prologue')
+  assert.equal(migrated.options.numbered, false)
+  assert.equal(migrated.partId, undefined)
+  assert.equal(migrated.folderId, undefined)
+
+  const descriptive = { ...legacyPrologue, title: 'Chapter 1: Prologue' }
+  assert.equal(normalizeNamedMatterPage(descriptive).type, 'chapter')
 })
 
 test('next chapter names count chapter pages only', () => {
@@ -63,6 +81,7 @@ test('changing page type preserves content and relocates matter safely', () => {
   const prologueProject = convertPageType(project, original.id, 'prologue')
   const prologue = prologueProject.chapters.find((page) => page.id === original.id)!
   assert.equal(prologue.type, 'prologue')
+  assert.equal(prologue.options.numbered, false)
   assert.equal(prologue.content, '<p>Keep this prose.</p>')
   assert.equal(pageSection(prologue.type), 'front')
   assert.equal(

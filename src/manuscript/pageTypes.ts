@@ -62,6 +62,27 @@ export function inferPageTypeFromTitle(title: string): PageType {
   return TITLE_TYPE_MAP.get(normalized) || 'chapter'
 }
 
+/**
+ * Repairs projects created before named matter was classified during import.
+ * Exact, unambiguous titles are safe to migrate; descriptive titles such as
+ * "Chapter 1: Prologue" remain ordinary chapters.
+ */
+export function normalizeNamedMatterPage(chapter: Chapter): Chapter {
+  if (chapter.type !== 'chapter') return chapter
+  const inferredType = inferPageTypeFromTitle(chapter.title)
+  if (inferredType === 'chapter') return chapter
+  return {
+    ...chapter,
+    type: inferredType,
+    partId: undefined,
+    folderId: undefined,
+    options: {
+      ...chapter.options,
+      numbered: false,
+    },
+  }
+}
+
 export function nextChapterNumber(chapters: Chapter[]): number {
   return chapters.filter(
     (chapter) => chapter.type === 'chapter' && chapter.options.numbered,
@@ -106,9 +127,9 @@ export function convertPageType(
     options: {
       ...source.options,
       numbered:
-        nextType === 'chapter' && source.type !== 'chapter'
-          ? true
-          : source.options.numbered,
+        nextType === 'chapter'
+          ? source.type !== 'chapter' || source.options.numbered
+          : false,
       ...(nextType === 'full-page-image'
         ? {
             hideChapterHeading: true,
