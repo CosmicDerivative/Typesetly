@@ -217,11 +217,24 @@
   text-indent: 1.25em;
 }
 
-.editor-content.indent .prose-editor > p:first-child,
 .editor-content.indent .prose-editor h2 + p,
 .editor-content.indent .prose-editor h3 + p,
 .editor-content.indent .prose-editor hr + p {
   text-indent: 0;
+}
+
+.editor-content {
+  margin-inline: -8px;
+  padding-inline: 8px;
+  border-radius: 8px;
+}
+
+.editor-content:focus-within {
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--workspace-focus) 68%, transparent);
+}
+
+.prose-editor.ProseMirror-focused {
+  outline: none !important;
 }
 
 .editor-content.space .prose-editor p {
@@ -816,6 +829,7 @@
 }
 
 .wordcount-menu {
+  bottom: 104px;
   border-color: var(--paper-300);
   border-radius: 13px;
   color: var(--text-700);

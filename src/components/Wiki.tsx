@@ -222,8 +222,8 @@ const WIKI_SECTIONS: WikiSection[] = [
       },
       {
         question: 'What do editor settings affect?',
-        answer: 'Editor settings change the Draft experience, including font, size, line height, paragraph appearance, alignment, typewriter scrolling, spellcheck, smart punctuation, and workspace appearance. Choose from 16 light and dark palettes such as Parchment, Sepia, Solarized Light, Midnight, Forest, Nord, and High Contrast. The selection is saved with the manuscript and does not replace the Design theme used for exported books or the reader appearance selected in Preview.',
-        keywords: 'settings font dark spellcheck typewriter',
+        answer: 'Editor settings change the Draft experience, including font, size, line height, paragraph appearance, alignment, typewriter scrolling, spellcheck, browser grammar-extension protection, automatic recovery timing, and workspace appearance. Recovery can be disabled or scheduled from every minute to every hour; unchanged manuscripts do not create duplicate snapshots. Choose from 16 light and dark palettes such as Parchment, Sepia, Solarized Light, Midnight, Forest, Nord, and High Contrast. The selection is saved with the manuscript and does not replace the Design theme used for exported books or the reader appearance selected in Preview.',
+        keywords: 'settings font dark spellcheck languagetool recovery snapshots interval typewriter',
       },
     ],
   },

@@ -122,7 +122,10 @@ export function RevisionsPanel() {
   const projectId = project?.id
 
   useEffect(() => {
-    if (rightPanel !== 'revisions' || !projectId) return
+    if (rightPanel !== 'revisions' || !projectId) {
+      setAutomatic([])
+      return
+    }
     let active = true
     void listRevisions(projectId, 8).then((items) => {
       if (active) setAutomatic(items)

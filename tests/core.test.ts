@@ -32,6 +32,7 @@ test('new project defaults include migration-safe advanced settings', () => {
   assert.equal(defaultChapterOptions().includeIn, 'all')
   assert.equal(defaultEditorPrefs().spellcheck, true)
   assert.equal(defaultEditorPrefs().externalProofreading, 'auto')
+  assert.equal(defaultEditorPrefs().recoveryIntervalMinutes, 5)
   assert.deepEqual(defaultGoals().habitWritingDays, [1, 2, 3, 4, 5])
   assert.deepEqual(defaultGoals().wordLog, {})
   assert.deepEqual(defaultStoryBible(), { characters: [], world: [], relationships: [] })

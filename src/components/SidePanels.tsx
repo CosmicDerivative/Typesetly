@@ -51,24 +51,27 @@ export function FindReplacePanel() {
     replaceWith?: string
   } | null>(null)
 
-  const matches = useMemo(() => {
+  const matchGroups = useMemo(() => {
     if (rightPanel !== 'find' || !project || !find) return []
     const chapters = scope === 'chapter'
       ? project.chapters.filter((chapter) => chapter.id === activeChapter?.id)
       : project.chapters
-    return chapters.flatMap((chapter) =>
-      findInChapterHtml(chapter.content, find, caseSensitive).map((_, occurrence) => ({
+    return chapters.map((chapter) => ({
         chapterId: chapter.id,
         chapterTitle: chapter.title,
-        occurrence,
-      })),
-    )
+        count: findInChapterHtml(chapter.content, find, caseSensitive).length,
+      }))
+      .filter((group) => group.count > 0)
   }, [activeChapter?.id, caseSensitive, find, project, rightPanel, scope])
+  const matchCount = useMemo(
+    () => matchGroups.reduce((total, group) => total + group.count, 0),
+    [matchGroups],
+  )
 
   useEffect(() => {
     setActiveMatch(-1)
     setMessage('')
-  }, [caseSensitive, find, matches.length, scope])
+  }, [caseSensitive, find, matchCount, scope])
 
   useEffect(() => {
     if (!pendingMatch || activeChapter?.id !== pendingMatch.chapterId) return
@@ -90,27 +93,33 @@ export function FindReplacePanel() {
   if (rightPanel !== 'find' || !project) return null
 
   const goToMatch = (index: number, replaceWith?: string) => {
-    if (!matches.length) {
+    if (!matchCount) {
       setMessage('No matches.')
       return
     }
-    const normalized = (index + matches.length) % matches.length
-    const match = matches[normalized]
+    const normalized = (index + matchCount) % matchCount
+    let offset = 0
+    const group = matchGroups.find((candidate) => {
+      if (normalized < offset + candidate.count) return true
+      offset += candidate.count
+      return false
+    })
+    if (!group) return
     setActiveMatch(normalized)
     setMode('draft')
-    if (activeChapter?.id !== match.chapterId) setActiveChapter(match.chapterId)
+    if (activeChapter?.id !== group.chapterId) setActiveChapter(group.chapterId)
     setPendingMatch({
-      chapterId: match.chapterId,
-      occurrence: match.occurrence,
+      chapterId: group.chapterId,
+      occurrence: normalized - offset,
       replaceWith,
     })
-    setMessage(`${normalized + 1} of ${matches.length} · ${match.chapterTitle}`)
+    setMessage(`${normalized + 1} of ${matchCount} · ${group.chapterTitle}`)
   }
 
   const stepMatch = (direction: -1 | 1) => {
     goToMatch(
       activeMatch < 0
-        ? direction === 1 ? 0 : matches.length - 1
+        ? direction === 1 ? 0 : matchCount - 1
         : activeMatch + direction,
     )
   }
@@ -176,16 +185,16 @@ export function FindReplacePanel() {
         </label>
       </div>
       <div className="find-summary" aria-live="polite">
-        <strong>{matches.length}</strong> {matches.length === 1 ? 'match' : 'matches'}
-        {matches.length > 0 && activeMatch >= 0 ? ` · ${activeMatch + 1} selected` : ''}
+        <strong>{matchCount}</strong> {matchCount === 1 ? 'match' : 'matches'}
+        {matchCount > 0 && activeMatch >= 0 ? ` · ${activeMatch + 1} selected` : ''}
       </div>
       <div className="sp-actions">
-        <button type="button" disabled={!matches.length} onClick={() => stepMatch(-1)}>Previous</button>
-        <button type="button" className="primary" disabled={!matches.length} onClick={() => stepMatch(1)}>Next</button>
+        <button type="button" disabled={!matchCount} onClick={() => stepMatch(-1)}>Previous</button>
+        <button type="button" className="primary" disabled={!matchCount} onClick={() => stepMatch(1)}>Next</button>
       </div>
       <div className="sp-actions">
-        <button type="button" disabled={!matches.length} onClick={() => goToMatch(Math.max(0, activeMatch), replace)}>Replace selected</button>
-        <button type="button" disabled={!matches.length} onClick={runReplaceAll}>Replace all</button>
+        <button type="button" disabled={!matchCount} onClick={() => goToMatch(Math.max(0, activeMatch), replace)}>Replace selected</button>
+        <button type="button" disabled={!matchCount} onClick={runReplaceAll}>Replace all</button>
       </div>
       {message && <p className="sp-msg">{message}</p>}
     </aside>
@@ -550,6 +559,27 @@ export function EditorSettingsPanel() {
       <p className="sp-hint">
         Automatic pauses extensions such as LanguageTool on chapters over about 30,000 characters.
         Native browser spellcheck remains available.
+      </p>
+      <label>
+        Automatic recovery snapshots
+        <select
+          value={p.recoveryIntervalMinutes}
+          onChange={(event) => updateEditorPrefs({
+            recoveryIntervalMinutes: Number(event.target.value),
+          })}
+        >
+          <option value={0}>Off</option>
+          <option value={1}>Every minute</option>
+          <option value={5}>Every 5 minutes</option>
+          <option value={10}>Every 10 minutes</option>
+          <option value={15}>Every 15 minutes</option>
+          <option value={30}>Every 30 minutes</option>
+          <option value={60}>Every hour</option>
+        </select>
+      </label>
+      <p className="sp-hint">
+        A recovery point is created on your schedule only when the manuscript changed
+        and its latest edit is safely stored.
       </p>
       <label>
         Paragraphs

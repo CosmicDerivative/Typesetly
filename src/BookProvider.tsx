@@ -203,7 +203,8 @@ export function BookProvider({ children }: { children: ReactNode }) {
   const [editingTheme, setEditingTheme] = useState<BookTheme | null>(null)
   const hydrated = useRef(false)
   const saveGeneration = useRef(0)
-  const lastRevisionAt = useRef<Record<string, number>>({})
+  const latestProject = useRef<BookProject | null>(null)
+  const latestSaveStatus = useRef<SaveStatus>('saved')
 
   useEffect(() => {
     try {
@@ -290,6 +291,13 @@ export function BookProvider({ children }: { children: ReactNode }) {
     [books, openBookId],
   )
 
+  useEffect(() => {
+    latestProject.current = project
+    latestSaveStatus.current = saveStatus
+  }, [project, saveStatus])
+  const recoveryBookId = project?.id
+  const recoveryIntervalMinutes = project?.editorPrefs.recoveryIntervalMinutes ?? 0
+
   const markDirty = useCallback(() => {
     setSaveStatus('saving')
     setSaveError('')
@@ -313,12 +321,46 @@ export function BookProvider({ children }: { children: ReactNode }) {
   )
 
   useEffect(() => {
-    if (!project || saveStatus !== 'saved') return
-    const now = Date.now()
-    if (now - (lastRevisionAt.current[project.id] || 0) < 30_000) return
-    lastRevisionAt.current[project.id] = now
-    void saveRevision(project)
-  }, [project, saveStatus])
+    if (!recoveryBookId) return
+    const minutes = Math.max(0, recoveryIntervalMinutes)
+    if (!minutes) return
+
+    const intervalMs = minutes * 60_000
+    let lastCapturedUpdate = latestProject.current?.updatedAt || ''
+    let timer = 0
+    let cancelled = false
+
+    const schedule = (delay = intervalMs) => {
+      timer = window.setTimeout(captureIfNeeded, delay)
+    }
+    const captureIfNeeded = () => {
+      if (cancelled) return
+      const current = latestProject.current
+      if (!current || current.id !== recoveryBookId) return
+      if (current.updatedAt === lastCapturedUpdate) {
+        schedule()
+        return
+      }
+      if (latestSaveStatus.current !== 'saved') {
+        // A save is still settling at the requested boundary. Retry shortly
+        // instead of postponing recovery for another full user interval.
+        schedule(1_000)
+        return
+      }
+      lastCapturedUpdate = current.updatedAt
+      void saveRevision(current).catch(() => {
+        // The main manuscript save remains authoritative. A failed background
+        // recovery point must not interrupt typing.
+      })
+      schedule()
+    }
+
+    schedule()
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [recoveryBookId, recoveryIntervalMinutes])
 
   const activeTheme = useMemo(() => {
     if (editingTheme) return editingTheme

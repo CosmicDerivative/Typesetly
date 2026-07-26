@@ -295,6 +295,8 @@ export interface EditorPrefs {
   darkMode: boolean
   spellcheck: boolean
   externalProofreading: 'auto' | 'always' | 'off'
+  /** Minutes between automatic recovery points. Zero disables them. */
+  recoveryIntervalMinutes: number
   paragraphStyle: 'indent' | 'space'
   textAlign: 'left' | 'justify'
 }
@@ -504,6 +506,7 @@ export const defaultEditorPrefs = (): EditorPrefs => ({
   darkMode: false,
   spellcheck: true,
   externalProofreading: 'auto',
+  recoveryIntervalMinutes: 5,
   paragraphStyle: 'indent',
   textAlign: 'left',
 })
