@@ -124,8 +124,8 @@ export function RevisionsPanel() {
   useEffect(() => {
     if (rightPanel !== 'revisions' || !projectId) return
     let active = true
-    void listRevisions(projectId).then((items) => {
-      if (active) setAutomatic(items.slice(0, 8))
+    void listRevisions(projectId, 8).then((items) => {
+      if (active) setAutomatic(items)
     }).catch(() => {
       if (active) setAutomatic([])
     })
@@ -211,7 +211,12 @@ export function RevisionsPanel() {
           onCancel={() => setRestoreTarget(null)}
           onConfirm={() => {
             if (restoreTarget.kind === 'named') restoreNamedRevision(restoreTarget.id)
-            else replaceProject(restoreTarget.book)
+            else replaceProject({
+              ...restoreTarget.book,
+              // Automatic recovery points intentionally omit named versions to
+              // stay compact; restoring one must not erase the current history.
+              revisions: project.revisions,
+            })
             setRestoreTarget(null)
           }}
         />

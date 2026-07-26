@@ -106,7 +106,9 @@ export function Header() {
         activateMode('publish')
       } else if (modifier && !event.shiftKey && key === 'f') {
         event.preventDefault()
-        if (pinnedRightPanel !== 'none') setPinnedRightPanel('find')
+        // Search is a working tool, not a transient popover. Give it a stable
+        // side column by default; compact layouts still auto-unpin in App.
+        setPinnedRightPanel('find')
         setRightPanel('find')
       } else if (modifier && key === ',') {
         event.preventDefault()

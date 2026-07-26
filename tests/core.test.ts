@@ -6,6 +6,12 @@ import { buildCalloutNode, replaceCalloutRange } from '../src/editor/callouts.ts
 import { plainTextFromHtml, wordDiff } from '../src/editor/diff.ts'
 import { Callout } from '../src/editor/extensions.ts'
 import {
+  EXTERNAL_PROOFREADING_CHARACTER_LIMIT,
+  externalProofreadingEnabled,
+  findInChapterHtml,
+  findTextOccurrences,
+} from '../src/editor/find.ts'
+import {
   defaultChapterOptions,
   defaultEditorPrefs,
   defaultGoals,
@@ -25,9 +31,27 @@ test('HTML is reduced to readable text for comparisons', () => {
 test('new project defaults include migration-safe advanced settings', () => {
   assert.equal(defaultChapterOptions().includeIn, 'all')
   assert.equal(defaultEditorPrefs().spellcheck, true)
+  assert.equal(defaultEditorPrefs().externalProofreading, 'auto')
   assert.deepEqual(defaultGoals().habitWritingDays, [1, 2, 3, 4, 5])
   assert.deepEqual(defaultGoals().wordLog, {})
   assert.deepEqual(defaultStoryBible(), { characters: [], world: [], relationships: [] })
+})
+
+test('find supports case-insensitive navigation counts without overlapping matches', () => {
+  assert.deepEqual(findTextOccurrences('One one ONE', 'one'), [
+    { index: 0, length: 3 },
+    { index: 4, length: 3 },
+    { index: 8, length: 3 },
+  ])
+  assert.equal(findTextOccurrences('banana', 'ana').length, 1)
+  assert.equal(findInChapterHtml('<p>First</p><p>second first</p>', 'FIRST').length, 2)
+})
+
+test('automatic external proofreading protects long chapters while preserving overrides', () => {
+  assert.equal(externalProofreadingEnabled('auto', EXTERNAL_PROOFREADING_CHARACTER_LIMIT), true)
+  assert.equal(externalProofreadingEnabled('auto', EXTERNAL_PROOFREADING_CHARACTER_LIMIT + 1), false)
+  assert.equal(externalProofreadingEnabled('always', 1_000_000), true)
+  assert.equal(externalProofreadingEnabled('off', 1), false)
 })
 
 test('message bubbles build as a stable callout node with normalized content', () => {

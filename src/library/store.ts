@@ -2,7 +2,7 @@ import { PRESET_THEMES } from '../themes/presets.ts'
 import type { BookProject, BookTheme, LibraryState, SnapshotFile } from '../types.ts'
 
 const DB_NAME = 'typesetly-local'
-const DB_VERSION = 1
+const DB_VERSION = 2
 const STATE_STORE = 'state'
 const REVISION_STORE = 'revisions'
 const STATE_KEY = 'library-v3'
@@ -65,33 +65,30 @@ async function openDatabase(name = DB_NAME): Promise<IDBDatabase> {
       const revisions = db.createObjectStore(REVISION_STORE, { keyPath: 'id' })
       revisions.createIndex('bookId', 'bookId')
       revisions.createIndex('createdAt', 'createdAt')
+      revisions.createIndex('bookCreatedAt', ['bookId', 'createdAt'])
+    } else {
+      const revisions = request.transaction?.objectStore(REVISION_STORE)
+      if (revisions && !revisions.indexNames.contains('bookCreatedAt')) {
+        revisions.createIndex('bookCreatedAt', ['bookId', 'createdAt'])
+      }
     }
   }
   return requestResult(request)
 }
 
-async function readDatabase(name: string): Promise<{
-  state: LibraryState | null
-  revisions: Array<{ id: string; bookId: string; createdAt: string; book: BookProject }>
-}> {
+async function readDatabase(name: string): Promise<LibraryState | null> {
   const db = await openDatabase(name)
   const stateTx = db.transaction(STATE_STORE, 'readonly')
   const state = await requestResult(stateTx.objectStore(STATE_STORE).get(STATE_KEY))
   await transactionDone(stateTx)
-  const revisionTx = db.transaction(REVISION_STORE, 'readonly')
-  const revisions = await requestResult(revisionTx.objectStore(REVISION_STORE).getAll())
-  await transactionDone(revisionTx)
   db.close()
-  return {
-    state: state ? normalizeState(state as LibraryState) : null,
-    revisions: revisions as Array<{ id: string; bookId: string; createdAt: string; book: BookProject }>,
-  }
+  return state ? normalizeState(state as LibraryState) : null
 }
 
 export async function loadLibrary(): Promise<LibraryState> {
   try {
     const current = await readDatabase(DB_NAME)
-    if (current.state) return current.state
+    if (current) return current
   } catch {
     // IndexedDB can be unavailable in hardened browser contexts.
   }
@@ -133,7 +130,9 @@ export async function saveRevision(book: BookProject): Promise<void> {
     id,
     bookId: book.id,
     createdAt: new Date().toISOString(),
-    book: structuredClone(book),
+    // Named versions already live in the main library record. Do not copy all
+    // of them into every automatic recovery point.
+    book: structuredClone({ ...book, revisions: [] }),
   })
   await transactionDone(write)
 
@@ -154,15 +153,31 @@ export async function saveRevision(book: BookProject): Promise<void> {
   db.close()
 }
 
-export async function listRevisions(bookId: string): Promise<Array<{ id: string; createdAt: string; book: BookProject }>> {
+export async function listRevisions(
+  bookId: string,
+  limit = 8,
+): Promise<Array<{ id: string; createdAt: string; book: BookProject }>> {
   const db = await openDatabase()
   const tx = db.transaction(REVISION_STORE, 'readonly')
-  const result = (await requestResult(
-    tx.objectStore(REVISION_STORE).index('bookId').getAll(bookId),
-  )) as Array<{ id: string; createdAt: string; book: BookProject }>
+  const index = tx.objectStore(REVISION_STORE).index('bookCreatedAt')
+  const range = IDBKeyRange.bound([bookId, ''], [bookId, '\uffff'])
+  const result = await new Promise<Array<{ id: string; createdAt: string; book: BookProject }>>((resolve, reject) => {
+    const items: Array<{ id: string; createdAt: string; book: BookProject }> = []
+    const request = index.openCursor(range, 'prev')
+    request.onerror = () => reject(request.error)
+    request.onsuccess = () => {
+      const cursor = request.result
+      if (!cursor || items.length >= limit) {
+        resolve(items)
+        return
+      }
+      items.push(cursor.value as { id: string; createdAt: string; book: BookProject })
+      cursor.continue()
+    }
+  })
   await transactionDone(tx)
   db.close()
-  return result.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+  return result
 }
 
 export function parseSnapshot(raw: string): SnapshotFile {

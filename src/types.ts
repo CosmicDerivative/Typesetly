@@ -294,6 +294,7 @@ export interface EditorPrefs {
   /** Kept in saved projects so releases before workspace themes can still open them. */
   darkMode: boolean
   spellcheck: boolean
+  externalProofreading: 'auto' | 'always' | 'off'
   paragraphStyle: 'indent' | 'space'
   textAlign: 'left' | 'justify'
 }
@@ -502,6 +503,7 @@ export const defaultEditorPrefs = (): EditorPrefs => ({
   workspaceTheme: 'parchment',
   darkMode: false,
   spellcheck: true,
+  externalProofreading: 'auto',
   paragraphStyle: 'indent',
   textAlign: 'left',
 })

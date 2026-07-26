@@ -57,6 +57,25 @@
   font-size: 12px;
 }
 
+.sp-actions button:disabled {
+  cursor: not-allowed;
+  opacity: .48;
+}
+
+.find-options {
+  display: grid;
+  gap: 8px;
+}
+
+.find-summary {
+  padding: 8px 10px;
+  border: 1px solid var(--line, #d5d5d5);
+  border-radius: 8px;
+  color: var(--text-700, #555);
+  background: var(--paper-100, #fff);
+  font-size: 12px;
+}
+
 .side-panel .primary {
   background: #2f80ed;
   border-color: #2f80ed;

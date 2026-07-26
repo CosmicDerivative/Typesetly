@@ -28,6 +28,16 @@ export function UtilityBar() {
 
   const toggle = (panel: typeof rightPanel) => {
     if (!sidebarPinned) setSidebarOpen(false)
+    if (panel === 'find') {
+      if (rightPanel === 'find') {
+        setPinnedRightPanel('none')
+        setRightPanel(mode === 'publish' ? 'preview' : 'none')
+      } else {
+        setPinnedRightPanel('find')
+        setRightPanel('find')
+      }
+      return
+    }
     if (pinnedRightPanel !== 'none') {
       setPinnedRightPanel(panel)
       setRightPanel(panel)

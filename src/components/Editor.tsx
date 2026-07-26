@@ -62,6 +62,7 @@ import { processImageFile } from '../images/process'
 import { buildCalloutNode, replaceCalloutRange } from '../editor/callouts'
 import { smartDashForInsertion, smartQuoteForInsertion } from '../editor/smartQuotes'
 import { FONT_FAMILY_GROUPS } from '../themes/fonts'
+import { externalProofreadingEnabled, findTextOccurrences } from '../editor/find'
 
 const TEXT_SIZES = [9, 10, 11, 12, 13, 14, 16, 18, 20, 22, 24, 28, 32, 36, 42, 48, 64]
 const TEXT_COLORS = ['#221a1e', '#5b3345', '#a53f35', '#b96e18', '#2f6f52', '#206a83', '#315aa8', '#714a9f', '#767676', '#ffffff']
@@ -173,6 +174,10 @@ export function EditorPane() {
   const blockRangeRef = useRef<{ from: number; to: number } | null>(null)
   const activeChapterId = activeChapter?.id
   const activeChapterContent = activeChapter?.content
+  const allowExternalProofreading = externalProofreadingEnabled(
+    project?.editorPrefs.externalProofreading ?? 'auto',
+    activeChapterContent?.length ?? 0,
+  )
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -242,6 +247,14 @@ export function EditorPane() {
   }, [activeChapterContent, activeChapterId, editor])
 
   useEffect(() => {
+    if (!editor) return
+    // LanguageTool documents this attribute as its per-editor opt-out. Apply it
+    // directly to ProseMirror's contenteditable root so dynamically mounted
+    // editors are recognized before an extension begins a full-document scan.
+    editor.view.dom.setAttribute('data-lt-active', allowExternalProofreading ? 'true' : 'false')
+  }, [allowExternalProofreading, editor])
+
+  useEffect(() => {
     if (!editor || !activeChapterId) return
     const goToScene = (event: Event) => {
       const sceneIndex = (event as CustomEvent<{ index: number }>).detail.index
@@ -272,6 +285,40 @@ export function EditorPane() {
       window.removeEventListener('typesetly:scene', goToScene)
       editor.off('selectionUpdate', reportScene)
     }
+  }, [activeChapterId, editor])
+
+  useEffect(() => {
+    if (!editor || !activeChapterId) return
+    const findMatch = (event: Event) => {
+      const detail = (event as CustomEvent<{
+        chapterId: string
+        query: string
+        occurrence: number
+        caseSensitive: boolean
+        replaceWith?: string
+      }>).detail
+      if (!detail || detail.chapterId !== activeChapterId || !detail.query) return
+
+      const ranges: Array<{ from: number; to: number }> = []
+      editor.state.doc.descendants((node, position) => {
+        if (!node.isText || !node.text) return
+        for (const match of findTextOccurrences(node.text, detail.query, detail.caseSensitive)) {
+          ranges.push({
+            from: position + match.index,
+            to: position + match.index + match.length,
+          })
+        }
+      })
+      const range = ranges[detail.occurrence]
+      if (!range) return
+      const transaction = detail.replaceWith === undefined
+        ? editor.state.tr.setSelection(TextSelection.create(editor.state.doc, range.from, range.to))
+        : editor.state.tr.insertText(detail.replaceWith, range.from, range.to)
+      editor.view.dispatch(transaction.scrollIntoView())
+      editor.view.focus()
+    }
+    window.addEventListener('typesetly:find-match', findMatch)
+    return () => window.removeEventListener('typesetly:find-match', findMatch)
   }, [activeChapterId, editor])
 
   useEffect(() => {
@@ -942,6 +989,7 @@ export function EditorPane() {
             <EditorContent
               editor={editor}
               spellCheck={prefs.spellcheck}
+              data-lt-active={allowExternalProofreading ? 'true' : 'false'}
               className={`editor-content ${prefs.paragraphStyle} ${prefs.textAlign}`}
             />
           )}

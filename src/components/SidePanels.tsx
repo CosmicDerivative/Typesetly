@@ -3,6 +3,7 @@ import { useApp } from '../BookContext'
 import { countBookWords, localDateKey, todayKey } from '../data'
 import { isDarkWorkspaceTheme, WORKSPACE_THEMES } from '../themes/workspaceThemes'
 import { repairLegacyRtfQuoteDamage, smartenPunctuation } from '../editor/smartQuotes'
+import { findInChapterHtml, findTextOccurrences } from '../editor/find'
 import './SidePanels.css'
 import { DrawerControls } from './DrawerControls'
 
@@ -30,33 +31,111 @@ function transformTextNodes(html: string, transform: (text: string) => string) {
 }
 
 export function FindReplacePanel() {
-  const { project, rightPanel, updateChapterContent } = useApp()
+  const {
+    activeChapter,
+    project,
+    rightPanel,
+    setActiveChapter,
+    setMode,
+    updateChapterContent,
+  } = useApp()
   const [find, setFind] = useState('')
   const [replace, setReplace] = useState('')
   const [message, setMessage] = useState('')
+  const [scope, setScope] = useState<'chapter' | 'book'>('book')
+  const [caseSensitive, setCaseSensitive] = useState(false)
+  const [activeMatch, setActiveMatch] = useState(-1)
+  const [pendingMatch, setPendingMatch] = useState<{
+    chapterId: string
+    occurrence: number
+    replaceWith?: string
+  } | null>(null)
+
+  const matches = useMemo(() => {
+    if (rightPanel !== 'find' || !project || !find) return []
+    const chapters = scope === 'chapter'
+      ? project.chapters.filter((chapter) => chapter.id === activeChapter?.id)
+      : project.chapters
+    return chapters.flatMap((chapter) =>
+      findInChapterHtml(chapter.content, find, caseSensitive).map((_, occurrence) => ({
+        chapterId: chapter.id,
+        chapterTitle: chapter.title,
+        occurrence,
+      })),
+    )
+  }, [activeChapter?.id, caseSensitive, find, project, rightPanel, scope])
+
+  useEffect(() => {
+    setActiveMatch(-1)
+    setMessage('')
+  }, [caseSensitive, find, matches.length, scope])
+
+  useEffect(() => {
+    if (!pendingMatch || activeChapter?.id !== pendingMatch.chapterId) return
+    const frame = window.requestAnimationFrame(() => {
+      window.dispatchEvent(new CustomEvent('typesetly:find-match', {
+        detail: {
+          chapterId: pendingMatch.chapterId,
+          query: find,
+          occurrence: pendingMatch.occurrence,
+          caseSensitive,
+          replaceWith: pendingMatch.replaceWith,
+        },
+      }))
+      setPendingMatch(null)
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [activeChapter?.id, caseSensitive, find, pendingMatch])
 
   if (rightPanel !== 'find' || !project) return null
 
-  const runReplace = (all: boolean) => {
+  const goToMatch = (index: number, replaceWith?: string) => {
+    if (!matches.length) {
+      setMessage('No matches.')
+      return
+    }
+    const normalized = (index + matches.length) % matches.length
+    const match = matches[normalized]
+    setActiveMatch(normalized)
+    setMode('draft')
+    if (activeChapter?.id !== match.chapterId) setActiveChapter(match.chapterId)
+    setPendingMatch({
+      chapterId: match.chapterId,
+      occurrence: match.occurrence,
+      replaceWith,
+    })
+    setMessage(`${normalized + 1} of ${matches.length} · ${match.chapterTitle}`)
+  }
+
+  const stepMatch = (direction: -1 | 1) => {
+    goToMatch(
+      activeMatch < 0
+        ? direction === 1 ? 0 : matches.length - 1
+        : activeMatch + direction,
+    )
+  }
+
+  const runReplaceAll = () => {
     if (!find) return
     let count = 0
     for (const ch of project.chapters) {
       let replacedHere = 0
       const next = transformTextNodes(ch.content, (text) => {
-        if (!all && count + replacedHere > 0) return text
-        if (all) {
-          replacedHere += text.split(find).length - 1
+        if (caseSensitive) {
+          const occurrences = findTextOccurrences(text, find, true).length
+          replacedHere += occurrences
           return text.split(find).join(replace)
         }
-        const changed = text.replace(find, replace)
-        if (changed !== text) replacedHere += 1
-        return changed
+        const pattern = new RegExp(find.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')
+        return text.replace(pattern, () => {
+          replacedHere += 1
+          return replace
+        })
       })
       if (next !== ch.content) updateChapterContent(ch.id, next)
       count += replacedHere
-      if (!all && count) break
     }
-    setMessage(all ? `Replaced ${count} occurrence(s).` : count ? 'Replaced 1 occurrence.' : 'No matches.')
+    setMessage(count ? `Replaced ${count} occurrence(s).` : 'No matches.')
   }
 
   return (
@@ -65,11 +144,48 @@ export function FindReplacePanel() {
         <strong>Find & Replace</strong>
         <DrawerControls panel="find" />
       </div>
-      <label>Find<input value={find} onChange={(e) => setFind(e.target.value)} /></label>
+      <label>
+        Find
+        <input
+          autoFocus
+          value={find}
+          onChange={(e) => setFind(e.target.value)}
+          onKeyDown={(event) => {
+            if (event.key !== 'Enter') return
+            event.preventDefault()
+            stepMatch(event.shiftKey ? -1 : 1)
+          }}
+        />
+      </label>
       <label>Replace<input value={replace} onChange={(e) => setReplace(e.target.value)} /></label>
+      <div className="find-options">
+        <label>
+          Scope
+          <select value={scope} onChange={(event) => setScope(event.target.value as typeof scope)}>
+            <option value="book">Whole manuscript</option>
+            <option value="chapter">Current page</option>
+          </select>
+        </label>
+        <label className="check-row">
+          <input
+            type="checkbox"
+            checked={caseSensitive}
+            onChange={(event) => setCaseSensitive(event.target.checked)}
+          />
+          Match case
+        </label>
+      </div>
+      <div className="find-summary" aria-live="polite">
+        <strong>{matches.length}</strong> {matches.length === 1 ? 'match' : 'matches'}
+        {matches.length > 0 && activeMatch >= 0 ? ` · ${activeMatch + 1} selected` : ''}
+      </div>
       <div className="sp-actions">
-        <button type="button" onClick={() => runReplace(false)}>Replace</button>
-        <button type="button" className="primary" onClick={() => runReplace(true)}>Replace all</button>
+        <button type="button" disabled={!matches.length} onClick={() => stepMatch(-1)}>Previous</button>
+        <button type="button" className="primary" disabled={!matches.length} onClick={() => stepMatch(1)}>Next</button>
+      </div>
+      <div className="sp-actions">
+        <button type="button" disabled={!matches.length} onClick={() => goToMatch(Math.max(0, activeMatch), replace)}>Replace selected</button>
+        <button type="button" disabled={!matches.length} onClick={runReplaceAll}>Replace all</button>
       </div>
       {message && <p className="sp-msg">{message}</p>}
     </aside>
@@ -418,6 +534,23 @@ export function EditorSettingsPanel() {
         <input type="checkbox" checked={p.spellcheck} onChange={(event) => updateEditorPrefs({ spellcheck: event.target.checked })} />
         Check spelling while writing
       </label>
+      <label>
+        Browser grammar extensions
+        <select
+          value={p.externalProofreading}
+          onChange={(event) => updateEditorPrefs({
+            externalProofreading: event.target.value as typeof p.externalProofreading,
+          })}
+        >
+          <option value="auto">Automatic performance protection</option>
+          <option value="always">Always allow</option>
+          <option value="off">Always pause</option>
+        </select>
+      </label>
+      <p className="sp-hint">
+        Automatic pauses extensions such as LanguageTool on chapters over about 30,000 characters.
+        Native browser spellcheck remains available.
+      </p>
       <label>
         Paragraphs
         <select value={p.paragraphStyle} onChange={(event) => updateEditorPrefs({ paragraphStyle: event.target.value as typeof p.paragraphStyle })}>
