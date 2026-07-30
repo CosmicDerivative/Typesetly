@@ -124,7 +124,11 @@ export function createPart(title = 'Part'): Chapter {
 
 export function countWords(html: string): number {
   const text = html
-    .replace(/<[^>]+>/g, ' ')
+    // Block boundaries separate words, while inline markup must not. A mark
+    // can begin halfway through a word when a cross-page drag ends there.
+    .replace(/<\/?(?:p|div|h[1-6]|li|blockquote|pre|tr|td|th)\b[^>]*>/gi, ' ')
+    .replace(/<(?:br|hr)\b[^>]*\/?>/gi, ' ')
+    .replace(/<[^>]+>/g, '')
     .replace(/&nbsp;/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()

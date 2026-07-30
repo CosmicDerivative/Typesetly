@@ -299,7 +299,8 @@
 
 .editor-content.indent .prose-editor h2 + p,
 .editor-content.indent .prose-editor h3 + p,
-.editor-content.indent .prose-editor hr + p {
+.editor-content.indent .prose-editor hr + p,
+.editor-content.indent .prose-editor p[data-typesetly-page-continuation="true"] {
   text-indent: 0;
 }
 
@@ -315,6 +316,16 @@
 
 .prose-editor.ProseMirror-focused {
   outline: none !important;
+}
+
+/* Persistent selection painted across independent page editors. Native browser
+   selection cannot remain visible after a drag crosses editing hosts. */
+.prose-editor .cross-page-selection {
+  color: var(--workspace-active-ink);
+  background: color-mix(in srgb, var(--workspace-focus) 72%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--workspace-focus) 60%, transparent);
+  border-radius: 2px;
 }
 
 /* Find matches: theme-token washes so High Contrast / Midnight / etc. stay intentional.
@@ -746,6 +757,18 @@
   font: 700 9px/1 'DM Sans', sans-serif;
   letter-spacing: .12em;
   text-transform: uppercase;
+}
+
+.cross-page-selection-status {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border: 1px solid color-mix(in srgb, var(--workspace-focus) 45%, var(--line));
+  border-radius: 999px;
+  color: var(--workspace-active-ink);
+  background: color-mix(in srgb, var(--workspace-focus) 20%, transparent);
+  font: 700 9px/1 'DM Sans', sans-serif;
+  letter-spacing: .04em;
+  white-space: nowrap;
 }
 
 .tb {

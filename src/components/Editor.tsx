@@ -34,7 +34,10 @@ import { v4 as uuid } from 'uuid'
 import { useApp } from '../BookContext'
 import { countBookWords, countWords } from '../data'
 import { ChapterOptionsMenu } from './ChapterOptionsMenu'
-import { DraftPagedEditor } from './DraftPagedEditor'
+import {
+  DraftPagedEditor,
+  type CrossPageSelectionSummary,
+} from './DraftPagedEditor'
 import './Editor.css'
 import { DOMSerializer } from '@tiptap/pm/model'
 import { Dialog } from './Dialog'
@@ -128,6 +131,8 @@ export function EditorPane() {
   const chapterOrnamentSrc = useResolvedImageSrc(chapterOrnamentSource)
   const [editor, setEditor] = useState<Editor | null>(null)
   const [draftPageTotal, setDraftPageTotal] = useState(1)
+  const [crossPageSelection, setCrossPageSelection] =
+    useState<CrossPageSelectionSummary | null>(null)
   const pageMetrics = useMemo(
     () => draftPageMetrics(activeTheme.print),
     [activeTheme.print],
@@ -153,6 +158,11 @@ export function EditorPane() {
     return () => document.removeEventListener('pointerdown', closePopoverMenus)
   }, [])
 
+  useEffect(() => {
+    setCrossPageSelection(null)
+    window.dispatchEvent(new Event('typesetly:clear-cross-page-selection'))
+  }, [activeChapter?.id])
+
   const wordCount = useMemo(() => {
     if (!activeChapter) return 0
     return countWords(activeChapter.content)
@@ -169,9 +179,22 @@ export function EditorPane() {
   const isFrontOrSpecial =
     activeChapter.type !== 'chapter' && activeChapter.type !== 'part'
 
+  const runCrossPageCommand = (detail: Record<string, unknown>) => {
+    if (!crossPageSelection) return false
+    window.dispatchEvent(new CustomEvent('typesetly:cross-page-command', { detail }))
+    return true
+  }
+
   const applyStyle = (value: string) => {
-    if (!editor) return
+    if (!editor && !crossPageSelection) return
     setStyleLabel(value)
+    if (value === 'Paragraph' && runCrossPageCommand({ action: 'paragraph' })) return
+    if (value.startsWith('Heading')) {
+      const level = Number(value.split(' ')[1]) as 1 | 2 | 3 | 4 | 5 | 6
+      if (runCrossPageCommand({ action: 'heading', level })) return
+    }
+    if (value === 'Quote' && runCrossPageCommand({ action: 'blockquote' })) return
+    if (!editor) return
     if (value === 'Paragraph') editor.chain().focus().setParagraph().run()
     if (value.startsWith('Heading')) {
       const level = Number(value.split(' ')[1]) as 1 | 2 | 3 | 4 | 5 | 6
@@ -188,8 +211,12 @@ export function EditorPane() {
   }
 
   const confirmLink = () => {
-    if (!editor) return
     const url = linkValue.trim()
+    if (runCrossPageCommand({ action: 'link', href: url })) {
+      setLinkOpen(false)
+      return
+    }
+    if (!editor) return
     if (!url) {
       editor.chain().focus().extendMarkRange('link').unsetLink().run()
     } else {
@@ -204,7 +231,7 @@ export function EditorPane() {
   }
 
   const insertSceneBreak = () => {
-    if (!editor) return
+    if (!editor || editor.isDestroyed) return
     editor.chain().focus().insertContent([
       { type: 'sceneBreak' },
       { type: 'paragraph' },
@@ -322,7 +349,15 @@ export function EditorPane() {
   }
 
   const applyTextTool = (value: string) => {
-    if (!editor || !value) return
+    if (!value) return
+    if (value === 'clear' && runCrossPageCommand({ action: 'clearMarks' })) return
+    if (
+      ['smallCaps', 'sansSerif', 'monospace', 'subscript', 'superscriptText'].includes(value)
+      && runCrossPageCommand({ action: 'textMark', mark: value })
+    ) {
+      return
+    }
+    if (!editor) return
     const chain = editor.chain().focus()
     if (value === 'smallCaps') chain.toggleMark('smallCaps').run()
     if (value === 'sansSerif') chain.toggleMark('sansSerif').run()
@@ -336,6 +371,7 @@ export function EditorPane() {
     attribute: 'fontFamily' | 'fontSize' | 'color' | 'backgroundColor' | 'letterSpacing' | 'textTransform',
     value: string,
   ) => {
+    if (runCrossPageCommand({ action: 'textAppearance', attribute, value })) return
     if (!editor) return
     const current = editor.getAttributes('textAppearance')
     const next = { ...current, [attribute]: value || null }
@@ -347,6 +383,7 @@ export function EditorPane() {
   }
 
   const clearTextAppearance = () => {
+    if (runCrossPageCommand({ action: 'clearTextAppearance' })) return
     editor?.chain().focus().unsetMark('textAppearance').run()
   }
 
@@ -455,12 +492,17 @@ export function EditorPane() {
     <section className="editor-pane">
       <div className="editor-toolbar">
         <span className="toolbar-brand">Draft desk</span>
+        {crossPageSelection && (
+          <span className="cross-page-selection-status" role="status">
+            {crossPageSelection.pageCount} pages selected
+          </span>
+        )}
         <div className="toolbar-group toolbar-character">
-          <button type="button" className={editor?.isActive('bold') ? 'tb active' : 'tb'} onClick={() => editor?.chain().focus().toggleBold().run()} title="Bold"><Bold size={15} strokeWidth={2.4} /></button>
-          <button type="button" className={editor?.isActive('italic') ? 'tb active' : 'tb'} onClick={() => editor?.chain().focus().toggleItalic().run()} title="Italic"><Italic size={15} /></button>
-          <button type="button" className={editor?.isActive('underline') ? 'tb active' : 'tb'} onClick={() => editor?.chain().focus().toggleUnderline().run()} title="Underline"><UnderlineIcon size={15} /></button>
-          <button type="button" className={editor?.isActive('strike') ? 'tb active' : 'tb'} onClick={() => editor?.chain().focus().toggleStrike().run()} title="Strikethrough"><Strikethrough size={15} /></button>
-          <button type="button" className={editor?.isActive('code') ? 'tb active' : 'tb'} onClick={() => editor?.chain().focus().toggleCode().run()} title="Inline code"><Code2 size={15} /></button>
+          <button type="button" className={editor?.isActive('bold') ? 'tb active' : 'tb'} onClick={() => { if (!runCrossPageCommand({ action: 'bold' })) editor?.chain().focus().toggleBold().run() }} title="Bold"><Bold size={15} strokeWidth={2.4} /></button>
+          <button type="button" className={editor?.isActive('italic') ? 'tb active' : 'tb'} onClick={() => { if (!runCrossPageCommand({ action: 'italic' })) editor?.chain().focus().toggleItalic().run() }} title="Italic"><Italic size={15} /></button>
+          <button type="button" className={editor?.isActive('underline') ? 'tb active' : 'tb'} onClick={() => { if (!runCrossPageCommand({ action: 'underline' })) editor?.chain().focus().toggleUnderline().run() }} title="Underline"><UnderlineIcon size={15} /></button>
+          <button type="button" className={editor?.isActive('strike') ? 'tb active' : 'tb'} onClick={() => { if (!runCrossPageCommand({ action: 'strike' })) editor?.chain().focus().toggleStrike().run() }} title="Strikethrough"><Strikethrough size={15} /></button>
+          <button type="button" className={editor?.isActive('code') ? 'tb active' : 'tb'} onClick={() => { if (!runCrossPageCommand({ action: 'code' })) editor?.chain().focus().toggleCode().run() }} title="Inline code"><Code2 size={15} /></button>
           <div className="text-options-wrap">
             <button
               type="button"
@@ -643,17 +685,26 @@ export function EditorPane() {
         </div>
         <div className="toolbar-divider" />
         <div className="toolbar-group">
-          <button type="button" className={editor?.isActive({ textAlign: 'left' }) ? 'tb active' : 'tb'} onClick={() => editor?.chain().focus().setTextAlign('left').run()}><AlignLeft size={15} /></button>
-          <button type="button" className={editor?.isActive({ textAlign: 'center' }) ? 'tb active' : 'tb'} onClick={() => editor?.chain().focus().setTextAlign('center').run()}><AlignCenter size={15} /></button>
-          <button type="button" className={editor?.isActive({ textAlign: 'right' }) ? 'tb active' : 'tb'} onClick={() => editor?.chain().focus().setTextAlign('right').run()}><AlignRight size={15} /></button>
-          <button type="button" className={editor?.isActive({ textAlign: 'justify' }) ? 'tb active' : 'tb'} onClick={() => editor?.chain().focus().setTextAlign('justify').run()}><AlignJustify size={15} /></button>
+          <button type="button" className={editor?.isActive({ textAlign: 'left' }) ? 'tb active' : 'tb'} onClick={() => { if (!runCrossPageCommand({ action: 'textAlign', value: 'left' })) editor?.chain().focus().setTextAlign('left').run() }}><AlignLeft size={15} /></button>
+          <button type="button" className={editor?.isActive({ textAlign: 'center' }) ? 'tb active' : 'tb'} onClick={() => { if (!runCrossPageCommand({ action: 'textAlign', value: 'center' })) editor?.chain().focus().setTextAlign('center').run() }}><AlignCenter size={15} /></button>
+          <button type="button" className={editor?.isActive({ textAlign: 'right' }) ? 'tb active' : 'tb'} onClick={() => { if (!runCrossPageCommand({ action: 'textAlign', value: 'right' })) editor?.chain().focus().setTextAlign('right').run() }}><AlignRight size={15} /></button>
+          <button type="button" className={editor?.isActive({ textAlign: 'justify' }) ? 'tb active' : 'tb'} onClick={() => { if (!runCrossPageCommand({ action: 'textAlign', value: 'justify' })) editor?.chain().focus().setTextAlign('justify').run() }}><AlignJustify size={15} /></button>
         </div>
         <div className="toolbar-divider" />
         <div className="toolbar-group">
-          <button type="button" className={editor?.isActive('bulletList') ? 'tb active' : 'tb'} onClick={() => editor?.chain().focus().toggleBulletList().run()}><List size={15} /></button>
-          <button type="button" className={editor?.isActive('orderedList') ? 'tb active' : 'tb'} onClick={() => editor?.chain().focus().toggleOrderedList().run()}><ListOrdered size={15} /></button>
-          <button type="button" className={editor?.isActive('blockquote') ? 'tb active' : 'tb'} onClick={() => editor?.chain().focus().toggleBlockquote().run()}><Quote size={15} /></button>
-          <button type="button" className="tb" title="Insert scene break" aria-label="Insert scene break" onClick={insertSceneBreak}><Minus size={15} /></button>
+          <button type="button" className={editor?.isActive('bulletList') ? 'tb active' : 'tb'} onClick={() => { if (!runCrossPageCommand({ action: 'bulletList' })) editor?.chain().focus().toggleBulletList().run() }}><List size={15} /></button>
+          <button type="button" className={editor?.isActive('orderedList') ? 'tb active' : 'tb'} onClick={() => { if (!runCrossPageCommand({ action: 'orderedList' })) editor?.chain().focus().toggleOrderedList().run() }}><ListOrdered size={15} /></button>
+          <button type="button" className={editor?.isActive('blockquote') ? 'tb active' : 'tb'} onClick={() => { if (!runCrossPageCommand({ action: 'blockquote' })) editor?.chain().focus().toggleBlockquote().run() }}><Quote size={15} /></button>
+          <button
+            type="button"
+            className="tb"
+            title="Insert scene break"
+            aria-label="Insert scene break"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={insertSceneBreak}
+          >
+            <Minus size={15} />
+          </button>
           <button type="button" className="tb" title="Page break" aria-label="Insert page break" onClick={() => editor?.chain().focus().insertContent({ type: 'pageBreak' }).run()}><BetweenHorizontalStart size={15} /></button>
           <button type="button" className={editor?.isActive('manuscriptImage') ? 'tb active' : 'tb'} title="Insert or edit image" aria-label="Insert or edit image" onClick={openImageSettings}><ImagePlus size={15} /></button>
           <button type="button" className="tb" title="Link" onClick={addLink}><Link2 size={15} /></button>
@@ -815,6 +866,7 @@ export function EditorPane() {
             onChapterHtmlChange={(html) => updateChapterContent(activeChapter.id, html)}
             onActiveEditorChange={setEditor}
             onPageCountChange={setDraftPageTotal}
+            onCrossPageSelectionChange={setCrossPageSelection}
             firstPageChrome={(
               <div className="chapter-meta">
                 {!isFrontOrSpecial &&

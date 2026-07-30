@@ -1,4 +1,4 @@
-import { Mark, mergeAttributes, Node } from '@tiptap/core'
+import { Extension, Mark, mergeAttributes, Node } from '@tiptap/core'
 
 function styleMark(name: string, style: string, tag = 'span') {
   return Mark.create({
@@ -20,6 +20,39 @@ export const SansSerif = styleMark('sansSerif', 'font-family: sans-serif')
 export const Monospace = styleMark('monospace', 'font-family: monospace')
 export const Subscript = styleMark('subscript', 'vertical-align: sub; font-size: 0.8em', 'sub')
 export const SuperscriptText = styleMark('superscriptText', 'vertical-align: super; font-size: 0.8em', 'sup')
+
+/**
+ * Draft-only marker for a paragraph that continues from the preceding page.
+ * `joinChapterPages` removes the artificial page seam before persistence.
+ */
+export const PageContinuation = Extension.create({
+  name: 'pageContinuation',
+  addGlobalAttributes() {
+    return [{
+      types: ['paragraph'],
+      attributes: {
+        pageContinuation: {
+          default: false,
+          parseHTML: (element: HTMLElement) =>
+            element.getAttribute('data-typesetly-page-continuation') === 'true',
+          renderHTML: (attributes: Record<string, unknown>) =>
+            attributes.pageContinuation
+              ? { 'data-typesetly-page-continuation': 'true' }
+              : {},
+        },
+        pageContinuationSpace: {
+          default: false,
+          parseHTML: (element: HTMLElement) =>
+            element.getAttribute('data-typesetly-page-space') === 'true',
+          renderHTML: (attributes: Record<string, unknown>) =>
+            attributes.pageContinuationSpace
+              ? { 'data-typesetly-page-space': 'true' }
+              : {},
+        },
+      },
+    }]
+  },
+})
 
 const textAppearanceAttribute = (cssProperty: keyof CSSStyleDeclaration) => ({
   default: null,

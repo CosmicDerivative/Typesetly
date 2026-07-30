@@ -3,8 +3,10 @@ import StarterKit from '@tiptap/starter-kit'
 import TextAlign from '@tiptap/extension-text-align'
 import Placeholder from '@tiptap/extension-placeholder'
 import CharacterCount from '@tiptap/extension-character-count'
-import { DOMSerializer } from '@tiptap/pm/model'
-import { TextSelection } from '@tiptap/pm/state'
+import { Extension } from '@tiptap/core'
+import { DOMSerializer, Fragment, type Node as ProseMirrorNode } from '@tiptap/pm/model'
+import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state'
+import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import {
   useCallback,
   useEffect,
@@ -21,6 +23,7 @@ import {
   HangingIndentBlock,
   ManuscriptImage,
   Monospace,
+  PageContinuation,
   PageBreak,
   SansSerif,
   SceneBreak,
@@ -42,6 +45,7 @@ import {
   isEmptyPageHtml,
   joinChapterPages,
   normalizePageHtml,
+  pruneEmptyDraftPages,
   splitChapterIntoPages,
 } from '../layout/chapterPages'
 import {
@@ -50,6 +54,84 @@ import {
   type DraftPageMetrics,
 } from '../layout/draftPages'
 import type { ThemePrint } from '../types'
+
+interface CrossPageHighlightRange {
+  from: number
+  to: number
+}
+
+interface CrossPageEditorRange extends CrossPageHighlightRange {
+  editor: Editor
+  pageIndex: number
+}
+
+interface CrossPageSelection {
+  ranges: CrossPageEditorRange[]
+  text: string
+}
+
+export interface CrossPageSelectionSummary {
+  pageCount: number
+  text: string
+}
+
+type CrossPageCommand =
+  | { action: 'bold' | 'italic' | 'underline' | 'strike' | 'code' }
+  | { action: 'paragraph' | 'blockquote' | 'bulletList' | 'orderedList' }
+  | { action: 'heading'; level: 1 | 2 | 3 | 4 | 5 | 6 }
+  | { action: 'textAlign'; value: 'left' | 'center' | 'right' | 'justify' }
+  | { action: 'textMark'; mark: 'smallCaps' | 'sansSerif' | 'monospace' | 'subscript' | 'superscriptText' }
+  | { action: 'clearMarks' }
+  | {
+      action: 'textAppearance'
+      attribute: 'fontFamily' | 'fontSize' | 'color' | 'backgroundColor' | 'letterSpacing' | 'textTransform'
+      value: string
+    }
+  | { action: 'clearTextAppearance' }
+  | { action: 'link'; href: string }
+
+const crossPageHighlightKey = new PluginKey<DecorationSet>('crossPageHighlight')
+
+const CrossPageHighlight = Extension.create({
+  name: 'crossPageHighlight',
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: crossPageHighlightKey,
+        state: {
+          init: () => DecorationSet.empty,
+          apply(transaction, current) {
+            const range = transaction.getMeta(crossPageHighlightKey) as
+              | CrossPageHighlightRange
+              | null
+              | undefined
+            if (range === undefined) return current.map(transaction.mapping, transaction.doc)
+            if (!range || range.from >= range.to) return DecorationSet.empty
+            return DecorationSet.create(transaction.doc, [
+              Decoration.inline(range.from, range.to, {
+                class: 'cross-page-selection',
+              }),
+            ])
+          },
+        },
+        props: {
+          decorations(state) {
+            return crossPageHighlightKey.getState(state) || DecorationSet.empty
+          },
+        },
+      }),
+    ]
+  },
+})
+
+function setCrossPageHighlight(editor: Editor, range: CrossPageHighlightRange | null) {
+  if (editor.isDestroyed) return
+  editor.view.dispatch(
+    editor.state.tr
+      .setMeta(crossPageHighlightKey, range)
+      .setMeta('addToHistory', false),
+  )
+}
 
 function sanitizePastedHtml(html: string) {
   const doc = new DOMParser().parseFromString(html, 'text/html')
@@ -99,7 +181,9 @@ function createPageExtensions() {
     HangingIndentBlock,
     AttributedQuote,
     TextAppearance,
+    PageContinuation,
     FindHighlight,
+    CrossPageHighlight,
   ]
 }
 
@@ -109,8 +193,275 @@ function serializeNode(editor: Editor, node: Parameters<DOMSerializer['serialize
   return wrapper.innerHTML
 }
 
+function serializeDocument(editor: Editor, doc: ProseMirrorNode) {
+  const wrapper = document.createElement('div')
+  wrapper.appendChild(DOMSerializer.fromSchema(editor.schema).serializeFragment(doc.content))
+  return wrapper.innerHTML
+}
+
+/**
+ * Measure a candidate page document using the live editor's width, typography,
+ * paragraph mode, and CSS without mutating the visible editor or its selection.
+ */
+function measureProbeHeight(editor: Editor, doc: ProseMirrorNode) {
+  const live = editor.view.dom
+  const liveWrapper = live.parentElement
+  const wrapper = liveWrapper?.cloneNode(false) as HTMLElement | undefined
+  const probe = live.cloneNode(false) as HTMLElement
+  const computed = window.getComputedStyle(live)
+  const width = live.getBoundingClientRect().width
+
+  probe.removeAttribute('contenteditable')
+  probe.removeAttribute('data-lt-active')
+  probe.innerHTML = serializeDocument(editor, doc)
+  probe.style.width = `${width}px`
+  probe.style.maxHeight = 'none'
+  probe.style.height = 'auto'
+  probe.style.minHeight = '0'
+  probe.style.overflow = 'visible'
+  probe.style.fontFamily = computed.fontFamily
+  probe.style.fontSize = computed.fontSize
+  probe.style.fontWeight = computed.fontWeight
+  probe.style.letterSpacing = computed.letterSpacing
+  probe.style.lineHeight = computed.lineHeight
+  probe.style.textAlign = computed.textAlign
+
+  const host = wrapper || document.createElement('div')
+  host.style.position = 'fixed'
+  host.style.zIndex = '-1'
+  host.style.top = '0'
+  host.style.left = '-100000px'
+  host.style.width = `${liveWrapper?.getBoundingClientRect().width || width}px`
+  host.style.height = 'auto'
+  host.style.maxHeight = 'none'
+  host.style.overflow = 'visible'
+  host.style.visibility = 'hidden'
+  host.style.pointerEvents = 'none'
+  host.appendChild(probe)
+  document.body.appendChild(host)
+  const height = probe.scrollHeight
+  host.remove()
+  return height
+}
+
+const measurementCalibration = new WeakMap<
+  Editor,
+  { doc: ProseMirrorNode; signature: string; offset: number }
+>()
+
+function measureCandidateHeight(editor: Editor, doc: ProseMirrorNode) {
+  const live = editor.view.dom
+  const computed = window.getComputedStyle(live)
+  const signature = [
+    live.getBoundingClientRect().width,
+    computed.fontFamily,
+    computed.fontSize,
+    computed.fontWeight,
+    computed.letterSpacing,
+    computed.lineHeight,
+    computed.textAlign,
+  ].join('|')
+  let calibration = measurementCalibration.get(editor)
+  if (
+    !calibration
+    || calibration.doc !== editor.state.doc
+    || calibration.signature !== signature
+  ) {
+    const baseline = measureProbeHeight(editor, editor.state.doc)
+    calibration = {
+      doc: editor.state.doc,
+      signature,
+      offset: Math.max(0, live.scrollHeight - baseline),
+    }
+    measurementCalibration.set(editor, calibration)
+  }
+  return measureProbeHeight(editor, doc) + calibration.offset
+}
+
+interface ParagraphSplitBoundary {
+  prefixEnd: number
+  suffixStart: number
+}
+
+function textblockSplitOffsets(node: ProseMirrorNode) {
+  if (!node.isTextblock || node.type.name !== 'paragraph') return []
+  const offsets: ParagraphSplitBoundary[] = []
+  node.descendants((child, position) => {
+    if (!child.isText || !child.text) return
+    for (const match of child.text.matchAll(/\s+/g)) {
+      const prefixEnd = position + (match.index || 0)
+      const suffixStart = prefixEnd + match[0].length
+      const before = node.textBetween(0, prefixEnd, ' ').trim().split(/\s+/).filter(Boolean)
+      const after = node.textBetween(suffixStart, node.content.size, ' ').trim().split(/\s+/).filter(Boolean)
+      // Avoid a one-word widow/orphan while still using the available page.
+      if (before.length >= 2 && after.length >= 2) {
+        offsets.push({ prefixEnd, suffixStart })
+      }
+    }
+  })
+  return offsets.filter((boundary, index) => (
+    index === 0
+    || boundary.prefixEnd !== offsets[index - 1]?.prefixEnd
+  ))
+}
+
+function withLastNode(doc: ProseMirrorNode, replacement: ProseMirrorNode) {
+  const last = doc.lastChild
+  if (!last) return doc
+  const before = doc.content.cut(0, doc.content.size - last.nodeSize)
+  return doc.type.create(doc.attrs, before.append(Fragment.from(replacement)))
+}
+
+function withAppendedNode(doc: ProseMirrorNode, node: ProseMirrorNode) {
+  return doc.type.create(doc.attrs, doc.content.append(Fragment.from(node)))
+}
+
+function withPageNodeAppended(doc: ProseMirrorNode, node: ProseMirrorNode) {
+  const last = doc.lastChild
+  if (
+    node.type.name === 'paragraph'
+    && node.attrs.pageContinuation
+    && last?.type === node.type
+  ) {
+    const seam = node.attrs.pageContinuationSpace
+      ? Fragment.from(doc.type.schema.text(' '))
+      : Fragment.empty
+    const merged = last.type.create(
+      last.attrs,
+      last.content.append(seam).append(node.content),
+      last.marks,
+    )
+    return withLastNode(doc, merged)
+  }
+  return withAppendedNode(doc, node)
+}
+
+function documentWithOnlyNode(doc: ProseMirrorNode, node: ProseMirrorNode) {
+  return doc.type.create(doc.attrs, Fragment.from(node))
+}
+
+function hasTwoRenderedLines(editor: Editor, doc: ProseMirrorNode, node: ProseMirrorNode) {
+  const lineHeight = Number.parseFloat(window.getComputedStyle(editor.view.dom).lineHeight) || 24
+  return measureCandidateHeight(editor, documentWithOnlyNode(doc, node)) >= lineHeight * 1.75
+}
+
+function splitParagraphForCurrentPage(
+  editor: Editor,
+  node: ProseMirrorNode,
+  buildCandidate: (prefix: ProseMirrorNode) => ProseMirrorNode,
+  maxHeight: number,
+) {
+  const offsets = textblockSplitOffsets(node)
+  if (!offsets.length) return null
+  let low = 0
+  let high = offsets.length - 1
+  let fittingOffset = -1
+  while (low <= high) {
+    const middle = Math.floor((low + high) / 2)
+    const boundary = offsets[middle]!
+    const prefix = node.type.create(
+      node.attrs,
+      node.content.cut(0, boundary.prefixEnd),
+      node.marks,
+    )
+    if (measureCandidateHeight(editor, buildCandidate(prefix)) <= maxHeight + 2) {
+      fittingOffset = middle
+      low = middle + 1
+    } else {
+      high = middle - 1
+    }
+  }
+  if (fittingOffset < 0) return null
+  // Avoid leaving a short final line alone on either page. Move the boundary
+  // backward until the continuation renders as at least two lines.
+  while (fittingOffset >= 0) {
+    const boundary = offsets[fittingOffset]!
+    const suffix = node.type.create(
+      {
+        ...node.attrs,
+        pageContinuation: true,
+        pageContinuationSpace: true,
+      },
+      node.content.cut(boundary.suffixStart, node.content.size),
+      node.marks,
+    )
+    if (hasTwoRenderedLines(editor, editor.state.doc, suffix)) break
+    fittingOffset -= 1
+  }
+  if (fittingOffset < 0) return null
+  const boundary = offsets[fittingOffset]!
+  const prefix = node.type.create(
+    node.attrs,
+    node.content.cut(0, boundary.prefixEnd),
+    node.marks,
+  )
+  if (!hasTwoRenderedLines(editor, editor.state.doc, prefix)) return null
+  return {
+    prefix,
+    suffix: node.type.create(
+      {
+        ...node.attrs,
+        pageContinuation: true,
+        pageContinuationSpace: true,
+      },
+      node.content.cut(boundary.suffixStart, node.content.size),
+      node.marks,
+    ),
+  }
+}
+
 function pageOverflows(editor: Editor, maxHeight: number) {
   return editor.view.dom.scrollHeight > maxHeight + 2
+}
+
+const PAGE_REFLOW_META = 'typesetlyPageReflow'
+
+function cloneNodeForEditor(editor: Editor, node: ProseMirrorNode) {
+  return editor.schema.nodeFromJSON(node.toJSON())
+}
+
+function replaceDocumentPreservingSelection(editor: Editor, doc: ProseMirrorNode) {
+  const { anchor, head } = editor.state.selection
+  let transaction = editor.state.tr
+    .replaceWith(0, editor.state.doc.content.size, doc.content)
+    .setMeta(PAGE_REFLOW_META, true)
+    .setMeta('addToHistory', false)
+  const nextSize = transaction.doc.content.size
+  const nextAnchor = Math.max(0, Math.min(anchor, nextSize))
+  const nextHead = Math.max(0, Math.min(head, nextSize))
+  try {
+    transaction = transaction.setSelection(
+      TextSelection.create(transaction.doc, nextAnchor, nextHead),
+    )
+  } catch {
+    transaction = transaction.setSelection(
+      TextSelection.near(transaction.doc.resolve(nextHead), head >= anchor ? 1 : -1),
+    )
+  }
+  editor.view.dispatch(transaction)
+}
+
+/** Keep the caret’s page sheet (and desk scroller) in view while typing. */
+function scrollCaretIntoView(editor: Editor, mode: 'nearest' | 'center' = 'nearest') {
+  try {
+    const coords = editor.view.coordsAtPos(editor.state.selection.head)
+    const desk = editor.view.dom.closest('.editor-scroll')
+    if (!(desk instanceof HTMLElement)) return
+    const deskRect = desk.getBoundingClientRect()
+    if (mode === 'center') {
+      const target = deskRect.top + deskRect.height * 0.48
+      desk.scrollTop += coords.top - target
+      return
+    }
+    const margin = 64
+    if (coords.top < deskRect.top + margin) {
+      desk.scrollTop -= deskRect.top + margin - coords.top
+    } else if (coords.bottom > deskRect.bottom - margin) {
+      desk.scrollTop += coords.bottom - (deskRect.bottom - margin)
+    }
+  } catch {
+    // Selection can be briefly invalid while pages remount during reflow.
+  }
 }
 
 function countScenesBefore(editors: Array<Editor | null>, pageIndex: number, pos: number) {
@@ -150,6 +501,7 @@ export interface DraftPagedEditorProps {
   onChapterHtmlChange: (html: string) => void
   onActiveEditorChange: (editor: Editor | null) => void
   onPageCountChange?: (count: number) => void
+  onCrossPageSelectionChange?: (selection: CrossPageSelectionSummary | null) => void
 }
 
 /**
@@ -176,6 +528,7 @@ export function DraftPagedEditor({
   onChapterHtmlChange,
   onActiveEditorChange,
   onPageCountChange,
+  onCrossPageSelectionChange,
 }: DraftPagedEditorProps) {
   const metrics = useMemo(() => draftPageMetrics(print), [print])
   const charsPerPage = useMemo(
@@ -191,27 +544,60 @@ export function DraftPagedEditor({
   const reflowTimerRef = useRef(0)
   const busyRef = useRef(false)
   const focusedIndexRef = useRef(0)
+  const contentEpochRef = useRef(0)
+  const pagesRef = useRef(pages)
+  pagesRef.current = pages
+  const stackRef = useRef<HTMLDivElement>(null)
+  const dragAnchorRef = useRef<{ pageIndex: number; pos: number } | null>(null)
+  const crossPageSelectionRef = useRef<CrossPageSelection | null>(null)
+  /** After overflow moves the caret’s block, focus this page once reflow settles. */
+  const pendingCaretRef = useRef<{
+    pageIndex: number
+    where?: 'start' | 'end'
+    position?: number
+  } | null>(null)
 
   const emitChapter = useCallback((nextPages: string[]) => {
     const html = joinChapterPages(nextPages)
+    if (html === lastEmittedRef.current) return
     lastEmittedRef.current = html
     onChapterHtmlChange(html)
   }, [onChapterHtmlChange])
 
-  const commitPages = useCallback((nextPages: string[]) => {
-    const cleaned = nextPages.map(normalizePageHtml)
-    let end = cleaned.length
-    while (end > 1 && isEmptyPageHtml(cleaned[end - 1] || '')) end -= 1
-    const next = cleaned.slice(0, Math.max(1, end))
-    setPages(next)
-    emitChapter(next)
-    return next
+  const commitPages = useCallback((
+    nextPages: string[],
+    options?: { preserveLastEmptyPage?: boolean },
+  ) => {
+    const lastIndex = Math.max(0, nextPages.length - 1)
+    const preserveLastEmptyPage = options?.preserveLastEmptyPage ?? (
+      busyRef.current
+      || focusedIndexRef.current >= lastIndex
+      || Boolean(pendingCaretRef.current)
+    )
+    const normalized = pruneEmptyDraftPages(nextPages, { preserveLastEmptyPage })
+    pagesRef.current = normalized
+    setPages((current) => {
+      if (
+        current.length === normalized.length
+        && current.every((page, index) => page === normalized[index])
+      ) {
+        return current
+      }
+      return normalized
+    })
+    emitChapter(normalized)
+    return normalized
   }, [emitChapter])
 
   useEffect(() => {
     if (chapterHtml === lastEmittedRef.current) return
+    // External chapter writes (addScene, restore, etc.) must win over an
+    // in-flight height reflow that still holds stale per-page HTML.
+    contentEpochRef.current += 1
+    pendingCaretRef.current = null
     const next = splitChapterIntoPages(chapterHtml, charsPerPage)
-    lastEmittedRef.current = joinChapterPages(next)
+    lastEmittedRef.current = chapterHtml
+    pagesRef.current = next
     setPages(next)
   }, [chapterHtml, chapterId, charsPerPage])
 
@@ -219,116 +605,456 @@ export function DraftPagedEditor({
     onPageCountChange?.(pages.length)
   }, [onPageCountChange, pages.length])
 
-  const focusPage = useCallback((index: number, where: 'start' | 'end' = 'start') => {
+  const focusPage = useCallback((
+    index: number,
+    where: 'start' | 'end' = 'start',
+    requestedPosition?: number,
+  ) => {
     const editor = editorsRef.current[index]
     if (!editor) return
     focusedIndexRef.current = index
     onActiveEditorChange(editor)
     const size = editor.state.doc.content.size
-    const pos = where === 'end' ? Math.max(1, size - 1) : 1
+    const pos = requestedPosition === undefined
+      ? (where === 'end' ? Math.max(1, size - 1) : 1)
+      : Math.max(1, Math.min(requestedPosition, size))
     const selection = TextSelection.near(
       editor.state.doc.resolve(Math.min(pos, size)),
       where === 'end' ? -1 : 1,
     )
     editor.view.dispatch(editor.state.tr.setSelection(selection).scrollIntoView())
     editor.view.focus()
-    editor.view.dom.closest('.editor-page-sheet')?.scrollIntoView({
-      block: 'nearest',
-      behavior: 'smooth',
-    })
+    scrollCaretIntoView(editor, 'nearest')
   }, [onActiveEditorChange])
 
   const readLivePages = useCallback(() => {
     const live: string[] = []
-    for (let index = 0; index < editorsRef.current.length; index += 1) {
+    const snapshot = pagesRef.current
+    const total = Math.max(editorsRef.current.length, snapshot.length)
+    for (let index = 0; index < total; index += 1) {
       const editor = editorsRef.current[index]
       if (!editor) {
-        if (pages[index]) live.push(normalizePageHtml(pages[index]))
+        if (snapshot[index]) live.push(normalizePageHtml(snapshot[index]))
         continue
       }
       live.push(normalizePageHtml(editor.getHTML()))
     }
     return live.length ? live : ['<p></p>']
-  }, [pages])
+  }, [])
+
+  const clearCrossPageSelection = useCallback(() => {
+    crossPageSelectionRef.current = null
+    for (const editor of editorsRef.current) {
+      if (editor) setCrossPageHighlight(editor, null)
+    }
+    onCrossPageSelectionChange?.(null)
+  }, [onCrossPageSelectionChange])
+
+  const pagePositionAtPoint = useCallback((clientX: number, clientY: number) => {
+    let closest:
+      | { editor: Editor; pageIndex: number; rect: DOMRect; distance: number }
+      | null = null
+    for (let pageIndex = 0; pageIndex < editorsRef.current.length; pageIndex += 1) {
+      const editor = editorsRef.current[pageIndex]
+      if (!editor || editor.isDestroyed) continue
+      const rect = editor.view.dom.getBoundingClientRect()
+      if (clientX < rect.left - 48 || clientX > rect.right + 48) continue
+      const distance = clientY < rect.top
+        ? rect.top - clientY
+        : clientY > rect.bottom
+          ? clientY - rect.bottom
+          : 0
+      if (!closest || distance < closest.distance) {
+        closest = { editor, pageIndex, rect, distance }
+      }
+    }
+    if (!closest) return null
+    const { editor, pageIndex, rect } = closest
+    const left = Math.max(rect.left + 2, Math.min(clientX, rect.right - 2))
+    const top = Math.max(rect.top + 2, Math.min(clientY, rect.bottom - 2))
+    const resolved = editor.view.posAtCoords({ left, top })
+    const max = Math.max(1, editor.state.doc.content.size - 1)
+    const pos = Math.max(1, Math.min(resolved?.pos ?? (clientY < rect.top ? 1 : max), max))
+    return { editor, pageIndex, pos }
+  }, [])
+
+  const buildCrossPageSelection = useCallback((
+    anchor: { pageIndex: number; pos: number },
+    focus: { pageIndex: number; pos: number },
+  ): CrossPageSelection | null => {
+    if (anchor.pageIndex === focus.pageIndex) return null
+    const forward = anchor.pageIndex < focus.pageIndex
+    const start = forward ? anchor : focus
+    const end = forward ? focus : anchor
+    const ranges: CrossPageEditorRange[] = []
+    const text: string[] = []
+    for (let pageIndex = start.pageIndex; pageIndex <= end.pageIndex; pageIndex += 1) {
+      const editor = editorsRef.current[pageIndex]
+      if (!editor || editor.isDestroyed) continue
+      const max = Math.max(1, editor.state.doc.content.size - 1)
+      const from = pageIndex === start.pageIndex
+        ? Math.max(1, Math.min(start.pos, max))
+        : 1
+      const to = pageIndex === end.pageIndex
+        ? Math.max(1, Math.min(end.pos, max))
+        : max
+      if (from >= to) continue
+      const textSelection = TextSelection.between(
+        editor.state.doc.resolve(from),
+        editor.state.doc.resolve(to),
+      )
+      if (textSelection.from >= textSelection.to) continue
+      ranges.push({
+        editor,
+        pageIndex,
+        from: textSelection.from,
+        to: textSelection.to,
+      })
+      text.push(editor.state.doc.textBetween(
+        textSelection.from,
+        textSelection.to,
+        '\n',
+        '\n',
+      ))
+    }
+    return ranges.length >= 2
+      ? { ranges, text: text.join('\n') }
+      : null
+  }, [])
+
+  const previewCrossPageSelection = useCallback((selection: CrossPageSelection | null) => {
+    const byPage = new Map(
+      selection?.ranges.map((range) => [range.pageIndex, range]) || [],
+    )
+    for (let pageIndex = 0; pageIndex < editorsRef.current.length; pageIndex += 1) {
+      const editor = editorsRef.current[pageIndex]
+      if (!editor) continue
+      const range = byPage.get(pageIndex)
+      setCrossPageHighlight(editor, range ? { from: range.from, to: range.to } : null)
+    }
+  }, [])
+
+  const beginCrossPageSelection = useCallback((event: PointerEvent) => {
+    if (event.button !== 0) return
+    const target = event.target instanceof Element ? event.target : null
+    if (!target?.closest('.prose-editor')) {
+      clearCrossPageSelection()
+      dragAnchorRef.current = null
+      return
+    }
+    const point = pagePositionAtPoint(event.clientX, event.clientY)
+    if (!point) return
+    clearCrossPageSelection()
+    dragAnchorRef.current = { pageIndex: point.pageIndex, pos: point.pos }
+  }, [clearCrossPageSelection, pagePositionAtPoint])
+
+  useEffect(() => {
+    const move = (event: PointerEvent) => {
+      const anchor = dragAnchorRef.current
+      if (!anchor || (event.buttons & 1) === 0) return
+      const scroller = stackRef.current?.closest('.editor-scroll')
+      if (scroller instanceof HTMLElement) {
+        const rect = scroller.getBoundingClientRect()
+        if (event.clientY < rect.top + 48) scroller.scrollTop -= 22
+        if (event.clientY > rect.bottom - 48) scroller.scrollTop += 22
+      }
+      const point = pagePositionAtPoint(event.clientX, event.clientY)
+      if (!point || point.pageIndex === anchor.pageIndex) {
+        if (crossPageSelectionRef.current) {
+          crossPageSelectionRef.current = null
+          previewCrossPageSelection(null)
+        }
+        return
+      }
+      event.preventDefault()
+      window.getSelection()?.removeAllRanges()
+      const selection = buildCrossPageSelection(anchor, point)
+      crossPageSelectionRef.current = selection
+      previewCrossPageSelection(selection)
+    }
+
+    const end = (event: PointerEvent) => {
+      const anchor = dragAnchorRef.current
+      dragAnchorRef.current = null
+      if (!anchor) return
+      const point = pagePositionAtPoint(event.clientX, event.clientY)
+      const selection = point
+        ? buildCrossPageSelection(anchor, point)
+        : crossPageSelectionRef.current
+      if (!selection) {
+        if (crossPageSelectionRef.current) clearCrossPageSelection()
+        return
+      }
+      crossPageSelectionRef.current = selection
+      previewCrossPageSelection(selection)
+      window.getSelection()?.removeAllRanges()
+      for (const range of selection.ranges) {
+        try {
+          range.editor.view.dispatch(
+            range.editor.state.tr
+              .setSelection(TextSelection.between(
+                range.editor.state.doc.resolve(range.from),
+                range.editor.state.doc.resolve(range.to),
+              ))
+              .setMeta('addToHistory', false),
+          )
+        } catch {
+          // Atom nodes at a page seam can narrow the native selection while
+          // the cross-page decoration remains the authoritative visual range.
+        }
+      }
+      const finalRange = selection.ranges.at(-1)
+      if (finalRange) {
+        focusedIndexRef.current = finalRange.pageIndex
+        onActiveEditorChange(finalRange.editor)
+      }
+      onCrossPageSelectionChange?.({
+        pageCount: selection.ranges.length,
+        text: selection.text,
+      })
+    }
+
+    document.addEventListener('pointermove', move, { capture: true })
+    document.addEventListener('pointerup', end, { capture: true })
+    document.addEventListener('pointercancel', end, { capture: true })
+    return () => {
+      document.removeEventListener('pointermove', move, { capture: true })
+      document.removeEventListener('pointerup', end, { capture: true })
+      document.removeEventListener('pointercancel', end, { capture: true })
+    }
+  }, [
+    buildCrossPageSelection,
+    clearCrossPageSelection,
+    onActiveEditorChange,
+    onCrossPageSelectionChange,
+    pagePositionAtPoint,
+    previewCrossPageSelection,
+  ])
+
+  const waitForEditor = useCallback(async (pageIndex: number, epoch: number) => {
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+      if (contentEpochRef.current !== epoch) return null
+      const editor = editorsRef.current[pageIndex]
+      if (editor) return editor
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()))
+    }
+    return editorsRef.current[pageIndex]
+  }, [])
 
   const reflowFrom = useCallback(async (fromIndex: number) => {
     if (busyRef.current) return
     busyRef.current = true
+    const epoch = contentEpochRef.current
     try {
       for (let pass = 0; pass < 24; pass += 1) {
+        if (contentEpochRef.current !== epoch) return
         let moved = false
-        const total = Math.max(editorsRef.current.length, pages.length)
+        const total = Math.max(editorsRef.current.length, pagesRef.current.length)
 
         for (let index = fromIndex; index < total; index += 1) {
+          if (contentEpochRef.current !== epoch) return
           let editor = editorsRef.current[index]
           if (!editor) continue
           const chrome = chromeHeightsRef.current[index] || 0
           const maxHeight = draftPageBodyHeight(metrics, chrome)
 
           // Push overflow onto the next page (block at a time).
+          // Never leave a deleted block without a home on the next page —
+          // otherwise content vanishes when the next sheet is not ready yet.
           for (let push = 0; push < 30; push += 1) {
+            if (contentEpochRef.current !== epoch) return
             editor = editorsRef.current[index]
             if (!editor || !pageOverflows(editor, maxHeight)) break
             const doc = editor.state.doc
             if (doc.childCount === 0) break
             // Keep at least an empty paragraph on the page.
-            if (doc.childCount === 1 && !doc.textContent.trim()) break
+            if (doc.childCount === 1 && !doc.textContent.trim() && doc.child(0).type.name === 'paragraph') {
+              break
+            }
 
             const last = doc.child(doc.childCount - 1)
             const from = doc.content.size - last.nodeSize
             if (from < 0) break
-            const html = serializeNode(editor, last)
-            editor.view.dispatch(editor.state.tr.delete(from, doc.content.size))
-
+            const split = splitParagraphForCurrentPage(
+              editor,
+              last,
+              (prefix) => withLastNode(doc, prefix),
+              maxHeight,
+            )
+            const movedNode = split?.suffix || last
+            const movedPositionBase = split
+              ? from + split.prefix.content.size
+              : from
+            const pendingHere = pendingCaretRef.current?.pageIndex === index
+              ? pendingCaretRef.current
+              : null
+            const selectionFrom = focusedIndexRef.current === index
+              ? editor.state.selection.from
+              : pendingHere?.position
+            const caretFollowsBlock =
+              selectionFrom !== undefined
+              && selectionFrom > movedPositionBase
+            const mappedCaretPosition = caretFollowsBlock
+              ? Math.max(1, selectionFrom - movedPositionBase)
+              : undefined
+            const html = serializeNode(editor, movedNode)
             const nextIndex = index + 1
-            if (!editorsRef.current[nextIndex]) {
-              const live = readLivePages()
-              while (live.length <= nextIndex) live.push('<p></p>')
-              commitPages(live)
-              await new Promise((resolve) => window.requestAnimationFrame(resolve))
-              await new Promise((resolve) => window.requestAnimationFrame(resolve))
+            let nextEditor = editorsRef.current[nextIndex]
+            const removeMovedContent = () => {
+              const transaction = split
+                ? editor!.state.tr.replaceWith(from, editor!.state.doc.content.size, split.prefix)
+                : editor!.state.tr.delete(from, editor!.state.doc.content.size)
+              editor!.view.dispatch(
+                transaction
+                  .setMeta(PAGE_REFLOW_META, true)
+                  .setMeta('addToHistory', false),
+              )
+              if (editor!.state.doc.childCount === 0) {
+                editor!.commands.setContent('<p></p>', { emitUpdate: false })
+              }
             }
 
-            const nextEditor = editorsRef.current[nextIndex]
-            if (!nextEditor) break
-            const combined = nextEditor.isEmpty
-              ? html
-              : `${html}${nextEditor.getHTML()}`
-            nextEditor.commands.setContent(normalizePageHtml(combined), { emitUpdate: false })
+            if (nextEditor) {
+              const nextHtml = nextEditor.getHTML()
+              const combined = isEmptyPageHtml(nextHtml)
+                ? html
+                : `${html}${nextHtml}`
+              nextEditor.commands.setContent(normalizePageHtml(combined), { emitUpdate: false })
+              removeMovedContent()
+              if (caretFollowsBlock) {
+                pendingCaretRef.current = {
+                  pageIndex: nextIndex,
+                  position: mappedCaretPosition,
+                }
+              }
+              moved = true
+              continue
+            }
+
+            // No next sheet yet: delete locally, then commit a new page already
+            // seeded with this block so nothing is left without a destination.
+            removeMovedContent()
+            const live = readLivePages()
+            while (live.length < nextIndex) live.push('<p></p>')
+            const existingNext = live[nextIndex]
+            live[nextIndex] = existingNext && !isEmptyPageHtml(existingNext)
+              ? normalizePageHtml(`${html}${existingNext}`)
+              : normalizePageHtml(html)
+            commitPages(live)
+            nextEditor = await waitForEditor(nextIndex, epoch)
+            if (contentEpochRef.current !== epoch) return
+            if (caretFollowsBlock) {
+              pendingCaretRef.current = {
+                pageIndex: nextIndex,
+                position: mappedCaretPosition,
+              }
+            }
+            if (!nextEditor) {
+              // Pages state still holds the seeded HTML; stop this pass and
+              // let the next reflow continue once editors mount.
+              moved = true
+              break
+            }
             moved = true
           }
 
           // Pull from the next page while there is room.
+          // Do not pull when the next page is blank-only: those empties are
+          // intentional trailing lines / a new page the user just created.
           for (let pull = 0; pull < 20; pull += 1) {
+            if (contentEpochRef.current !== epoch) return
             editor = editorsRef.current[index]
             const nextEditor = editorsRef.current[index + 1]
-            if (!editor || !nextEditor || nextEditor.isEmpty) break
+            if (!editor || !nextEditor) break
+            if (isEmptyPageHtml(nextEditor.getHTML())) break
             if (pageOverflows(editor, maxHeight)) break
 
-            const first = nextEditor.state.doc.child(0)
-            const html = serializeNode(nextEditor, first)
-            const before = editor.getHTML()
-            editor.commands.setContent(normalizePageHtml(`${before}${html}`), { emitUpdate: false })
-            if (pageOverflows(editor, maxHeight)) {
-              editor.commands.setContent(normalizePageHtml(before), { emitUpdate: false })
+            const sourceFirst = nextEditor.state.doc.child(0)
+            // Each page editor owns its own ProseMirror schema instance.
+            // Clone the source node into the destination schema before
+            // measuring or inserting it; foreign-schema nodes can otherwise
+            // be rejected while the source deletion still succeeds.
+            const first = cloneNodeForEditor(editor, sourceFirst)
+            const currentDoc = editor.state.doc
+            const combinedDoc = withPageNodeAppended(currentDoc, first)
+            if (measureCandidateHeight(editor, combinedDoc) > maxHeight + 2) {
+              const split = splitParagraphForCurrentPage(
+                editor,
+                first,
+                (prefix) => withPageNodeAppended(currentDoc, prefix),
+                maxHeight,
+              )
+              if (!split) break
+              replaceDocumentPreservingSelection(
+                editor,
+                withPageNodeAppended(currentDoc, split.prefix),
+              )
+              nextEditor.view.dispatch(
+                nextEditor.state.tr
+                  .replaceWith(
+                    0,
+                    sourceFirst.nodeSize,
+                    cloneNodeForEditor(nextEditor, split.suffix),
+                  )
+                  .setMeta(PAGE_REFLOW_META, true)
+                  .setMeta('addToHistory', false),
+              )
+              moved = true
               break
             }
-            nextEditor.view.dispatch(nextEditor.state.tr.delete(0, first.nodeSize))
-            if (nextEditor.isEmpty) {
+            replaceDocumentPreservingSelection(editor, combinedDoc)
+            nextEditor.view.dispatch(
+              nextEditor.state.tr
+                .delete(0, sourceFirst.nodeSize)
+                .setMeta(PAGE_REFLOW_META, true)
+                .setMeta('addToHistory', false),
+            )
+            if (nextEditor.state.doc.childCount === 0) {
               nextEditor.commands.setContent('<p></p>', { emitUpdate: false })
             }
             moved = true
           }
         }
 
-        commitPages(readLivePages())
-        if (!moved) break
-        await new Promise((resolve) => window.requestAnimationFrame(resolve))
+        if (contentEpochRef.current !== epoch) return
+        if (moved) {
+          commitPages(readLivePages())
+          await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()))
+        } else {
+          break
+        }
       }
     } finally {
+      const follow = pendingCaretRef.current
+      const stillCurrent = contentEpochRef.current === epoch
       busyRef.current = false
+      if (!stillCurrent) {
+        pendingCaretRef.current = null
+      } else {
+        const live = readLivePages()
+        const lastIndex = Math.max(0, live.length - 1)
+        let preserveLastEmptyPage =
+          Boolean(follow)
+          || focusedIndexRef.current >= lastIndex
+        if (!preserveLastEmptyPage && live.length > 1 && isEmptyPageHtml(live[lastIndex] || '')) {
+          const previous = editorsRef.current[lastIndex - 1]
+          const chrome = chromeHeightsRef.current[lastIndex - 1] || 0
+          if (previous && pageOverflows(previous, draftPageBodyHeight(metrics, chrome))) {
+            preserveLastEmptyPage = true
+          }
+        }
+        commitPages(live, { preserveLastEmptyPage })
+
+        if (follow) {
+          pendingCaretRef.current = null
+          const editor = await waitForEditor(follow.pageIndex, epoch)
+          if (editor && contentEpochRef.current === epoch) {
+            focusPage(follow.pageIndex, follow.where, follow.position)
+          }
+        }
+      }
     }
-  }, [commitPages, metrics, pages.length, readLivePages])
+  }, [commitPages, focusPage, metrics, readLivePages, waitForEditor])
 
   const queueReflow = useCallback((fromIndex: number) => {
     window.clearTimeout(reflowTimerRef.current)
@@ -336,6 +1062,149 @@ export function DraftPagedEditor({
       void reflowFrom(fromIndex)
     }, 50)
   }, [reflowFrom])
+
+  const replaceCrossPageSelection = useCallback((replacement = '') => {
+    const selection = crossPageSelectionRef.current
+    if (!selection?.ranges.length) return false
+    const first = selection.ranges[0]
+    busyRef.current = true
+    try {
+      for (const range of selection.ranges) {
+        const size = range.editor.state.doc.content.size
+        const from = Math.max(0, Math.min(range.from, size))
+        const to = Math.max(from, Math.min(range.to, size))
+        let transaction = range.editor.state.tr.delete(from, to)
+        if (range === first && replacement) {
+          transaction = transaction.insertText(replacement, from)
+        }
+        range.editor.view.dispatch(
+          transaction.setMeta(PAGE_REFLOW_META, true),
+        )
+      }
+    } finally {
+      busyRef.current = false
+    }
+    const caretPosition = Math.max(1, first.from + replacement.length)
+    const startPage = first.pageIndex
+    clearCrossPageSelection()
+    pendingCaretRef.current = {
+      pageIndex: startPage,
+      position: caretPosition,
+    }
+    commitPages(readLivePages(), { preserveLastEmptyPage: false })
+    queueReflow(startPage)
+    return true
+  }, [clearCrossPageSelection, commitPages, queueReflow, readLivePages])
+
+  useEffect(() => {
+    const command = (event: Event) => {
+      const selection = crossPageSelectionRef.current
+      const detail = (event as CustomEvent<CrossPageCommand>).detail
+      if (!selection || !detail) return
+      const startPage = selection.ranges[0]?.pageIndex || 0
+      busyRef.current = true
+      try {
+        for (const range of selection.ranges) {
+          const editor = range.editor
+          if (editor.isDestroyed) continue
+          let chain = editor.chain().setTextSelection({ from: range.from, to: range.to })
+          switch (detail.action) {
+            case 'bold': chain = chain.toggleBold(); break
+            case 'italic': chain = chain.toggleItalic(); break
+            case 'underline': chain = chain.toggleUnderline(); break
+            case 'strike': chain = chain.toggleStrike(); break
+            case 'code': chain = chain.toggleCode(); break
+            case 'paragraph': chain = chain.setParagraph(); break
+            case 'blockquote': chain = chain.toggleBlockquote(); break
+            case 'bulletList': chain = chain.toggleBulletList(); break
+            case 'orderedList': chain = chain.toggleOrderedList(); break
+            case 'heading': chain = chain.toggleHeading({ level: detail.level }); break
+            case 'textAlign': chain = chain.setTextAlign(detail.value); break
+            case 'textMark': chain = chain.toggleMark(detail.mark); break
+            case 'clearMarks': chain = chain.unsetAllMarks(); break
+            case 'clearTextAppearance': chain = chain.unsetMark('textAppearance'); break
+            case 'textAppearance': {
+              const current = editor.getAttributes('textAppearance')
+              const next = { ...current, [detail.attribute]: detail.value || null }
+              chain = Object.values(next).every((entry) => !entry)
+                ? chain.unsetMark('textAppearance')
+                : chain.setMark('textAppearance', next)
+              break
+            }
+            case 'link':
+              chain = detail.href
+                ? chain.setLink({ href: detail.href })
+                : chain.unsetLink()
+              break
+          }
+          chain.run()
+        }
+      } finally {
+        busyRef.current = false
+      }
+      clearCrossPageSelection()
+      commitPages(readLivePages())
+      queueReflow(startPage)
+    }
+
+    const keydown = (event: KeyboardEvent) => {
+      if (!crossPageSelectionRef.current) return
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        clearCrossPageSelection()
+        return
+      }
+      if (event.key === 'Backspace' || event.key === 'Delete') {
+        event.preventDefault()
+        replaceCrossPageSelection()
+        return
+      }
+      if (
+        event.key.length === 1
+        && !event.ctrlKey
+        && !event.metaKey
+        && !event.altKey
+      ) {
+        event.preventDefault()
+        replaceCrossPageSelection(event.key)
+      }
+    }
+
+    const copy = (event: ClipboardEvent) => {
+      const selection = crossPageSelectionRef.current
+      if (!selection || !event.clipboardData) return
+      event.preventDefault()
+      event.clipboardData.setData('text/plain', selection.text)
+    }
+
+    const cut = (event: ClipboardEvent) => {
+      const selection = crossPageSelectionRef.current
+      if (!selection || !event.clipboardData) return
+      event.preventDefault()
+      event.clipboardData.setData('text/plain', selection.text)
+      replaceCrossPageSelection()
+    }
+
+    const clear = () => clearCrossPageSelection()
+    window.addEventListener('typesetly:cross-page-command', command)
+    window.addEventListener('typesetly:clear-cross-page-selection', clear)
+    document.addEventListener('keydown', keydown, { capture: true })
+    document.addEventListener('copy', copy, { capture: true })
+    document.addEventListener('cut', cut, { capture: true })
+    return () => {
+      window.removeEventListener('typesetly:cross-page-command', command)
+      window.removeEventListener('typesetly:clear-cross-page-selection', clear)
+      document.removeEventListener('keydown', keydown, { capture: true })
+      document.removeEventListener('copy', copy, { capture: true })
+      document.removeEventListener('cut', cut, { capture: true })
+    }
+  }, [
+    clearCrossPageSelection,
+    commitPages,
+    queueReflow,
+    readLivePages,
+    replaceCrossPageSelection,
+  ])
 
   useEffect(() => () => window.clearTimeout(reflowTimerRef.current), [])
 
@@ -448,7 +1317,9 @@ export function DraftPagedEditor({
 
   return (
     <div
+      ref={stackRef}
       className="editor-pages-stack"
+      onPointerDownCapture={(event) => beginCrossPageSelection(event.nativeEvent)}
       style={{
         width: metrics.widthPx,
         minHeight: draftStackHeight(Math.max(1, pages.length), metrics),
@@ -506,13 +1377,20 @@ export function DraftPagedEditor({
           }}
           onUpdateHtml={(html) => {
             if (busyRef.current) return
-            setPages((current) => {
-              const next = current.map((page, pageIndex) => (
-                pageIndex === index ? normalizePageHtml(html) : page
-              ))
-              emitChapter(next)
-              return next
-            })
+            // React's page-state snapshot can lag behind TipTap during a large
+            // selection deletion. Read every mounted editor first so saving
+            // one changed page can never overwrite untouched later pages.
+            const next = readLivePages()
+            while (next.length <= index) next.push('<p></p>')
+            next[index] = normalizePageHtml(html)
+            pagesRef.current = next
+            setPages((current) => (
+              current.length === next.length
+              && current.every((page, pageIndex) => page === next[pageIndex])
+                ? current
+                : next
+            ))
+            emitChapter(next)
             queueReflow(index)
           }}
           onRequestPrevious={() => {
@@ -618,6 +1496,8 @@ function DraftPageSheet({
   const chromeRef = useRef<HTMLDivElement>(null)
   const [chromeHeight, setChromeHeight] = useState(0)
   const skipSyncRef = useRef(false)
+  const typewriterRef = useRef(typewriterScrolling)
+  typewriterRef.current = typewriterScrolling
 
   useLayoutEffect(() => {
     const node = chromeRef.current
@@ -646,17 +1526,15 @@ function DraftPageSheet({
     onCreate: ({ editor: ed }) => onEditorReady(ed),
     onDestroy: () => onEditorDestroy(),
     onFocus: () => onFocus(),
-    onUpdate: ({ editor: ed }) => {
+    onUpdate: ({ editor: ed, transaction }) => {
       if (skipSyncRef.current) return
       onUpdateHtml(ed.getHTML())
-      if (typewriterScrolling) {
-        window.requestAnimationFrame(() => {
-          const selectionNode = ed.view.domAtPos(ed.state.selection.anchor).node
-          const element =
-            selectionNode instanceof Element ? selectionNode : selectionNode.parentElement
-          element?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-        })
-      }
+      if (transaction.getMeta(PAGE_REFLOW_META) || !ed.isFocused) return
+      window.requestAnimationFrame(() => {
+        if (ed.isFocused) {
+          scrollCaretIntoView(ed, typewriterRef.current ? 'center' : 'nearest')
+        }
+      })
     },
     editorProps: {
       attributes: {

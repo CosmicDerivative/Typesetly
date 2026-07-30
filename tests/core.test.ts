@@ -4,6 +4,7 @@ import { Editor } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import { EditorState, TextSelection } from '@tiptap/pm/state'
 import { buildCalloutNode, replaceCalloutRange } from '../src/editor/callouts.ts'
+import { countWords } from '../src/data.ts'
 import { plainTextFromHtml, wordDiff } from '../src/editor/diff.ts'
 import { Callout } from '../src/editor/extensions.ts'
 import {
@@ -35,6 +36,13 @@ test('word diff identifies inserted and deleted manuscript text', () => {
 
 test('HTML is reduced to readable text for comparisons', () => {
   assert.equal(plainTextFromHtml('<p>A &amp; B</p><p>Next</p>'), 'A & B Next')
+})
+
+test('word counting preserves words split by inline formatting marks', () => {
+  assert.equal(
+    countWords('<p>One cro<strong>ss-page</strong> word.</p><p>Next line.</p>'),
+    5,
+  )
 })
 
 test('new project defaults include migration-safe advanced settings', () => {
@@ -200,13 +208,72 @@ test('chapter pages split on breaks, pack by budget, and rejoin for storage', as
     joinChapterPages,
     splitChapterIntoPages,
     isEmptyPageHtml,
+    splitTopLevelBlocks,
   } = await import('../src/layout/chapterPages.ts')
 
   const withBreak =
     '<p>One</p><div data-typesetly-node="page-break"></div><p>Two</p>'
   assert.deepEqual(splitChapterIntoPages(withBreak, 10_000), ['<p>One</p>', '<p>Two</p>'])
   assert.equal(joinChapterPages(['<p>One</p>', '<p>Two</p>']), '<p>One</p><p>Two</p>')
+  assert.equal(
+    joinChapterPages([
+      '<p>The paragraph starts on page one </p>',
+      '<p data-typesetly-page-continuation="true">and continues on page two.</p>',
+    ]),
+    '<p>The paragraph starts on page one and continues on page two.</p>',
+  )
+  assert.equal(
+    joinChapterPages([
+      '<p>The paragraph starts on page one</p>',
+      '<p data-typesetly-page-continuation="true" data-typesetly-page-space="true">and continues on page two.</p>',
+    ]),
+    '<p>The paragraph starts on page one and continues on page two.</p>',
+  )
   assert.equal(isEmptyPageHtml('<p></p>'), true)
+  assert.equal(isEmptyPageHtml('<p></p><p></p>'), true)
+  assert.equal(isEmptyPageHtml('<hr data-typesetly-node="scene-break">'), false)
+  assert.equal(isEmptyPageHtml('<p>Hi</p><p></p>'), false)
+
+  // Trailing blank pages must survive join so Enter-at-end lines are not erased.
+  assert.equal(
+    joinChapterPages(['<p>Hello</p>', '<p></p>', '<p></p>']),
+    '<p>Hello</p><p></p><p></p>',
+  )
+
+  const {
+    pruneEmptyDraftPages,
+    countBlankParagraphs,
+  } = await import('../src/layout/chapterPages.ts')
+
+  // Non-last empty sheets are always removed; a blank last page can be kept.
+  assert.deepEqual(
+    pruneEmptyDraftPages(['<p>Hi</p>', '<p></p>', '<p>There</p>']),
+    ['<p>Hi</p>', '<p>There</p>'],
+  )
+  assert.deepEqual(
+    pruneEmptyDraftPages(['<p>Hi</p>', '<p></p>'], { preserveLastEmptyPage: true }),
+    ['<p>Hi</p>', '<p></p>'],
+  )
+  assert.deepEqual(
+    pruneEmptyDraftPages(['<p>Hi</p>', '<p></p>'], { preserveLastEmptyPage: false }),
+    ['<p>Hi</p>'],
+  )
+  assert.deepEqual(
+    pruneEmptyDraftPages(['<p>Hi</p>', '<p></p><p></p>'], { preserveLastEmptyPage: false }),
+    ['<p>Hi</p><p></p><p></p>'],
+  )
+  assert.equal(countBlankParagraphs('<p></p><p></p>'), 2)
+
+  // TipTap scene breaks are bare <hr> tags — must not be dropped while paging.
+  const withScene = '<p>A</p><hr data-typesetly-node="scene-break"><p>B</p>'
+  assert.deepEqual(
+    splitTopLevelBlocks(withScene),
+    ['<p>A</p>', '<hr data-typesetly-node="scene-break">', '<p>B</p>'],
+  )
+  const scenePages = splitChapterIntoPages(withScene, 10_000)
+  assert.equal(joinChapterPages(scenePages).includes('data-typesetly-node="scene-break"'), true)
+  assert.equal(joinChapterPages(scenePages).includes('<p>A</p>'), true)
+  assert.equal(joinChapterPages(scenePages).includes('<p>B</p>'), true)
 
   const long = Array.from({ length: 40 }, (_, index) => `<p>Block ${index} with enough words to consume budget.</p>`).join('')
   const pages = splitChapterIntoPages(long, 120)

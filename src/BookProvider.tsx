@@ -526,16 +526,22 @@ export function BookProvider({ children }: { children: ReactNode }) {
       // Never mutate a book whose chapter HTML has not finished loading;
       // otherwise an edit could persist empty content over the real text.
       if (!hydratedRef.current.has(openBookId)) return
-      markDirty()
       // All project writes pass through one functional update so rapid editor,
       // drag/drop, and timer changes cannot overwrite one another.
-      setBooks((previous) =>
-        previous.map((book) =>
+      let didChange = false
+      setBooks((previous) => {
+        const current = previous.find((book) => book.id === openBookId)
+        if (!current) return previous
+        const updated = updater(current)
+        if (updated === current) return previous
+        didChange = true
+        return previous.map((book) =>
           book.id === openBookId
-            ? normalizeBook({ ...updater(book), updatedAt: new Date().toISOString() })
+            ? normalizeBook({ ...updated, updatedAt: new Date().toISOString() })
             : book,
-        ),
-      )
+        )
+      })
+      if (didChange) markDirty()
     },
     [markDirty, openBookId],
   )
@@ -922,10 +928,11 @@ export function BookProvider({ children }: { children: ReactNode }) {
     updateChapterContent: (id: string, content: string) =>
       mutateOpen((book) => {
         const current = book.chapters.find((chapter) => chapter.id === id)
-        const delta = current ? countWords(content) - countWords(current.content) : 0
+        if (!current || current.content === content) return book
+        const delta = countWords(content) - countWords(current.content)
         const key = todayKey()
         const trackedChanges = [...(book.trackedChanges || [])]
-        if (book.trackChanges && current && current.content !== content) {
+        if (book.trackChanges) {
           const last = trackedChanges.at(-1)
           const canCoalesce =
             last?.chapterId === id &&
