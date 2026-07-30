@@ -954,7 +954,7 @@ export function parseSnapshot(raw: string): SnapshotFile {
 export function upsertBook(state: LibraryState, book: BookProject): LibraryState {
   const idx = state.books.findIndex((candidate) => candidate.id === book.id)
   const books = [...state.books]
-  const next = { ...book, schemaVersion: 4, updatedAt: new Date().toISOString() }
+  const next = { ...book, schemaVersion: 5, updatedAt: new Date().toISOString() }
   if (idx >= 0) books[idx] = next
   else books.unshift(next)
   return { ...state, books }

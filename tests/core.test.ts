@@ -17,6 +17,7 @@ import {
   findInChapterHtml,
   findResultsPageSlice,
   findTextOccurrences,
+  plainTextCharacterCount,
   snippetAroundMatch,
 } from '../src/editor/find.ts'
 import {
@@ -39,9 +40,8 @@ test('HTML is reduced to readable text for comparisons', () => {
 test('new project defaults include migration-safe advanced settings', () => {
   assert.equal(defaultChapterOptions().includeIn, 'all')
   assert.equal(defaultEditorPrefs().spellcheck, true)
-  // External proofreading extensions caused runaway memory usage, so new
-  // books keep them off until the writer opts in.
-  assert.equal(defaultEditorPrefs().externalProofreading, 'off')
+  // Browser grammar extensions are allowed on the active chapter by default.
+  assert.equal(defaultEditorPrefs().externalProofreading, 'always')
   assert.equal(defaultEditorPrefs().recoveryIntervalMinutes, 5)
   assert.deepEqual(defaultGoals().habitWritingDays, [1, 2, 3, 4, 5])
   assert.deepEqual(defaultGoals().wordLog, {})
@@ -164,6 +164,55 @@ test('automatic external proofreading protects long chapters while preserving ov
   assert.equal(externalProofreadingEnabled('auto', EXTERNAL_PROOFREADING_CHARACTER_LIMIT + 1), false)
   assert.equal(externalProofreadingEnabled('always', 1_000_000), true)
   assert.equal(externalProofreadingEnabled('off', 1), false)
+})
+
+test('plain text character counts ignore markup for proofreading limits', () => {
+  assert.equal(plainTextCharacterCount('<p>Hello &amp; world</p>'), 'Hello & world'.length)
+  assert.equal(plainTextCharacterCount('<p></p>'), 0)
+})
+
+test('draft page metrics preserve trim aspect and grow sheet stacks', async () => {
+  const { draftPageCount, draftPageMetrics, draftStackHeight } = await import('../src/layout/draftPages.ts')
+  const metrics = draftPageMetrics({
+    trimWidthIn: 6,
+    trimHeightIn: 9,
+    marginInside: 0.75,
+    marginOutside: 0.5,
+    marginTop: 0.6,
+    marginBottom: 0.6,
+    justified: true,
+    hyphens: true,
+    keepSubheadings: true,
+    keepSceneBreaks: true,
+    layoutPriority: 'best-of-both',
+    largePrint: false,
+  })
+  assert.equal(metrics.widthPx, 720)
+  assert.equal(metrics.heightPx, 1080)
+  assert.equal(draftPageCount(1, metrics), 1)
+  assert.equal(draftPageCount(metrics.heightPx, metrics), 1)
+  assert.equal(draftPageCount(metrics.heightPx + 1, metrics), 2)
+  assert.equal(draftStackHeight(2, metrics), metrics.heightPx * 2 + metrics.gapPx)
+})
+
+test('chapter pages split on breaks, pack by budget, and rejoin for storage', async () => {
+  const {
+    joinChapterPages,
+    splitChapterIntoPages,
+    isEmptyPageHtml,
+  } = await import('../src/layout/chapterPages.ts')
+
+  const withBreak =
+    '<p>One</p><div data-typesetly-node="page-break"></div><p>Two</p>'
+  assert.deepEqual(splitChapterIntoPages(withBreak, 10_000), ['<p>One</p>', '<p>Two</p>'])
+  assert.equal(joinChapterPages(['<p>One</p>', '<p>Two</p>']), '<p>One</p><p>Two</p>')
+  assert.equal(isEmptyPageHtml('<p></p>'), true)
+
+  const long = Array.from({ length: 40 }, (_, index) => `<p>Block ${index} with enough words to consume budget.</p>`).join('')
+  const pages = splitChapterIntoPages(long, 120)
+  assert.ok(pages.length > 1)
+  assert.equal(joinChapterPages(pages).includes('Block 0'), true)
+  assert.equal(joinChapterPages(pages).includes('Block 39'), true)
 })
 
 test('message bubbles build as a stable callout node with normalized content', () => {

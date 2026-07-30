@@ -73,6 +73,18 @@ npm.cmd start
 
 On macOS or Linux, use `npm install` and `npm start`. On Windows, `npm.cmd` avoids the PowerShell execution-policy error that can block `npm.ps1`.
 
+## Self-host with Docker
+
+Serve the Vite web build in a browser (not the Electron desktop shell):
+
+```bash
+docker compose up -d --build
+```
+
+Then open http://localhost:8080 .
+
+Limitations: manuscripts stay in that browser's IndexedDB; there is no Electron desktop integration (for example Scrivener External Folder Sync); clearing site data removes local books unless you export a backup.
+
 ## A quick tour
 
 - **Draft** is the main writing workspace.

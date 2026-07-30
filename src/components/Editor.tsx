@@ -1,8 +1,4 @@
-import { useEditor, EditorContent } from '@tiptap/react'
-import StarterKit from '@tiptap/starter-kit'
-import TextAlign from '@tiptap/extension-text-align'
-import Placeholder from '@tiptap/extension-placeholder'
-import CharacterCount from '@tiptap/extension-character-count'
+import { type Editor } from '@tiptap/react'
 import {
   AlignCenter,
   AlignJustify,
@@ -38,38 +34,22 @@ import { v4 as uuid } from 'uuid'
 import { useApp } from '../BookContext'
 import { countBookWords, countWords } from '../data'
 import { ChapterOptionsMenu } from './ChapterOptionsMenu'
+import { DraftPagedEditor } from './DraftPagedEditor'
 import './Editor.css'
 import { DOMSerializer } from '@tiptap/pm/model'
-import { TextSelection } from '@tiptap/pm/state'
-import {
-  Callout,
-  AttributedQuote,
-  Footnote,
-  ManuscriptImage,
-  Monospace,
-  PageBreak,
-  SansSerif,
-  SceneBreak,
-  SmallCaps,
-  Subscript,
-  SuperscriptText,
-  TextAppearance,
-  HangingIndentBlock,
-  VerseBlock,
-} from '../editor/extensions'
 import { Dialog } from './Dialog'
 import { processImageFile } from '../images/process'
 import { dataUrlToBlob } from '../library/images'
 import { storeNewImage } from '../library/store'
 import { useResolvedImageSrc } from '../library/useResolvedImageSrc'
 import { buildCalloutNode, replaceCalloutRange } from '../editor/callouts'
-import { smartDashForInsertion, smartQuoteForInsertion } from '../editor/smartQuotes'
 import { FONT_FAMILY_GROUPS } from '../themes/fonts'
 import {
+  draftPageMetrics,
+} from '../layout/draftPages'
+import {
   externalProofreadingEnabled,
-  FindHighlight,
-  findHighlightKey,
-  findTextOccurrences,
+  plainTextCharacterCount,
 } from '../editor/find'
 
 const TEXT_SIZES = [9, 10, 11, 12, 13, 14, 16, 18, 20, 22, 24, 28, 32, 36, 42, 48, 64]
@@ -89,45 +69,6 @@ function formatTimer(seconds: number) {
   const m = Math.floor(seconds / 60)
   const s = seconds % 60
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-}
-
-function sanitizePastedHtml(html: string) {
-  const doc = new DOMParser().parseFromString(html, 'text/html')
-  const allowed = new Set(['P', 'BR', 'STRONG', 'B', 'EM', 'I', 'U', 'S', 'STRIKE', 'SUB', 'SUP', 'H2', 'H3', 'H4', 'H5', 'H6', 'UL', 'OL', 'LI', 'BLOCKQUOTE', 'A', 'IMG'])
-  let changed = false
-  doc.querySelectorAll('script,style,iframe,object,embed,table').forEach((element) => {
-    element.replaceWith(doc.createTextNode(element.textContent || ''))
-    changed = true
-  })
-  for (const element of Array.from(doc.body.querySelectorAll('*'))) {
-    if (!allowed.has(element.tagName)) {
-      element.replaceWith(...Array.from(element.childNodes))
-      changed = true
-      continue
-    }
-    for (const attribute of Array.from(element.attributes)) {
-      const keep =
-        (element.tagName === 'A' && attribute.name === 'href') ||
-        (element.tagName === 'IMG' && ['src', 'alt', 'title'].includes(attribute.name))
-      if (!keep) {
-        element.removeAttribute(attribute.name)
-        changed = true
-      }
-    }
-    if (element.tagName === 'A') {
-      const href = element.getAttribute('href') || ''
-      if (!/^(https?:|mailto:|#)/i.test(href)) {
-        element.removeAttribute('href')
-        changed = true
-      }
-    }
-  }
-  if (changed) {
-    window.dispatchEvent(new CustomEvent('typesetly:notice', {
-      detail: 'Pasted content was cleaned to remove unsupported formatting and unsafe markup.',
-    }))
-  }
-  return doc.body.innerHTML
 }
 
 export function EditorPane() {
@@ -181,178 +122,24 @@ export function EditorPane() {
   const [quoteAttribution, setQuoteAttribution] = useState('')
   const imageRefInput = useRef<HTMLInputElement>(null)
   const blockRangeRef = useRef<{ from: number; to: number } | null>(null)
-  const activeChapterId = activeChapter?.id
   const activeChapterContent = activeChapter?.content
   const chapterOrnamentSource =
     activeChapter?.imageDataUrl || activeTheme.chapterHeading.sharedImageDataUrl
   const chapterOrnamentSrc = useResolvedImageSrc(chapterOrnamentSource)
-  const allowExternalProofreading = externalProofreadingEnabled(
-    project?.editorPrefs.externalProofreading ?? 'auto',
-    activeChapterContent?.length ?? 0,
+  const [editor, setEditor] = useState<Editor | null>(null)
+  const [draftPageTotal, setDraftPageTotal] = useState(1)
+  const pageMetrics = useMemo(
+    () => draftPageMetrics(activeTheme.print),
+    [activeTheme.print],
   )
-
-  const editor = useEditor({
-    immediatelyRender: false,
-    extensions: [
-      StarterKit.configure({
-        heading: { levels: [1, 2, 3, 4, 5, 6] },
-        link: { openOnClick: false },
-        horizontalRule: false,
-      }),
-      TextAlign.configure({ types: ['heading', 'paragraph'] }),
-      Placeholder.configure({ placeholder: 'Start writing…' }),
-      CharacterCount,
-      ManuscriptImage,
-      SceneBreak,
-      PageBreak,
-      Footnote,
-      Callout,
-      SmallCaps,
-      SansSerif,
-      Monospace,
-      Subscript,
-      SuperscriptText,
-      VerseBlock,
-      HangingIndentBlock,
-      AttributedQuote,
-      TextAppearance,
-      FindHighlight,
-    ],
-    content: activeChapter?.content || '<p></p>',
-    onUpdate: ({ editor: ed }) => {
-      if (!activeChapter) return
-      updateChapterContent(activeChapter.id, ed.getHTML())
-      if (project?.editorPrefs.typewriterScrolling) {
-        window.requestAnimationFrame(() => {
-          const selectionNode = ed.view.domAtPos(ed.state.selection.anchor).node
-          const element =
-            selectionNode instanceof Element ? selectionNode : selectionNode.parentElement
-          element?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-        })
-      }
-    },
-    editorProps: {
-      attributes: { class: 'prose-editor' },
-      transformPastedHTML: sanitizePastedHtml,
-      handleTextInput(view, from, to, text) {
-        if (!project?.editorPrefs.smartQuotes) return false
-        const previousCharacter = view.state.doc.textBetween(Math.max(0, from - 1), from)
-        if (text === '"' || text === "'") {
-          const converted = smartQuoteForInsertion(text, previousCharacter)
-          view.dispatch(view.state.tr.insertText(converted, from, to))
-          return true
-        }
-        const dash = smartDashForInsertion(text, previousCharacter)
-        if (dash) {
-          view.dispatch(view.state.tr.insertText(dash.text, from - dash.deleteBefore, to))
-          return true
-        }
-        return false
-      },
-    },
-  })
-
-  useEffect(() => {
-    if (!editor || !activeChapterId) return
-    if (editor.getHTML() !== activeChapterContent) {
-      editor.commands.setContent(activeChapterContent || '<p></p>', { emitUpdate: false })
-    }
-  }, [activeChapterContent, activeChapterId, editor])
-
-  useEffect(() => {
-    if (!editor) return
-    // LanguageTool documents this attribute as its per-editor opt-out. Apply it
-    // directly to ProseMirror's contenteditable root so dynamically mounted
-    // editors are recognized before an extension begins a full-document scan.
-    editor.view.dom.setAttribute('data-lt-active', allowExternalProofreading ? 'true' : 'false')
-  }, [allowExternalProofreading, editor])
-
-  useEffect(() => {
-    if (!editor || !activeChapterId) return
-    const goToScene = (event: Event) => {
-      const sceneIndex = (event as CustomEvent<{ index: number }>).detail.index
-      const positions: number[] = [1]
-      editor.state.doc.descendants((node, position) => {
-        if (node.type.name === 'sceneBreak') positions.push(position + node.nodeSize)
-      })
-      const requested = positions[Math.max(0, Math.min(sceneIndex, positions.length - 1))]
-      const position = Math.max(0, Math.min(requested, editor.state.doc.content.size))
-      const selection = TextSelection.near(editor.state.doc.resolve(position), 1)
-      editor.view.dispatch(editor.state.tr.setSelection(selection).scrollIntoView())
-      editor.view.focus()
-    }
-    const reportScene = () => {
-      let index = 0
-      const selectionPosition = editor.state.selection.from
-      editor.state.doc.descendants((node, position) => {
-        if (node.type.name === 'sceneBreak' && position < selectionPosition) index += 1
-      })
-      window.dispatchEvent(new CustomEvent('typesetly:active-scene', {
-        detail: { chapterId: activeChapterId, index },
-      }))
-    }
-    window.addEventListener('typesetly:scene', goToScene)
-    editor.on('selectionUpdate', reportScene)
-    reportScene()
-    return () => {
-      window.removeEventListener('typesetly:scene', goToScene)
-      editor.off('selectionUpdate', reportScene)
-    }
-  }, [activeChapterId, editor])
-
-  useEffect(() => {
-    if (!editor || !activeChapterId) return
-    const findMatch = (event: Event) => {
-      const detail = (event as CustomEvent<{
-        chapterId: string
-        query: string
-        occurrence: number
-        caseSensitive: boolean
-        replaceWith?: string
-      }>).detail
-      if (!detail || detail.chapterId !== activeChapterId || !detail.query) return
-
-      const ranges: Array<{ from: number; to: number }> = []
-      editor.state.doc.descendants((node, position) => {
-        if (!node.isText || !node.text) return
-        for (const match of findTextOccurrences(node.text, detail.query, detail.caseSensitive)) {
-          ranges.push({
-            from: position + match.index,
-            to: position + match.index + match.length,
-          })
-        }
-      })
-      const range = ranges[detail.occurrence]
-      if (!range) return
-      // Select/replace and paint a decoration highlight without focusing the
-      // editor — Find/Replace keeps keyboard focus so Enter advances matches.
-      let transaction = detail.replaceWith === undefined
-        ? editor.state.tr.setSelection(TextSelection.create(editor.state.doc, range.from, range.to))
-        : editor.state.tr.insertText(detail.replaceWith, range.from, range.to)
-      if (detail.replaceWith === undefined) {
-        transaction = transaction.setMeta(findHighlightKey, {
-          matches: ranges,
-          activeIndex: detail.occurrence,
-        })
-      } else {
-        transaction = transaction.setMeta(findHighlightKey, null)
-      }
-      editor.view.dispatch(transaction.scrollIntoView())
-      window.requestAnimationFrame(() => {
-        const highlight = editor.view.dom.querySelector('.find-match-highlight')
-        highlight?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-      })
-    }
-    const clearFindHighlight = () => {
-      editor.view.dispatch(editor.state.tr.setMeta(findHighlightKey, null))
-    }
-    window.addEventListener('typesetly:find-match', findMatch)
-    window.addEventListener('typesetly:find-clear', clearFindHighlight)
-    return () => {
-      window.removeEventListener('typesetly:find-match', findMatch)
-      window.removeEventListener('typesetly:find-clear', clearFindHighlight)
-    }
-  }, [activeChapterId, editor])
+  const chapterPlainTextLength = useMemo(
+    () => plainTextCharacterCount(activeChapterContent ?? ''),
+    [activeChapterContent],
+  )
+  const allowExternalProofreading = externalProofreadingEnabled(
+    project?.editorPrefs.externalProofreading ?? 'always',
+    chapterPlainTextLength,
+  )
 
   useEffect(() => {
     const closePopoverMenus = (event: PointerEvent) => {
@@ -381,7 +168,6 @@ export function EditorPane() {
 
   const isFrontOrSpecial =
     activeChapter.type !== 'chapter' && activeChapter.type !== 'part'
-  const hasGeneratedTitle = activeChapter.type === 'title-page' || activeChapter.type === 'contents'
 
   const applyStyle = (value: string) => {
     if (!editor) return
@@ -914,58 +700,24 @@ export function EditorPane() {
         </div>
       </div>
 
-      <div className={prefs.typewriterScrolling ? 'editor-scroll typewriter' : 'editor-scroll'}>
-        <div
-          className="editor-sheet"
-          style={{
-            fontFamily: prefs.fontFamily,
-            fontSize: prefs.fontSize,
-            lineHeight: prefs.lineHeight,
-          }}
-        >
-          <div className="chapter-meta">
-            {!isFrontOrSpecial &&
-              activeTheme.chapterHeading.imageEnabled &&
-              !activeChapter.options.hideChapterImage &&
-              (activeChapter.imageDataUrl || activeTheme.chapterHeading.sharedImageDataUrl) && (
-              <div className="chapter-ornament" aria-hidden>
-                {chapterOrnamentSrc && (
-                  <img src={chapterOrnamentSrc} alt="" />
-                )}
-              </div>
-            )}
-            <div className="chapter-titles">
-              {hasGeneratedTitle ? (
+      <div className={prefs.typewriterScrolling ? 'editor-scroll typewriter editor-desk' : 'editor-scroll editor-desk'}>
+        {activeChapter.type === 'title-page' ? (
+          <div
+            className="editor-page-sheet editor-page-sheet-static"
+            style={{
+              width: pageMetrics.widthPx,
+              minHeight: pageMetrics.heightPx,
+              paddingTop: pageMetrics.marginTopPx,
+              paddingRight: pageMetrics.marginRightPx,
+              paddingBottom: pageMetrics.marginBottomPx,
+              paddingLeft: pageMetrics.marginLeftPx,
+            }}
+          >
+            <div className="chapter-meta">
+              <div className="chapter-titles">
                 <h2 className="chapter-title-static">{activeChapter.title}</h2>
-              ) : (
-                <input
-                  className="chapter-title-input"
-                  value={activeChapter.title}
-                  onChange={(e) => updateChapterTitle(activeChapter.id, e.target.value)}
-                  placeholder="Chapter title"
-                />
-              )}
-              {(activeChapter.type === 'chapter' || activeChapter.type === 'part') && (
-                <input
-                  className="chapter-subtitle-input"
-                  value={activeChapter.subtitle}
-                  onChange={(e) => updateChapterSubtitle(activeChapter.id, e.target.value)}
-                  placeholder="Add subtitle"
-                />
-              )}
+              </div>
             </div>
-            <button type="button" className="chapter-settings" title="Chapter settings" onClick={() => setOptionsOpen((v) => !v)}>
-              <Settings size={16} />
-            </button>
-            {optionsOpen && (
-              <ChapterOptionsMenu
-                chapter={activeChapter}
-                onClose={() => setOptionsOpen(false)}
-              />
-            )}
-          </div>
-
-          {activeChapter.type === 'title-page' ? (
             <div className="title-page-editor">
               <label className="tp-label" htmlFor="title-page-book-title">Book title</label>
               <input
@@ -1012,7 +764,24 @@ export function EditorPane() {
                 />
               </div>
             </div>
-          ) : activeChapter.type === 'contents' ? (
+          </div>
+        ) : activeChapter.type === 'contents' ? (
+          <div
+            className="editor-page-sheet editor-page-sheet-static"
+            style={{
+              width: pageMetrics.widthPx,
+              minHeight: pageMetrics.heightPx,
+              paddingTop: pageMetrics.marginTopPx,
+              paddingRight: pageMetrics.marginRightPx,
+              paddingBottom: pageMetrics.marginBottomPx,
+              paddingLeft: pageMetrics.marginLeftPx,
+            }}
+          >
+            <div className="chapter-meta">
+              <div className="chapter-titles">
+                <h2 className="chapter-title-static">{activeChapter.title}</h2>
+              </div>
+            </div>
             <div className="contents-editor">
               <ol>
                 {project.chapters
@@ -1026,15 +795,69 @@ export function EditorPane() {
                   ))}
               </ol>
             </div>
-          ) : (
-            <EditorContent
-              editor={editor}
-              spellCheck={prefs.spellcheck}
-              data-lt-active={allowExternalProofreading ? 'true' : 'false'}
-              className={`editor-content ${prefs.paragraphStyle} ${prefs.textAlign}`}
-            />
-          )}
-        </div>
+          </div>
+        ) : (
+          <DraftPagedEditor
+            chapterId={activeChapter.id}
+            chapterTitle={activeChapter.title}
+            chapterHtml={activeChapter.content || '<p></p>'}
+            language={project.details.language || 'en'}
+            print={activeTheme.print}
+            fontFamily={prefs.fontFamily}
+            fontSize={prefs.fontSize}
+            lineHeight={prefs.lineHeight}
+            paragraphStyle={prefs.paragraphStyle}
+            textAlign={prefs.textAlign}
+            spellcheck={prefs.spellcheck}
+            smartQuotes={prefs.smartQuotes}
+            typewriterScrolling={prefs.typewriterScrolling}
+            allowExternalProofreading={allowExternalProofreading}
+            onChapterHtmlChange={(html) => updateChapterContent(activeChapter.id, html)}
+            onActiveEditorChange={setEditor}
+            onPageCountChange={setDraftPageTotal}
+            firstPageChrome={(
+              <div className="chapter-meta">
+                {!isFrontOrSpecial &&
+                  activeTheme.chapterHeading.imageEnabled &&
+                  !activeChapter.options.hideChapterImage &&
+                  (activeChapter.imageDataUrl || activeTheme.chapterHeading.sharedImageDataUrl) && (
+                  <div className="chapter-ornament" aria-hidden>
+                    {chapterOrnamentSrc && (
+                      <img src={chapterOrnamentSrc} alt="" />
+                    )}
+                  </div>
+                )}
+                <div className="chapter-titles">
+                  <input
+                    className="chapter-title-input"
+                    value={activeChapter.title}
+                    onChange={(e) => updateChapterTitle(activeChapter.id, e.target.value)}
+                    placeholder="Chapter title"
+                    data-lt-active="false"
+                  />
+                  {(activeChapter.type === 'chapter' || activeChapter.type === 'part') && (
+                    <input
+                      className="chapter-subtitle-input"
+                      value={activeChapter.subtitle}
+                      onChange={(e) => updateChapterSubtitle(activeChapter.id, e.target.value)}
+                      placeholder="Add subtitle"
+                      data-lt-active="false"
+                    />
+                  )}
+                </div>
+                <button type="button" className="chapter-settings" title="Chapter settings" onClick={() => setOptionsOpen((v) => !v)}>
+                  <Settings size={16} />
+                </button>
+                {optionsOpen && (
+                  <ChapterOptionsMenu
+                    chapter={activeChapter}
+                    onClose={() => setOptionsOpen(false)}
+                  />
+                )}
+              </div>
+            )}
+          />
+        )}
       </div>
 
       <footer className="editor-status">
@@ -1062,12 +885,13 @@ export function EditorPane() {
         </div>
         <div className="status-right">
           <button type="button" className="wordcount-btn" onClick={() => setWordMenu((value) => !value)} aria-expanded={wordMenu}>
-            Chapter – {wordCount} words
+            Chapter – {wordCount} words · {draftPageTotal} {draftPageTotal === 1 ? 'page' : 'pages'}
             <ChevronDown size={14} />
           </button>
           {wordMenu && (
             <div className="wordcount-menu">
               <span>Current chapter <strong>{wordCount.toLocaleString()}</strong></span>
+              <span>Approx. pages <strong>{draftPageTotal.toLocaleString()}</strong></span>
               <span>Whole book <strong>{countBookWords(project).toLocaleString()}</strong></span>
               <span>Goal <strong>{project.goals.bookWordTarget.toLocaleString()}</strong></span>
             </div>

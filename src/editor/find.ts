@@ -173,11 +173,26 @@ export const FindHighlight = Extension.create({
 
 export type ExternalProofreadingMode = 'auto' | 'always' | 'off'
 
-// Reports showed external proofreading extensions ballooning memory well
-// below the previous 30k cutoff, so the automatic mode is more conservative.
-// Chapter HTML no longer embeds base64 images, making this an honest measure
-// of the text an extension would actually scan.
-export const EXTERNAL_PROOFREADING_CHARACTER_LIMIT = 20_000
+// Plain-text length of the active chapter (not HTML). Automatic mode only
+// pauses extensions on unusually long chapters; normal novel chapters stay on.
+export const EXTERNAL_PROOFREADING_CHARACTER_LIMIT = 60_000
+
+/** Visible text length an extension would scan (tags stripped). */
+export function plainTextCharacterCount(html: string) {
+  return html
+    .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\s+/g, ' ')
+    .trim()
+    .length
+}
 
 export function externalProofreadingEnabled(
   mode: ExternalProofreadingMode,

@@ -1,0 +1,7 @@
+﻿services:
+  typesetly:
+    build: .
+    image: typesetly:local
+    ports:
+      - "8080:80"
+    restart: unless-stopped

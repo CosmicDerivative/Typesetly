@@ -667,15 +667,16 @@ export function EditorSettingsPanel() {
             externalProofreading: event.target.value as typeof p.externalProofreading,
           })}
         >
-          <option value="auto">Automatic performance protection</option>
           <option value="always">Always allow</option>
-          <option value="off">Always pause</option>
+          <option value="auto">Allow (pause on huge chapters)</option>
+          <option value="off">Pause extensions</option>
         </select>
       </label>
       <p className="sp-hint">
-        Automatic pauses extensions such as LanguageTool on chapters over about{' '}
-        {EXTERNAL_PROOFREADING_CHARACTER_LIMIT.toLocaleString()} characters.
-        Native browser spellcheck remains available.
+        Lets extensions such as LanguageTool check Draft pages while you write.
+        Always allow is the default. Automatic mode pauses only above about{' '}
+        {EXTERNAL_PROOFREADING_CHARACTER_LIMIT.toLocaleString()} characters of
+        chapter text. Native browser spellcheck remains available.
       </p>
       <label>
         Automatic recovery snapshots

@@ -126,6 +126,7 @@ function readPanelLayout(): { sidebarOpen: boolean; rightPanel: RightPanel } {
  */
 function normalizeBook(book: BookProject): BookProject {
   const shouldNormalizeNamedMatter = (book.schemaVersion || 0) < 4
+  const migrateExternalProofreading = (book.schemaVersion || 0) < 6
   const partIds = new Set(book.chapters.filter((chapter) => chapter.type === 'part').map((chapter) => chapter.id))
   const manuscriptFolders = (book.manuscriptFolders || []).map((folder, index) => ({
     id: folder.id || uuid(),
@@ -137,15 +138,23 @@ function normalizeBook(book: BookProject): BookProject {
     book.editorPrefs?.workspaceTheme,
     book.editorPrefs?.darkMode,
   )
+  const savedProofreading = book.editorPrefs?.externalProofreading
+  // Prefer Always allow so LanguageTool stays active for normal drafting.
+  // Preserve an explicit Pause choice; otherwise migrate onto always.
+  const externalProofreading =
+    migrateExternalProofreading
+      ? (savedProofreading === 'off' ? 'off' : 'always')
+      : savedProofreading ?? 'always'
   return {
     ...book,
-    schemaVersion: 4,
+    schemaVersion: 6,
     goals: { ...defaultGoals(), ...book.goals },
     editorPrefs: {
       ...defaultEditorPrefs(),
       ...book.editorPrefs,
       workspaceTheme,
       darkMode: isDarkWorkspaceTheme(workspaceTheme),
+      externalProofreading,
     },
     customThemes: book.customThemes || [],
     masterPages: book.masterPages || [],

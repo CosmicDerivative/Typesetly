@@ -509,3 +509,13 @@
     transition: none;
   }
 }
+
+/* LanguageTool coexistence: drafting paper stays light-scheme so extension
+   widgets are not forced into dark UI chrome by .app-shell.dark. */
+.app-shell.dark .editor-page-sheet,
+.app-shell.dark .editor-sheet,
+.app-shell.dark .editor-content,
+.app-shell.dark .prose-editor,
+.app-shell.dark [data-lt-active='true'] {
+  color-scheme: light;
+}

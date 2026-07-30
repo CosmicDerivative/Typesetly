@@ -117,6 +117,86 @@
   padding: 28px 24px 40px;
 }
 
+.editor-desk {
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, .35), transparent 42%),
+    linear-gradient(180deg, #d9d4cc 0%, #cfc8be 100%);
+}
+
+.app-shell.dark .editor-desk {
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, .04), transparent 40%),
+    linear-gradient(180deg, #2a3038 0%, #1f242b 100%);
+}
+
+.editor-pages-stack {
+  position: relative;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 8px;
+}
+
+.editor-page-sheet {
+  position: relative;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  background: #fff;
+  border: 1px solid rgba(40, 32, 28, .1);
+  box-shadow:
+    0 1px 2px rgba(40, 32, 28, .06),
+    0 10px 28px rgba(40, 32, 28, .12);
+  /* Visible so LanguageTool's floating white LT badge is not clipped to a red dot. */
+  overflow: visible;
+  /* Keep page paper on a light scheme even in dark workspace chrome. */
+  color-scheme: light;
+  filter: none;
+}
+
+.app-shell.dark .editor-page-sheet {
+  background: var(--paper-50);
+  border-color: rgba(255, 255, 255, .08);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, .25),
+    0 12px 32px rgba(0, 0, 0, .35);
+}
+
+.editor-page-sheet-static {
+  margin: 0 auto 28px;
+}
+
+.editor-page-chrome {
+  margin-bottom: 12px;
+}
+
+.editor-page-body {
+  position: relative;
+  min-height: 0;
+}
+
+.editor-page-body .prose-editor {
+  min-height: 8em;
+  max-height: inherit;
+  overflow: hidden;
+}
+
+.editor-page-frames {
+  display: none;
+}
+
+.editor-page-frame {
+  display: none;
+}
+
+.editor-page-content {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  width: 100%;
+  background: transparent;
+}
+
 .editor-sheet {
   max-width: 720px;
   margin: 0 auto;
@@ -434,7 +514,7 @@
   cursor: help;
 }
 
-.prose-editor img {
+.prose-editor img:not([class*='lt-']):not([id*='lt-']) {
   display: block;
   max-width: 100%;
   max-height: 520px;
@@ -633,6 +713,8 @@
   background: #f3f3f3;
 }
 
+.formatting-mode .editor-page-sheet,
+.formatting-mode .editor-page-frame,
 .formatting-mode .editor-sheet {
   outline: 2px dashed #c5d8f5;
 }
@@ -703,6 +785,34 @@
 
 .editor-scroll {
   padding: 30px 32px 46px;
+}
+
+.editor-desk {
+  background:
+    radial-gradient(circle at 20% 0%, rgba(255, 253, 249, .45), transparent 34%),
+    linear-gradient(180deg, var(--paper-300) 0%, #cbbfaf 100%);
+}
+
+.editor-page-sheet {
+  border-color: rgba(83, 54, 66, .12);
+  border-radius: 2px;
+  background:
+    linear-gradient(90deg, rgba(215, 100, 67, .05), transparent 18px),
+    var(--paper-50);
+  box-shadow:
+    0 1px 2px rgba(83, 54, 66, .05),
+    0 14px 34px rgba(83, 54, 66, .14);
+}
+
+.editor-page-frame {
+  border-color: rgba(83, 54, 66, .12);
+  border-radius: 2px;
+  background:
+    linear-gradient(90deg, rgba(215, 100, 67, .05), transparent 18px),
+    var(--paper-50);
+  box-shadow:
+    0 1px 2px rgba(83, 54, 66, .05),
+    0 14px 34px rgba(83, 54, 66, .14);
 }
 
 .editor-sheet {
@@ -852,6 +962,12 @@
   color: var(--text-700);
   background: var(--paper-50);
   box-shadow: var(--shadow-card);
+}
+
+.formatting-mode .editor-page-sheet,
+.formatting-mode .editor-page-frame {
+  outline: 2px solid rgba(215, 100, 67, .45);
+  outline-offset: 2px;
 }
 
 .formatting-mode .editor-sheet {
@@ -1131,4 +1247,46 @@
   .text-options-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* LanguageTool coexistence: do not inherit dark workspace chrome onto paper
+   editors or clip/stack the extension's classic white LT badge. */
+.editor-pages-stack,
+.editor-sheet,
+.editor-content,
+.prose-editor,
+[data-lt-active='true'] {
+  color-scheme: light;
+}
+
+.editor-page-body,
+.editor-content,
+.prose-editor {
+  /* Text stays clipped by max-height; overlays from grammar tools can paint. */
+  overflow: visible;
+}
+
+.editor-page-body .prose-editor {
+  overflow: visible;
+}
+
+.editor-scroll,
+.editor-desk,
+.editor-pages-stack,
+.editor-page-sheet,
+.editor-page-body,
+.editor-content {
+  filter: none !important;
+  mix-blend-mode: normal;
+}
+
+/* Give LT floating UI room above page chrome without restyling its branding. */
+.editor-page-sheet [class*='lt-'],
+.editor-page-sheet [id*='lt-'],
+.editor-content [class*='lt-'],
+.editor-content [id*='lt-'] {
+  z-index: 40;
+  filter: none !important;
+  mix-blend-mode: normal !important;
+  color-scheme: light;
 }

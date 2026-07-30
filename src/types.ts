@@ -525,9 +525,9 @@ export const defaultEditorPrefs = (): EditorPrefs => ({
   workspaceTheme: 'parchment',
   darkMode: false,
   spellcheck: true,
-  // External proofreading extensions such as LanguageTool scan the whole
-  // document DOM and can multiply memory usage; writers opt in per book.
-  externalProofreading: 'off',
+  // Allow browser grammar extensions (LanguageTool, etc.) on the active
+  // chapter by default. Automatic mode pauses only on very long chapters.
+  externalProofreading: 'always',
   recoveryIntervalMinutes: 5,
   paragraphStyle: 'indent',
   textAlign: 'left',

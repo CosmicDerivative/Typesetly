@@ -157,7 +157,7 @@ export async function importDocxToBook(file: File): Promise<ImportReport> {
     },
     book: {
       ...book,
-      schemaVersion: 4,
+      schemaVersion: 5,
       details: { ...book.details, title },
       chapters: [...requiredFrontMatter, ...imported],
       activeId: imported[0]?.id || requiredFrontMatter[0].id,
