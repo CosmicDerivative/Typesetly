@@ -2,6 +2,12 @@
   typesetly:
     build: .
     image: typesetly:local
+    environment:
+      # Web-only login. Set to "false" to serve Typesetly without a login.
+      TYPESETLY_LOGIN_ENABLED: "true"
+      TYPESETLY_LOGIN_USERNAME: "typesetly"
+      # Change this before exposing the container outside your local network.
+      TYPESETLY_LOGIN_PASSWORD: "change-me-before-deploying"
     ports:
       - "8080:80"
     restart: unless-stopped

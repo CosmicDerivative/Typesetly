@@ -83,6 +83,21 @@ docker compose up -d --build
 
 Then open http://localhost:8080 .
 
+The web container is protected by a login configured in `docker-compose.yml`:
+
+```yaml
+environment:
+  TYPESETLY_LOGIN_ENABLED: "true"
+  TYPESETLY_LOGIN_USERNAME: "typesetly"
+  TYPESETLY_LOGIN_PASSWORD: "change-me-before-deploying"
+```
+
+Change the username and password before deployment. Set
+`TYPESETLY_LOGIN_ENABLED` to `"false"` to disable the login. These settings
+apply only to the Docker-hosted web app; Electron desktop builds do not read
+them. HTTP Basic Authentication requires HTTPS when the site is reachable over
+a network, so place the container behind an HTTPS reverse proxy for remote use.
+
 Limitations: manuscripts stay in that browser's IndexedDB; there is no Electron desktop integration (for example Scrivener External Folder Sync); clearing site data removes local books unless you export a backup.
 
 ## A quick tour
