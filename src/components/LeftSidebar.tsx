@@ -16,6 +16,7 @@ import {
   X,
 } from 'lucide-react'
 import {
+  Fragment,
   useEffect,
   useRef,
   useState,
@@ -295,13 +296,6 @@ export function LeftSidebar() {
   const addableBack = BACK_MATTER_TYPES
   const parts = bodyChapters.filter((chapter) => chapter.type === 'part')
   const manuscriptFolders = project.manuscriptFolders || []
-  const partBody = [
-    ...bodyChapters.flatMap((chapter) =>
-      chapter.type === 'part'
-        ? [chapter, ...bodyChapters.filter((candidate) => candidate.partId === chapter.id)]
-        : [],
-    ),
-  ]
   const unfiledBody = bodyChapters.filter(
     (chapter) => chapter.type !== 'part' && !chapter.partId && !chapter.folderId,
   )
@@ -857,8 +851,9 @@ export function LeftSidebar() {
       draggable: true,
     })
 
-  const renderFolder = (folder: ManuscriptFolder) => {
+  const renderFolder = (folder: ManuscriptFolder, depth = 0) => {
     const pages = bodyChapters.filter((chapter) => chapter.folderId === folder.id)
+    const childFolders = manuscriptFolders.filter((candidate) => candidate.parentId === folder.id)
     const draggedPage = dragItem?.kind === 'page'
       ? project.chapters.find((chapter) => chapter.id === dragItem.pageId)
       : undefined
@@ -876,6 +871,7 @@ export function LeftSidebar() {
       <section
         className={`manuscript-folder${dropActive ? ' drop-active' : ''}`}
         key={folder.id}
+        style={depth ? { marginLeft: Math.min(depth, 4) * 14 } : undefined}
         onDragOver={(event) => {
           const target = event.target instanceof Element ? event.target : null
           if (target?.closest('.chapter-row')) return
@@ -970,7 +966,9 @@ export function LeftSidebar() {
         </div>
         {!folder.collapsed && (
           <div className="manuscript-folder-pages">
-            {pages.length > 0 ? pages.map((page) => renderBodyPage(page, true)) : (
+            {pages.map((page) => renderBodyPage(page, true))}
+            {childFolders.map((childFolder) => renderFolder(childFolder, depth + 1))}
+            {pages.length === 0 && childFolders.length === 0 && (
               <div className="manuscript-folder-empty">
                 {dropActive ? 'Release to file this page' : 'Drop pages here or use + to add a chapter'}
               </div>
@@ -1067,12 +1065,20 @@ export function LeftSidebar() {
           )}
 
           <div className="chapter-list">
-            {manuscriptFolders.map(renderFolder)}
-            {partBody.map((chapter) => {
-              const nested = Boolean(chapter.partId)
-              if (nested && expanded[chapter.partId!] === false) return null
-              return renderBodyPage(chapter, nested)
-            })}
+            {manuscriptFolders
+              .filter((folder) => !folder.partId && !folder.parentId)
+              .map((folder) => renderFolder(folder))}
+            {parts.map((part) => (
+              <Fragment key={part.id}>
+                {renderBodyPage(part)}
+                {expanded[part.id] !== false && manuscriptFolders
+                  .filter((folder) => folder.partId === part.id && !folder.parentId)
+                  .map((folder) => renderFolder(folder, 1))}
+                {expanded[part.id] !== false && bodyChapters
+                  .filter((chapter) => chapter.partId === part.id && !chapter.folderId)
+                  .map((chapter) => renderBodyPage(chapter, true))}
+              </Fragment>
+            ))}
             {unfiledBody.map((chapter) => renderBodyPage(chapter))}
           </div>
         </div>

@@ -2,7 +2,6 @@ import { EditorContent, useEditor, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import TextAlign from '@tiptap/extension-text-align'
 import Placeholder from '@tiptap/extension-placeholder'
-import CharacterCount from '@tiptap/extension-character-count'
 import { Extension } from '@tiptap/core'
 import { DOMSerializer, Fragment, type Node as ProseMirrorNode } from '@tiptap/pm/model'
 import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state'
@@ -34,9 +33,11 @@ import {
   VerseBlock,
 } from '../editor/extensions'
 import {
+  externalProofreadingEnabledForPage,
   FindHighlight,
   findHighlightKey,
   findTextOccurrences,
+  type ExternalProofreadingMode,
 } from '../editor/find'
 import { smartDashForInsertion, smartQuoteForInsertion } from '../editor/smartQuotes'
 import {
@@ -166,7 +167,6 @@ function createPageExtensions() {
     }),
     TextAlign.configure({ types: ['heading', 'paragraph'] }),
     Placeholder.configure({ placeholder: 'Start writing…' }),
-    CharacterCount,
     ManuscriptImage,
     SceneBreak,
     PageBreak,
@@ -496,7 +496,7 @@ export interface DraftPagedEditorProps {
   spellcheck: boolean
   smartQuotes: boolean
   typewriterScrolling: boolean
-  allowExternalProofreading: boolean
+  externalProofreading: ExternalProofreadingMode
   firstPageChrome?: ReactNode
   onChapterHtmlChange: (html: string) => void
   onActiveEditorChange: (editor: Editor | null) => void
@@ -523,7 +523,7 @@ export function DraftPagedEditor({
   spellcheck,
   smartQuotes,
   typewriterScrolling,
-  allowExternalProofreading,
+  externalProofreading,
   firstPageChrome,
   onChapterHtmlChange,
   onActiveEditorChange,
@@ -536,8 +536,8 @@ export function DraftPagedEditor({
     [fontSize, lineHeight, metrics],
   )
   const bodyHeight = useMemo(() => draftPageBodyHeight(metrics), [metrics])
-
   const [pages, setPages] = useState(() => splitChapterIntoPages(chapterHtml, charsPerPage))
+  const [activePageIndex, setActivePageIndex] = useState(0)
   const editorsRef = useRef<Array<Editor | null>>([])
   const chromeHeightsRef = useRef<number[]>([])
   const lastEmittedRef = useRef(joinChapterPages(pages))
@@ -615,6 +615,8 @@ export function DraftPagedEditor({
       renderedChapterIdRef.current = chapterId
       contentEpochRef.current += 1
       pendingCaretRef.current = null
+      focusedIndexRef.current = 0
+      setActivePageIndex(0)
       const next = splitChapterIntoPages(chapterHtml, charsPerPage)
       lastEmittedRef.current = chapterHtml
       pagesRef.current = next
@@ -645,6 +647,12 @@ export function DraftPagedEditor({
     onPageCountChange?.(pages.length)
   }, [onPageCountChange, pages.length])
 
+  useEffect(() => {
+    const lastIndex = Math.max(0, pages.length - 1)
+    focusedIndexRef.current = Math.min(focusedIndexRef.current, lastIndex)
+    setActivePageIndex((current) => Math.min(current, lastIndex))
+  }, [pages.length])
+
   const focusPage = useCallback((
     index: number,
     where: 'start' | 'end' = 'start',
@@ -653,6 +661,7 @@ export function DraftPagedEditor({
     const editor = editorsRef.current[index]
     if (!editor) return
     focusedIndexRef.current = index
+    setActivePageIndex(index)
     onActiveEditorChange(editor)
     const size = editor.state.doc.content.size
     const pos = requestedPosition === undefined
@@ -846,6 +855,7 @@ export function DraftPagedEditor({
       const finalRange = selection.ranges.at(-1)
       if (finalRange) {
         focusedIndexRef.current = finalRange.pageIndex
+        setActivePageIndex(finalRange.pageIndex)
         onActiveEditorChange(finalRange.editor)
       }
       onCrossPageSelectionChange?.({
@@ -1334,6 +1344,7 @@ export function DraftPagedEditor({
         : transaction.setMeta(findHighlightKey, null)
       editor.view.dispatch(transaction.scrollIntoView())
       focusedIndexRef.current = hit.pageIndex
+      setActivePageIndex(hit.pageIndex)
       onActiveEditorChange(editor)
       window.requestAnimationFrame(() => {
         editor.view.dom.querySelector('.find-match-highlight')
@@ -1393,7 +1404,14 @@ export function DraftPagedEditor({
           spellcheck={spellcheck}
           smartQuotes={smartQuotes}
           typewriterScrolling={typewriterScrolling}
-          allowExternalProofreading={allowExternalProofreading}
+          allowExternalProofreading={
+            externalProofreadingEnabledForPage(
+              externalProofreading,
+              pageHtml,
+              index,
+              activePageIndex,
+            )
+          }
           language={language}
           chapterId={chapterId}
           chapterTitle={chapterTitle}
@@ -1410,6 +1428,7 @@ export function DraftPagedEditor({
           }}
           onFocus={() => {
             focusedIndexRef.current = index
+            setActivePageIndex(index)
             const editor = editorsRef.current[index]
             if (editor) onActiveEditorChange(editor)
           }}
@@ -1725,7 +1744,10 @@ function DraftPageSheet({
     dom.setAttribute('aria-label', `${chapterTitle || 'Chapter'}, page ${index + 1}`)
     dom.setAttribute('lang', language || 'en')
     dom.style.maxHeight = `${maxBody}px`
-    dom.style.overflow = 'hidden'
+    // Never visually discard authored text. Paged mode still measures against
+    // maxHeight and moves overflow forward, but the final line remains visible
+    // during that handoff instead of being clipped at the paper edge.
+    dom.style.overflow = 'visible'
   }, [
     allowExternalProofreading,
     chapterId,
@@ -1751,6 +1773,7 @@ function DraftPageSheet({
       style={{
         width: metrics.widthPx,
         height: metrics.heightPx,
+        minHeight: metrics.heightPx,
         marginBottom: metrics.gapPx,
         paddingTop: metrics.marginTopPx,
         paddingRight: metrics.marginRightPx,
@@ -1762,7 +1785,13 @@ function DraftPageSheet({
       }}
     >
       {chrome ? <div ref={chromeRef} className="editor-page-chrome">{chrome}</div> : null}
-      <div className="editor-page-body" style={{ maxHeight: maxBody, overflow: 'hidden' }}>
+      <div
+        className="editor-page-body"
+        style={{
+          maxHeight: maxBody,
+          overflow: 'visible',
+        }}
+      >
         <EditorContent
           editor={editor}
           spellCheck={spellcheck}

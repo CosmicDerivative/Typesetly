@@ -1,20 +1,18 @@
-const { app, BrowserWindow, ipcMain, dialog, net, shell } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog } = require('electron')
+const { autoUpdater } = require('electron-updater')
 const path = require('path')
 const fs = require('fs')
-const { createHash, randomUUID } = require('node:crypto')
-const { Readable, Transform } = require('node:stream')
-const { pipeline } = require('node:stream/promises')
-const {
-  GITHUB_RELEASES_API,
-  describeRelease,
-  parseChecksumFile,
-  selectChecksumAsset,
-} = require('./updater.cjs')
+const { describeUpdateCheck } = require('./updater.cjs')
 
 const isDev = !app.isPackaged
-const RELEASE_CACHE_DURATION = 5 * 60 * 1000
-let cachedRelease
-let cachedReleaseAt = 0
+let latestUpdateCheck
+let updateDownloadInProgress
+
+autoUpdater.autoDownload = false
+autoUpdater.autoInstallOnAppQuit = true
+autoUpdater.autoRunAppAfterInstall = true
+autoUpdater.allowPrerelease = false
+autoUpdater.disableWebInstaller = true
 
 function windowStatePath() {
   return path.join(app.getPath('userData'), 'window-state.json')
@@ -108,36 +106,45 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
 
-async function fetchLatestRelease(force = false) {
-  if (!force && cachedRelease && Date.now() - cachedReleaseAt < RELEASE_CACHE_DURATION) {
-    return cachedRelease
+function broadcastUpdateProgress(payload) {
+  for (const window of BrowserWindow.getAllWindows()) {
+    if (!window.isDestroyed()) {
+      window.webContents.send('update-download-progress', payload)
+    }
   }
-  const response = await net.fetch(GITHUB_RELEASES_API, {
-    headers: {
-      Accept: 'application/vnd.github+json',
-      'User-Agent': `Typesetly/${app.getVersion()}`,
-      'X-GitHub-Api-Version': '2022-11-28',
-    },
+}
+
+autoUpdater.on('download-progress', (progress) => {
+  broadcastUpdateProgress({
+    received: progress.transferred,
+    total: progress.total,
+    percent: Math.max(0, Math.min(100, Math.round(progress.percent))),
   })
-  if (!response.ok) {
-    throw new Error(`GitHub update check failed (${response.status}).`)
+})
+
+// checkForUpdates rejects as well; registering this listener prevents an
+// EventEmitter "error" from becoming an uncaught main-process exception.
+autoUpdater.on('error', (error) => {
+  console.error('Typesetly updater:', error)
+})
+
+async function checkForDesktopUpdate() {
+  if (!app.isPackaged) {
+    return {
+      ok: true,
+      currentVersion: app.getVersion(),
+      latestVersion: app.getVersion(),
+      updateAvailable: false,
+      development: true,
+    }
   }
-  const release = await response.json()
-  cachedRelease = release
-  cachedReleaseAt = Date.now()
-  return release
+  latestUpdateCheck = await autoUpdater.checkForUpdates()
+  return describeUpdateCheck(latestUpdateCheck, app.getVersion())
 }
 
-function sendDownloadProgress(event, payload) {
-  if (!event.sender.isDestroyed()) {
-    event.sender.send('update-download-progress', payload)
-  }
-}
-
-ipcMain.handle('check-for-updates', async (_event, payload = {}) => {
+ipcMain.handle('check-for-updates', async () => {
   try {
-    const release = await fetchLatestRelease(Boolean(payload?.force))
-    return describeRelease(release, app.getVersion(), process.platform, process.arch)
+    return await checkForDesktopUpdate()
   } catch (error) {
     return {
       ok: false,
@@ -147,105 +154,41 @@ ipcMain.handle('check-for-updates', async (_event, payload = {}) => {
   }
 })
 
-ipcMain.handle('download-latest-installer', async (event) => {
-  let temporaryPath
+ipcMain.handle('install-latest-update', async () => {
   try {
-    const release = await fetchLatestRelease(true)
-    const status = describeRelease(release, app.getVersion(), process.platform, process.arch)
-    if (!status.updateAvailable) {
-      return { ok: false, error: `Typesetly ${status.currentVersion} is already up to date.` }
+    if (!app.isPackaged) {
+      return { ok: false, error: 'Automatic updates are available in packaged desktop builds.' }
     }
-    if (!status.installer) {
-      return {
-        ok: false,
-        error: `Typesetly ${status.latestVersion} does not include an installer for this device.`,
-      }
+    if (!latestUpdateCheck?.isUpdateAvailable) {
+      await checkForDesktopUpdate()
     }
+    if (!latestUpdateCheck?.isUpdateAvailable) {
+      return { ok: false, error: `Typesetly ${app.getVersion()} is already up to date.` }
+    }
+    if (!updateDownloadInProgress) {
+      updateDownloadInProgress = autoUpdater.downloadUpdate()
+        .finally(() => { updateDownloadInProgress = undefined })
+    }
+    await updateDownloadInProgress
+    const version = latestUpdateCheck.updateInfo.version
+    broadcastUpdateProgress({ received: 1, total: 1, percent: 100 })
 
-    const checksumAsset = selectChecksumAsset(release.assets)
-    if (!checksumAsset) {
-      throw new Error('The release checksum file is missing, so the installer was not downloaded.')
-    }
-    const checksumResponse = await net.fetch(checksumAsset.browser_download_url)
-    if (!checksumResponse.ok) {
-      throw new Error(`The release checksum could not be downloaded (${checksumResponse.status}).`)
-    }
-    const expectedHash = parseChecksumFile(await checksumResponse.text(), status.installer.name)
-    if (!expectedHash) {
-      throw new Error('The selected installer is not listed in the release checksum file.')
-    }
-
-    const owner = BrowserWindow.fromWebContents(event.sender)
-    const saveOptions = {
-      title: `Download Typesetly ${status.latestVersion}`,
-      defaultPath: path.join(app.getPath('downloads'), status.installer.name),
-      buttonLabel: 'Download',
-    }
-    const choice = owner
-      ? await dialog.showSaveDialog(owner, saveOptions)
-      : await dialog.showSaveDialog(saveOptions)
-    if (choice.canceled || !choice.filePath) return { ok: false, canceled: true }
-
-    const response = await net.fetch(status.installer.url, {
-      headers: { 'User-Agent': `Typesetly/${app.getVersion()}` },
-    })
-    if (!response.ok || !response.body) {
-      throw new Error(`The installer download failed (${response.status}).`)
-    }
-
-    const total = Number(response.headers.get('content-length')) || status.installer.size || 0
-    let received = 0
-    let lastPercent = -1
-    const hash = createHash('sha256')
-    temporaryPath = path.join(
-      app.getPath('temp'),
-      `typesetly-update-${randomUUID()}-${path.basename(status.installer.name)}`,
-    )
-    const progress = new Transform({
-      transform(chunk, _encoding, callback) {
-        received += chunk.length
-        hash.update(chunk)
-        const percent = total ? Math.min(100, Math.round((received / total) * 100)) : 0
-        if (percent !== lastPercent) {
-          lastPercent = percent
-          sendDownloadProgress(event, { received, total, percent })
-        }
-        callback(null, chunk)
-      },
-    })
-
-    await pipeline(
-      Readable.fromWeb(response.body),
-      progress,
-      fs.createWriteStream(temporaryPath, { flags: 'wx' }),
-    )
-    const actualHash = hash.digest('hex').toLowerCase()
-    if (actualHash !== expectedHash) {
-      throw new Error('Installer verification failed. The downloaded file was discarded.')
-    }
-
-    fs.copyFileSync(temporaryPath, choice.filePath)
-    fs.unlinkSync(temporaryPath)
-    temporaryPath = undefined
-    sendDownloadProgress(event, { received, total: total || received, percent: 100 })
-    shell.showItemInFolder(choice.filePath)
+    // Resolve the renderer request first so it can announce the restart, then
+    // let electron-updater close the app, install silently on Windows, and
+    // relaunch. Other supported targets use their native install handoff.
+    setTimeout(() => {
+      autoUpdater.quitAndInstall(process.platform === 'win32', true)
+    }, 500)
     return {
       ok: true,
-      filePath: choice.filePath,
-      version: status.latestVersion,
+      version,
       verified: true,
+      installing: true,
     }
   } catch (error) {
-    if (temporaryPath && fs.existsSync(temporaryPath)) {
-      try {
-        fs.unlinkSync(temporaryPath)
-      } catch {
-        // A failed cleanup should not hide the actual download error.
-      }
-    }
     return {
       ok: false,
-      error: error instanceof Error ? error.message : 'The installer could not be downloaded.',
+      error: error instanceof Error ? error.message : 'The update could not be installed.',
     }
   }
 })

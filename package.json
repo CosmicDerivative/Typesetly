@@ -1,7 +1,7 @@
 {
   "name": "typesetly",
   "private": true,
-  "version": "1.1.8",
+  "version": "1.2.0",
   "description": "A local-first desktop studio for writing, formatting, previewing, and exporting books",
   "author": {
     "name": "Typesetly Contributors",
@@ -34,7 +34,6 @@
     "package:linux": "npm run build && electron-builder --linux AppImage deb --x64"
   },
   "dependencies": {
-    "@tiptap/extension-character-count": "^3.28.0",
     "@tiptap/extension-horizontal-rule": "^3.28.0",
     "@tiptap/extension-link": "^3.28.0",
     "@tiptap/extension-placeholder": "^3.28.0",
@@ -44,6 +43,7 @@
     "@tiptap/react": "^3.28.0",
     "@tiptap/starter-kit": "^3.28.0",
     "docx": "^9.7.1",
+    "electron-updater": "^6.8.9",
     "file-saver": "^2.0.5",
     "jszip": "^3.10.1",
     "lucide-react": "^1.25.0",
@@ -74,6 +74,13 @@
     "appId": "io.github.jorda.typesetly",
     "productName": "Typesetly",
     "asar": true,
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "CosmicDerivative",
+        "repo": "Typesetly"
+      }
+    ],
     "files": [
       "dist/**/*",
       "electron/**/*",

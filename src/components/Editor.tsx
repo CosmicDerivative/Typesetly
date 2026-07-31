@@ -50,10 +50,6 @@ import { FONT_FAMILY_GROUPS } from '../themes/fonts'
 import {
   draftPageMetrics,
 } from '../layout/draftPages'
-import {
-  externalProofreadingEnabled,
-  plainTextCharacterCount,
-} from '../editor/find'
 
 const TEXT_SIZES = [9, 10, 11, 12, 13, 14, 16, 18, 20, 22, 24, 28, 32, 36, 42, 48, 64]
 const TEXT_COLORS = ['#221a1e', '#5b3345', '#a53f35', '#b96e18', '#2f6f52', '#206a83', '#315aa8', '#714a9f', '#767676', '#ffffff']
@@ -125,7 +121,6 @@ export function EditorPane() {
   const [quoteAttribution, setQuoteAttribution] = useState('')
   const imageRefInput = useRef<HTMLInputElement>(null)
   const blockRangeRef = useRef<{ from: number; to: number } | null>(null)
-  const activeChapterContent = activeChapter?.content
   const chapterOrnamentSource =
     activeChapter?.imageDataUrl || activeTheme.chapterHeading.sharedImageDataUrl
   const chapterOrnamentSrc = useResolvedImageSrc(chapterOrnamentSource)
@@ -136,14 +131,6 @@ export function EditorPane() {
   const pageMetrics = useMemo(
     () => draftPageMetrics(activeTheme.print),
     [activeTheme.print],
-  )
-  const chapterPlainTextLength = useMemo(
-    () => plainTextCharacterCount(activeChapterContent ?? ''),
-    [activeChapterContent],
-  )
-  const allowExternalProofreading = externalProofreadingEnabled(
-    project?.editorPrefs.externalProofreading ?? 'always',
-    chapterPlainTextLength,
   )
 
   useEffect(() => {
@@ -862,7 +849,7 @@ export function EditorPane() {
             spellcheck={prefs.spellcheck}
             smartQuotes={prefs.smartQuotes}
             typewriterScrolling={prefs.typewriterScrolling}
-            allowExternalProofreading={allowExternalProofreading}
+            externalProofreading={prefs.externalProofreading}
             onChapterHtmlChange={(html) => updateChapterContent(activeChapter.id, html)}
             onActiveEditorChange={setEditor}
             onPageCountChange={setDraftPageTotal}

@@ -265,7 +265,7 @@ const WIKI_SECTIONS: WikiSection[] = [
     entries: [
       {
         question: 'What can Typesetly import?',
-        answer: 'The library can import a DOCX, a complete Scrivener .scriv project folder, or a zipped Scrivener project backup as a new book. The Outline menu can import DOCX chapters into the current book. Structural Scrivener Binder folders such as Parts, Arcs, Acts, Books, Volumes, and Sections become Parts with their documents kept as separate chapters. Documents inside chapter folders become scenes. Imported structure and formatting are normalized, and the review screen explains content that could not be mapped exactly.',
+        answer: 'The library can import a DOCX, a complete Scrivener .scriv project folder, or a zipped Scrivener project backup as a new book. The Outline menu can import DOCX chapters into the current book. Structural Scrivener Binder folders such as Books and Parts become Parts; nested Arcs, Acts, Volumes, Sections, and Phases remain nested manuscript folders, with their documents kept as separate chapters. Documents inside true chapter folders become scenes. Imported structure and formatting are normalized, and the review screen explains content that could not be mapped exactly.',
         keywords: 'import docx word manuscript scrivener scriv scrivx binder zip',
       },
       {
@@ -300,7 +300,7 @@ const WIKI_SECTIONS: WikiSection[] = [
       },
       {
         question: 'How does the desktop updater work?',
-        answer: 'The desktop application checks the official Typesetly GitHub repository for the newest stable release after startup. When a newer compatible build exists, Get version appears in the header. Choose it to select a download location. Typesetly downloads the installer for the current operating system and processor, verifies its SHA-256 checksum against the release manifest, and reveals the finished file without running it automatically.',
+        answer: 'The desktop application checks the official Typesetly GitHub repository for the newest stable release after startup. When a newer compatible build exists, Install version appears in the header. Choose it once: Typesetly downloads the correct package into its managed update cache, verifies the release metadata, closes the app, installs the update, and relaunches automatically.',
         keywords: 'desktop update latest github installer download checksum version',
       },
     ],

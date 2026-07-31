@@ -56,7 +56,7 @@ Download the newest Windows, macOS, or Linux build from the [Typesetly Releases 
 - **macOS:** choose the DMG for your Mac. Intel and Apple Silicon builds are provided.
 - **Linux:** choose AppImage for a portable application or DEB for Debian-based distributions.
 
-Installed desktop builds also check this repository for newer stable releases. When an update is available, use the **Get version** control in the header to download the matching installer. Typesetly verifies the download against the release’s SHA-256 checksum and never runs it automatically.
+Installed desktop builds also check this repository for newer stable releases. When an update is available, use the **Install version** control in the header. Typesetly downloads the matching package into its managed update cache, verifies it against electron-builder’s release metadata, closes the app, installs the update, and relaunches automatically.
 
 Unsigned builds may display an operating-system security warning. Only install downloads obtained from the official Typesetly repository.
 

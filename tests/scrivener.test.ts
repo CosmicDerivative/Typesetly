@@ -118,6 +118,55 @@ test('Scrivener import keeps direct chapters inside Parts and Arcs as chapters',
   assert.equal(report.summary?.chapters, 2)
 })
 
+test('Scrivener import preserves Book and nested Arc hierarchy without turning chapters into scenes', () => {
+  const scrivx = `
+    <ScrivenerProject>
+      <Binder>
+        <BinderItem UUID="DRAFT" Type="DraftFolder">
+          <Title>Manuscript</Title>
+          <Children>
+            <BinderItem UUID="BOOK" Type="Folder">
+              <Title>Book 1</Title>
+              <Children>
+                <BinderItem UUID="ARC" Type="Folder">
+                  <Title>Integration Arc</Title>
+                  <Children>
+                    <BinderItem UUID="PROLOGUE" Type="Text"><Title>Prologue</Title></BinderItem>
+                    <BinderItem UUID="TUTORIAL" Type="Text"><Title>System Tutorial</Title></BinderItem>
+                    <BinderItem UUID="GOBLINS" Type="Text"><Title>Goblins Galore</Title></BinderItem>
+                  </Children>
+                </BinderItem>
+                <BinderItem UUID="UNTITLED" Type="Text"><Title>Untitled</Title></BinderItem>
+              </Children>
+            </BinderItem>
+          </Children>
+        </BinderItem>
+      </Binder>
+    </ScrivenerProject>
+  `
+  const report = importScrivenerSources([
+    { relativePath: 'Novel.scriv/Novel.scrivx', text: scrivx },
+    ...['PROLOGUE', 'TUTORIAL', 'GOBLINS', 'UNTITLED'].map((id) => ({
+      relativePath: `Novel.scriv/Files/Data/${id}/content.rtf`,
+      text: String.raw`{\rtf1\ansi Chapter text.}`,
+    })),
+  ])
+
+  const part = report.book.chapters.find((item) => item.type === 'part')!
+  const arc = (report.book.manuscriptFolders || [])
+    .find((folder) => folder.name === 'Integration Arc')!
+  const arcChapters = report.book.chapters.filter((chapter) => chapter.folderId === arc.id)
+  assert.equal(part.title, 'Book 1')
+  assert.equal(arc.partId, part.id)
+  assert.deepEqual(
+    arcChapters.map((chapter) => chapter.title),
+    ['Prologue', 'System Tutorial', 'Goblins Galore'],
+  )
+  assert.deepEqual(arcChapters.map((chapter) => chapter.sceneTitles), [[], [], []])
+  assert.equal(report.book.chapters.find((chapter) => chapter.title === 'Untitled')?.partId, part.id)
+  assert.equal(report.summary?.chapters, 4)
+})
+
 test('Scrivener import classifies named opening and closing matter before numbering', () => {
   const scrivx = `
     <ScrivenerProject>

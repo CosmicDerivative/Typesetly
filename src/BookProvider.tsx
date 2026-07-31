@@ -126,28 +126,40 @@ function readPanelLayout(): { sidebarOpen: boolean; rightPanel: RightPanel } {
  */
 function normalizeBook(book: BookProject): BookProject {
   const shouldNormalizeNamedMatter = (book.schemaVersion || 0) < 4
-  const migrateExternalProofreading = (book.schemaVersion || 0) < 6
+  const migrateExternalProofreading = (book.schemaVersion || 0) < 7
   const partIds = new Set(book.chapters.filter((chapter) => chapter.type === 'part').map((chapter) => chapter.id))
-  const manuscriptFolders = (book.manuscriptFolders || []).map((folder, index) => ({
+  const rawManuscriptFolders = (book.manuscriptFolders || []).map((folder, index) => ({
     id: folder.id || uuid(),
     name: folder.name?.trim() || `Folder ${index + 1}`,
     collapsed: folder.collapsed === true,
+    parentId: folder.parentId,
+    partId: folder.partId,
   }))
-  const folderIds = new Set(manuscriptFolders.map((folder) => folder.id))
+  const folderIds = new Set(rawManuscriptFolders.map((folder) => folder.id))
+  const manuscriptFolders = rawManuscriptFolders.map((folder) => ({
+    ...folder,
+    parentId:
+      folder.parentId && folder.parentId !== folder.id && folderIds.has(folder.parentId)
+        ? folder.parentId
+        : undefined,
+    partId: folder.partId && partIds.has(folder.partId) ? folder.partId : undefined,
+  }))
+  const folderById = new Map(manuscriptFolders.map((folder) => [folder.id, folder]))
   const workspaceTheme = resolveWorkspaceTheme(
     book.editorPrefs?.workspaceTheme,
     book.editorPrefs?.darkMode,
   )
   const savedProofreading = book.editorPrefs?.externalProofreading
-  // Prefer Always allow so LanguageTool stays active for normal drafting.
-  // Preserve an explicit Pause choice; otherwise migrate onto always.
+  // Long multi-page fields can overwhelm browser grammar extensions. Earlier
+  // releases migrated everyone to Always; move those projects onto Auto once,
+  // while preserving an explicit Off choice.
   const externalProofreading =
     migrateExternalProofreading
-      ? (savedProofreading === 'off' ? 'off' : 'always')
-      : savedProofreading ?? 'always'
+      ? (savedProofreading === 'off' ? 'off' : 'auto')
+      : savedProofreading ?? 'auto'
   return {
     ...book,
-    schemaVersion: 6,
+    schemaVersion: 7,
     goals: { ...defaultGoals(), ...book.goals },
     editorPrefs: {
       ...defaultEditorPrefs(),
@@ -181,9 +193,13 @@ function normalizeBook(book: BookProject): BookProject {
       return {
         ...chapter,
         sortOrder: chapter.sortOrder ?? index,
-        partId: chapter.partId && partIds.has(chapter.partId) ? chapter.partId : undefined,
+        partId:
+          chapter.partId && partIds.has(chapter.partId)
+            ? chapter.partId
+            : chapter.folderId
+              ? folderById.get(chapter.folderId)?.partId
+              : undefined,
         folderId:
-          !(chapter.partId && partIds.has(chapter.partId)) &&
           chapter.folderId &&
           folderIds.has(chapter.folderId)
             ? chapter.folderId
@@ -1005,10 +1021,12 @@ export function BookProvider({ children }: { children: ReactNode }) {
     },
     addChapterToFolder: (folderId: string) => {
       mutateOpen((book) => {
-        if (!(book.manuscriptFolders || []).some((folder) => folder.id === folderId)) return book
+        const folder = (book.manuscriptFolders || []).find((candidate) => candidate.id === folderId)
+        if (!folder) return book
         const chapter = {
           ...createChapter(nextChapterTitle(book.chapters)),
           folderId,
+          partId: folder.partId,
         }
         const backStart = book.chapters.findIndex((candidate) => BACK_MATTER_TYPES.includes(candidate.type))
         const chapters = [...book.chapters]
@@ -1296,13 +1314,20 @@ export function BookProvider({ children }: { children: ReactNode }) {
       setNotice('Folder renamed.')
     },
     deleteManuscriptFolder: (id: string) => {
-      mutateOpen((book) => ({
-        ...book,
-        manuscriptFolders: (book.manuscriptFolders || []).filter((folder) => folder.id !== id),
-        chapters: book.chapters.map((chapter) =>
-          chapter.folderId === id ? { ...chapter, folderId: undefined } : chapter,
-        ),
-      }))
+      mutateOpen((book) => {
+        const removed = (book.manuscriptFolders || []).find((folder) => folder.id === id)
+        return {
+          ...book,
+          manuscriptFolders: (book.manuscriptFolders || [])
+            .filter((folder) => folder.id !== id)
+            .map((folder) => folder.parentId === id
+              ? { ...folder, parentId: removed?.parentId }
+              : folder),
+          chapters: book.chapters.map((chapter) =>
+            chapter.folderId === id ? { ...chapter, folderId: removed?.parentId } : chapter,
+          ),
+        }
+      })
       setNotice('Folder removed. Its pages are now unfiled.')
     },
     toggleManuscriptFolder: (id: string) =>
@@ -1314,10 +1339,10 @@ export function BookProvider({ children }: { children: ReactNode }) {
       })),
     moveChapterToFolder: (chapterId: string, folderId?: string) => {
       mutateOpen((book) => {
-        const validFolder = folderId
-          ? (book.manuscriptFolders || []).some((folder) => folder.id === folderId)
-          : true
-        if (!validFolder) return book
+        const folder = folderId
+          ? (book.manuscriptFolders || []).find((candidate) => candidate.id === folderId)
+          : undefined
+        if (folderId && !folder) return book
         return {
           ...book,
           chapters: book.chapters.map((chapter) => {
@@ -1329,7 +1354,7 @@ export function BookProvider({ children }: { children: ReactNode }) {
             return {
               ...chapter,
               folderId,
-              partId: folderId ? undefined : chapter.partId,
+              partId: folderId ? folder?.partId : chapter.partId,
             }
           }),
         }

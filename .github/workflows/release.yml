@@ -102,6 +102,8 @@ jobs:
             script: package:win
             assets: |
               release/*.exe
+              release/latest.yml
+              release/*.blockmap
           - label: macOS
             os: macos-latest
             platform: macos
@@ -109,6 +111,8 @@ jobs:
             assets: |
               release/*.dmg
               release/*.zip
+              release/latest-mac.yml
+              release/*.blockmap
           - label: Linux
             os: ubuntu-latest
             platform: linux
@@ -116,6 +120,8 @@ jobs:
             assets: |
               release/*.AppImage
               release/*.deb
+              release/latest-linux.yml
+              release/*.blockmap
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository

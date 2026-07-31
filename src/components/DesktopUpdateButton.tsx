@@ -48,7 +48,7 @@ export function DesktopUpdateButton({ placement }: DesktopUpdateButtonProps) {
   }, [announce, bridge])
 
   const handleClick = useCallback(async () => {
-    if (!bridge?.downloadLatestInstaller || downloading) return
+    if (!bridge?.installLatestUpdate || downloading) return
     if (!updateInfo?.updateAvailable) {
       await checkForUpdates(true)
       return
@@ -56,14 +56,14 @@ export function DesktopUpdateButton({ placement }: DesktopUpdateButtonProps) {
     setDownloading(true)
     setDownloadPercent(0)
     try {
-      const result = await bridge.downloadLatestInstaller()
+      const result = await bridge.installLatestUpdate()
       if (result.ok) {
-        announce(`Typesetly ${result.version} was downloaded and verified. The installer is ready.`)
-      } else if (!result.canceled) {
+        announce(`Typesetly ${result.version} is verified and ready. Restarting to install…`)
+      } else {
         announce(result.error || 'The installer could not be downloaded.')
       }
     } catch {
-      announce('The installer download could not be started.')
+      announce('The automatic update could not be started.')
     } finally {
       setDownloading(false)
       setDownloadPercent(0)
@@ -90,7 +90,7 @@ export function DesktopUpdateButton({ placement }: DesktopUpdateButtonProps) {
   const label = downloading
     ? `${downloadPercent}%`
     : available
-      ? `Get ${updateInfo?.latestVersion}`
+      ? `Install ${updateInfo?.latestVersion}`
       : checking
         ? 'Checking…'
         : updateInfo
@@ -107,14 +107,14 @@ export function DesktopUpdateButton({ placement }: DesktopUpdateButtonProps) {
         downloading
           ? `Downloading Typesetly ${updateInfo?.latestVersion} (${downloadPercent}%)`
           : available
-            ? `Download and verify Typesetly ${updateInfo?.latestVersion}`
+            ? `Download, verify, and install Typesetly ${updateInfo?.latestVersion}`
             : checking
               ? 'Checking for Typesetly updates'
               : `Check for updates${updateInfo ? ` — current version ${updateInfo.currentVersion}` : ''}`
       }
       aria-label={
         available
-          ? `Download Typesetly ${updateInfo?.latestVersion}`
+          ? `Install Typesetly ${updateInfo?.latestVersion}`
           : 'Check for Typesetly updates'
       }
       type="button"

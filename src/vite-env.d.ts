@@ -35,16 +35,14 @@ declare global {
         currentVersion: string
         latestVersion?: string
         updateAvailable?: boolean
-        releaseUrl?: string
-        installer?: { name: string; url: string; size: number }
+        development?: boolean
         error?: string
       }>
-      downloadLatestInstaller: () => Promise<{
+      installLatestUpdate: () => Promise<{
         ok: boolean
-        canceled?: boolean
-        filePath?: string
         version?: string
         verified?: boolean
+        installing?: boolean
         error?: string
       }>
       onUpdateDownloadProgress: (callback: (progress: {

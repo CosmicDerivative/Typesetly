@@ -14,6 +14,7 @@ import {
   DEFAULT_FIND_SCOPE,
   FIND_RESULTS_PAGE_SIZE,
   externalProofreadingEnabled,
+  externalProofreadingEnabledForPage,
   findHighlightKey,
   findInChapterHtml,
   findResultsPageSlice,
@@ -49,7 +50,7 @@ test('new project defaults include migration-safe advanced settings', () => {
   assert.equal(defaultChapterOptions().includeIn, 'all')
   assert.equal(defaultEditorPrefs().spellcheck, true)
   // Browser grammar extensions are allowed on the active chapter by default.
-  assert.equal(defaultEditorPrefs().externalProofreading, 'always')
+  assert.equal(defaultEditorPrefs().externalProofreading, 'auto')
   assert.equal(defaultEditorPrefs().recoveryIntervalMinutes, 5)
   assert.deepEqual(defaultGoals().habitWritingDays, [1, 2, 3, 4, 5])
   assert.deepEqual(defaultGoals().wordLog, {})
@@ -167,11 +168,17 @@ test('find highlight plugin paints a match without requiring editor focus', () =
   editor.destroy()
 })
 
-test('automatic external proofreading protects long chapters while preserving overrides', () => {
+test('automatic external proofreading protects oversized editor fields while preserving overrides', () => {
   assert.equal(externalProofreadingEnabled('auto', EXTERNAL_PROOFREADING_CHARACTER_LIMIT), true)
   assert.equal(externalProofreadingEnabled('auto', EXTERNAL_PROOFREADING_CHARACTER_LIMIT + 1), false)
   assert.equal(externalProofreadingEnabled('always', 1_000_000), true)
   assert.equal(externalProofreadingEnabled('off', 1), false)
+})
+
+test('external proofreading follows the page containing the cursor', () => {
+  assert.equal(externalProofreadingEnabledForPage('auto', '<p>Page one</p>', 0, 1), false)
+  assert.equal(externalProofreadingEnabledForPage('auto', '<p>Page two</p>', 1, 1), true)
+  assert.equal(externalProofreadingEnabledForPage('off', '<p>Page two</p>', 1, 1), false)
 })
 
 test('plain text character counts ignore markup for proofreading limits', () => {

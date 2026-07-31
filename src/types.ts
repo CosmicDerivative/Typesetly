@@ -88,6 +88,10 @@ export interface ManuscriptFolder {
   id: string
   name: string
   collapsed: boolean
+  /** Optional nesting imported from or arranged like a Scrivener Binder. */
+  parentId?: string
+  /** Parts may own private organizational folders without changing export. */
+  partId?: string
 }
 
 export interface ScrivenerSyncMapping {
@@ -527,7 +531,7 @@ export const defaultEditorPrefs = (): EditorPrefs => ({
   spellcheck: true,
   // Allow browser grammar extensions (LanguageTool, etc.) on the active
   // chapter by default. Automatic mode pauses only on very long chapters.
-  externalProofreading: 'always',
+  externalProofreading: 'auto',
   recoveryIntervalMinutes: 5,
   paragraphStyle: 'indent',
   textAlign: 'left',

@@ -6,6 +6,7 @@ import type {
   BookProject,
   Chapter,
   ImportReport,
+  ManuscriptFolder,
   ScrivenerSyncMapping,
   ScrivenerSyncState,
 } from '../types.ts'
@@ -354,7 +355,7 @@ function importedChapter(
   })
 }
 
-const SCRIVENER_CONTAINER_TITLE = /^(?:(?:part|arc|act|book|volume|section|phase)(?:\s+|$)|(?:draft|manuscript)\s+\d+)/i
+const SCRIVENER_CONTAINER_TITLE = /\b(?:part|arc|act|book|volume|section|phase)\b|^(?:draft|manuscript)\s+\d+/i
 
 function isStructuralContainer(item: BinderItem) {
   if (!item.children.length) return false
@@ -387,39 +388,60 @@ function importDraftItems(
   items: BinderItem[],
   files: Map<string, ScrivenerSourceFile>,
   warnings: string[],
-): Chapter[] {
+): { chapters: Chapter[]; folders: ManuscriptFolder[] } {
   const chapters: Chapter[] = []
-  for (const item of items) {
+  const folders: ManuscriptFolder[] = []
+
+  const addChapter = (
+    item: BinderItem,
+    placement: { partId?: string; folderId?: string } = {},
+    classifyMatter = true,
+  ) => {
     const ownContent = contentForItem(item, files)
+    const chapter = item.children.length
+      ? importedChapter(item.title, scenesForChapterFolder(item, files, warnings), classifyMatter)
+      : importedChapter(item.title, [{ title: item.title, content: ownContent }], classifyMatter)
+    chapters.push({ ...chapter, ...placement })
+  }
+
+  const addFolderContents = (
+    container: BinderItem,
+    partId: string,
+    parentId?: string,
+  ) => {
+    for (const childItem of container.children) {
+      if (childItem.children.length && isStructuralContainer(childItem)) {
+        const folder: ManuscriptFolder = {
+          id: uuid(),
+          name: childItem.title,
+          collapsed: false,
+          parentId,
+          partId,
+        }
+        folders.push(folder)
+        addFolderContents(childItem, partId, folder.id)
+      } else {
+        addChapter(childItem, { partId, folderId: parentId }, false)
+      }
+    }
+  }
+
+  for (const item of items) {
     if (!item.children.length) {
-      chapters.push(importedChapter(item.title, [{ title: item.title, content: ownContent }]))
+      addChapter(item)
       continue
     }
 
     if (isStructuralContainer(item)) {
       const part = makePage('part', item.title)
       chapters.push(part)
-      for (const childItem of item.children) {
-        if (!childItem.children.length) {
-          chapters.push({
-            ...importedChapter(childItem.title, [{
-              title: childItem.title,
-              content: contentForItem(childItem, files),
-            }], false),
-            partId: part.id,
-          })
-          continue
-        }
-        const scenes = scenesForChapterFolder(childItem, files, warnings)
-        chapters.push({ ...importedChapter(childItem.title, scenes, false), partId: part.id })
-      }
+      addFolderContents(item, part.id)
       continue
     }
 
-    const scenes = scenesForChapterFolder(item, files, warnings)
-    chapters.push(importedChapter(item.title, scenes))
+    addChapter(item)
   }
-  return chapters
+  return { chapters, folders }
 }
 
 export async function sourceFilesFromSelection(files: File[]) {
@@ -456,7 +478,7 @@ export function importScrivenerSources(files: ScrivenerSourceFile[]): ImportRepo
   const warnings = [
     'Compile settings, custom metadata, snapshots, comments, and research files are not imported.',
   ]
-  const chapters = importDraftItems(draft.children, sourceMap(files), warnings)
+  const { chapters, folders } = importDraftItems(draft.children, sourceMap(files), warnings)
   if (!chapters.length) warnings.push('The Draft Binder did not contain any text documents.')
 
   const required = createEmptyBook().chapters.filter((chapter) => chapter.type !== 'chapter')
@@ -471,6 +493,7 @@ export function importScrivenerSources(files: ScrivenerSourceFile[]): ImportRepo
     ...base,
     details: { ...base.details, title },
     chapters: [...required, ...chapters],
+    manuscriptFolders: folders,
     activeId: chapters.find((chapter) => chapter.type === 'chapter')?.id || required[0].id,
   }
   const bodyChapters = chapters.filter((chapter) => chapter.type === 'chapter')

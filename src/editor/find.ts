@@ -173,9 +173,10 @@ export const FindHighlight = Extension.create({
 
 export type ExternalProofreadingMode = 'auto' | 'always' | 'off'
 
-// Plain-text length of the active chapter (not HTML). Automatic mode only
-// pauses extensions on unusually long chapters; normal novel chapters stay on.
-export const EXTERNAL_PROOFREADING_CHARACTER_LIMIT = 60_000
+// Plain-text length of one active editor field (not HTML). Draft passes only
+// the focused page, so a long chapter never makes an extension scan the whole
+// manuscript at once.
+export const EXTERNAL_PROOFREADING_CHARACTER_LIMIT = 25_000
 
 /** Visible text length an extension would scan (tags stripped). */
 export function plainTextCharacterCount(html: string) {
@@ -201,4 +202,15 @@ export function externalProofreadingEnabled(
   if (mode === 'off') return false
   if (mode === 'always') return true
   return characterCount <= EXTERNAL_PROOFREADING_CHARACTER_LIMIT
+}
+
+/** Grammar extensions may inspect only the page that currently owns focus. */
+export function externalProofreadingEnabledForPage(
+  mode: ExternalProofreadingMode,
+  pageHtml: string,
+  pageIndex: number,
+  activePageIndex: number,
+) {
+  return pageIndex === activePageIndex
+    && externalProofreadingEnabled(mode, plainTextCharacterCount(pageHtml))
 }
