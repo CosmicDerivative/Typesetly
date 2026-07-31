@@ -128,7 +128,7 @@ const WIKI_SECTIONS: WikiSection[] = [
     entries: [
       {
         question: 'What formatting is available in Draft?',
-        answer: 'The toolbar supports bold, italic, underline, strikeout, headings, alignment, lists, block quotes, links, footnotes, images, page breaks, scene breaks, callouts, text messages, verse, hanging indents, and attributed quotations.',
+        answer: 'The toolbar supports bold, italic, underline, strikeout, headings, alignment, lists, block quotes, links, footnotes, images, page breaks, scene breaks, callouts, text messages, LitRPG interface blocks, verse, hanging indents, and attributed quotations.',
         keywords: 'bold italic link image footnote format',
       },
       {
@@ -140,6 +140,11 @@ const WIKI_SECTIONS: WikiSection[] = [
         question: 'How do text messages and callouts work?',
         answer: 'Choose Special block and select the desired block. Text messages can store message text, sender, direction, and iOS or Android appearance. Existing message and callout blocks can be selected and edited without nesting or replacing unrelated text.',
         keywords: 'bubble chat message callout sender',
+      },
+      {
+        question: 'How do I build LitRPG stat screens and system panels?',
+        answer: 'Choose the table-shaped LitRPG Block button in the Draft toolbar. Start with Stat screen, System message, Skill selection, or Item information, then customize its title, subtitle, footer, columns, rows, colors, width, spacing, and appearance. After insertion, edit every field directly in Draft, move rows up or down, move columns left or right, or drag the block by its handle. Choose Full builder for structural and visual changes. Structured blocks remain tables in Draft, Preview, and EPUB, with a print-safe rendering in PDF.',
+        keywords: 'litrpg stat screen system message skill selection item information table block builder',
       },
       {
         question: 'How do verse, hanging indents, and quotations work?',

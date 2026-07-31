@@ -1,0 +1,181 @@
+.dialog-card-wide {
+  width: min(980px, 100%);
+  max-height: min(90vh, 900px);
+  overflow: auto;
+}
+
+.litrpg-builder {
+  display: grid;
+  gap: 18px;
+}
+
+.litrpg-builder-section {
+  display: grid;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid #e4e9ee;
+}
+
+.litrpg-builder-section:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.litrpg-builder-section-title {
+  display: grid;
+  gap: 2px;
+  color: #243341;
+}
+
+.litrpg-builder-section-title.inline {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+
+.litrpg-builder-section-title > div {
+  display: grid;
+  gap: 2px;
+}
+
+.litrpg-builder-section-title span {
+  color: #71808e;
+  font-size: 12px;
+}
+
+.litrpg-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.litrpg-preset-grid button {
+  display: grid;
+  gap: 4px;
+  padding: 11px;
+  border: 1px solid #cad4de;
+  border-radius: 8px;
+  color: #344554;
+  background: #f8fafc;
+  text-align: left;
+  cursor: pointer;
+}
+
+.litrpg-preset-grid button.active {
+  border-color: #477fa1;
+  background: #edf6fb;
+  box-shadow: 0 0 0 1px #477fa1;
+}
+
+.litrpg-preset-grid button span {
+  color: #71808e;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.litrpg-builder-two-column {
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.litrpg-style-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 10px;
+}
+
+.litrpg-color-grid {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.litrpg-color-grid input[type="color"] {
+  height: 38px;
+  padding: 3px;
+}
+
+.litrpg-column-editor,
+.litrpg-row-cells {
+  display: grid;
+  gap: 7px;
+}
+
+.litrpg-input-action {
+  display: grid;
+  grid-template-columns: 1fr 32px;
+  gap: 5px;
+}
+
+.litrpg-column-input-action {
+  grid-template-columns: minmax(0, 1fr) repeat(3, 28px);
+}
+
+.litrpg-input-action button,
+.litrpg-row-actions button {
+  border: 1px solid #ccd5de;
+  border-radius: 5px;
+  color: #526677;
+  background: #f7f9fb;
+  cursor: pointer;
+}
+
+.litrpg-input-action button:disabled,
+.litrpg-row-actions button:disabled {
+  cursor: default;
+  opacity: .4;
+}
+
+.litrpg-row-editor {
+  display: grid;
+  gap: 7px;
+  max-height: 290px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.litrpg-row-editor-line {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  gap: 7px;
+  align-items: center;
+}
+
+.litrpg-row-number {
+  color: #7a8793;
+  font-size: 11px;
+  text-align: center;
+}
+
+.litrpg-row-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 28px);
+  gap: 3px;
+  align-self: stretch;
+}
+
+.litrpg-add-button {
+  width: fit-content;
+  padding: 7px 11px;
+  border: 1px solid #b8c8d5;
+  border-radius: 6px;
+  color: #315f7d;
+  background: #f4f9fc;
+  cursor: pointer;
+}
+
+.litrpg-add-button:disabled {
+  cursor: default;
+  opacity: .5;
+}
+
+@media (max-width: 760px) {
+  .litrpg-preset-grid,
+  .litrpg-builder-two-column {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .litrpg-color-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}

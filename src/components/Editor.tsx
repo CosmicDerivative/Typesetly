@@ -24,6 +24,7 @@ import {
   Strikethrough,
   Superscript,
   Smartphone,
+  Table2,
   Scissors,
   Type,
   Underline as UnderlineIcon,
@@ -46,6 +47,14 @@ import { dataUrlToBlob } from '../library/images'
 import { storeNewImage } from '../library/store'
 import { useResolvedImageSrc } from '../library/useResolvedImageSrc'
 import { buildCalloutNode, replaceCalloutRange } from '../editor/callouts'
+import {
+  buildLitRpgBlockNode,
+  litRpgDraftFromAttrs,
+  litRpgPreset,
+  replaceLitRpgBlockRange,
+  type LitRpgBlockDraft,
+} from '../editor/litrpg'
+import { LitRpgBlockDialog } from './LitRpgBlockDialog'
 import { FONT_FAMILY_GROUPS } from '../themes/fonts'
 import {
   draftPageMetrics,
@@ -117,10 +126,14 @@ export function EditorPane() {
   const [blockTheme, setBlockTheme] = useState<'ios' | 'android'>('ios')
   const [blockText, setBlockText] = useState('')
   const [presetName, setPresetName] = useState('')
+  const [litRpgOpen, setLitRpgOpen] = useState(false)
+  const [litRpgEditing, setLitRpgEditing] = useState(false)
+  const [litRpgDraft, setLitRpgDraft] = useState<LitRpgBlockDraft>(() => litRpgPreset('stat-screen'))
   const [quoteOpen, setQuoteOpen] = useState(false)
   const [quoteAttribution, setQuoteAttribution] = useState('')
   const imageRefInput = useRef<HTMLInputElement>(null)
   const blockRangeRef = useRef<{ from: number; to: number } | null>(null)
+  const litRpgRangeRef = useRef<{ from: number; to: number } | null>(null)
   const chapterOrnamentSource =
     activeChapter?.imageDataUrl || activeTheme.chapterHeading.sharedImageDataUrl
   const chapterOrnamentSrc = useResolvedImageSrc(chapterOrnamentSource)
@@ -149,6 +162,25 @@ export function EditorPane() {
     setCrossPageSelection(null)
     window.dispatchEvent(new Event('typesetly:clear-cross-page-selection'))
   }, [activeChapter?.id])
+
+  useEffect(() => {
+    const editLitRpgBlock = (event: Event) => {
+      const detail = (event as CustomEvent<{
+        editor: Editor
+        from: number
+        to: number
+        attrs: Record<string, unknown>
+      }>).detail
+      if (!detail?.editor || detail.editor.isDestroyed) return
+      setEditor(detail.editor)
+      setLitRpgEditing(true)
+      setLitRpgDraft(litRpgDraftFromAttrs(detail.attrs))
+      litRpgRangeRef.current = { from: detail.from, to: detail.to }
+      setLitRpgOpen(true)
+    }
+    window.addEventListener('typesetly:edit-litrpg-block', editLitRpgBlock)
+    return () => window.removeEventListener('typesetly:edit-litrpg-block', editLitRpgBlock)
+  }, [])
 
   const wordCount = useMemo(() => {
     if (!activeChapter) return 0
@@ -372,6 +404,41 @@ export function EditorPane() {
   const clearTextAppearance = () => {
     if (runCrossPageCommand({ action: 'clearTextAppearance' })) return
     editor?.chain().focus().unsetMark('textAppearance').run()
+  }
+
+  const openLitRpgBuilder = () => {
+    if (!editor || editor.isDestroyed) return
+    const { from, to, $from } = editor.state.selection
+    const selectedNode = editor.state.doc.nodeAt(from) || $from.nodeAfter
+    const editing = selectedNode?.type.name === 'litrpgBlock'
+    setLitRpgEditing(editing)
+    setLitRpgDraft(editing
+      ? litRpgDraftFromAttrs(selectedNode.attrs as Record<string, unknown>)
+      : litRpgPreset('stat-screen'))
+    litRpgRangeRef.current = editing
+      ? { from, to: from + selectedNode.nodeSize }
+      : { from, to }
+    setLitRpgOpen(true)
+  }
+
+  const applyLitRpgBlock = (draft: LitRpgBlockDraft) => {
+    if (!editor || editor.isDestroyed) {
+      setLitRpgOpen(false)
+      return
+    }
+    const range = litRpgRangeRef.current || editor.state.selection
+    setLitRpgOpen(false)
+    litRpgRangeRef.current = null
+    try {
+      replaceLitRpgBlockRange(editor, range, buildLitRpgBlockNode(draft))
+      window.requestAnimationFrame(() => {
+        if (!editor.isDestroyed) editor.view.focus()
+      })
+    } catch (error) {
+      window.dispatchEvent(new CustomEvent('typesetly:notice', {
+        detail: error instanceof Error ? error.message : 'The LitRPG block could not be inserted.',
+      }))
+    }
   }
 
   const insertImage = async (file: File) => {
@@ -698,6 +765,7 @@ export function EditorPane() {
           <button type="button" className="tb" title="Footnote" onClick={insertFootnote}><Superscript size={15} /></button>
           <button type="button" className={editor?.isActive('callout', { variant: 'callout' }) ? 'tb active' : 'tb'} title="Insert or edit callout box" onClick={() => openBlockEditor('callout')}><MessageSquare size={15} /></button>
           <button type="button" className={editor?.isActive('callout', { variant: 'message' }) ? 'tb active' : 'tb'} title="Insert or edit text message" onClick={() => openBlockEditor('message')}><Smartphone size={15} /></button>
+          <button type="button" className={editor?.isActive('litrpgBlock') ? 'tb active' : 'tb'} title="Build or edit LitRPG block" aria-label="Build or edit LitRPG block" onClick={openLitRpgBuilder}><Table2 size={15} /></button>
           <select
             className="toolbar-menu toolbar-menu-block"
             value=""
@@ -1131,6 +1199,17 @@ export function EditorPane() {
             </div>
           )}
         </Dialog>
+      )}
+      {litRpgOpen && (
+        <LitRpgBlockDialog
+          editing={litRpgEditing}
+          initialDraft={litRpgDraft}
+          onCancel={() => {
+            setLitRpgOpen(false)
+            litRpgRangeRef.current = null
+          }}
+          onConfirm={applyLitRpgBlock}
+        />
       )}
     </section>
   )

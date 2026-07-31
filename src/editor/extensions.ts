@@ -1,4 +1,5 @@
 import { Extension, Mark, mergeAttributes, Node } from '@tiptap/core'
+import { decodeLitRpgColumns, decodeLitRpgRows } from './litrpg.ts'
 
 function styleMark(name: string, style: string, tag = 'span') {
   return Mark.create({
@@ -233,6 +234,87 @@ export const Callout = Node.create({
     }),
     0,
   ],
+})
+
+export const LitRpgBlock = Node.create({
+  name: 'litrpgBlock',
+  priority: 1000,
+  group: 'block',
+  atom: true,
+  selectable: true,
+  draggable: true,
+  addAttributes() {
+    return {
+      kind: { default: 'stat-screen', parseHTML: (element) => element.getAttribute('data-kind') || 'stat-screen' },
+      title: { default: 'Character Status', parseHTML: (element) => element.getAttribute('data-title') || '' },
+      subtitle: { default: '', parseHTML: (element) => element.getAttribute('data-subtitle') || '' },
+      columns: { default: '["Attribute","Value"]', parseHTML: (element) => element.getAttribute('data-columns') || '[]' },
+      rows: { default: '[]', parseHTML: (element) => element.getAttribute('data-rows') || '[]' },
+      footer: { default: '', parseHTML: (element) => element.getAttribute('data-footer') || '' },
+      appearance: { default: 'panel', parseHTML: (element) => element.getAttribute('data-appearance') || 'panel' },
+      density: { default: 'comfortable', parseHTML: (element) => element.getAttribute('data-density') || 'comfortable' },
+      width: { default: 'full', parseHTML: (element) => element.getAttribute('data-width') || 'full' },
+      accent: { default: '#5eead4', parseHTML: (element) => element.getAttribute('data-accent') || '#5eead4' },
+      background: { default: '#102a2d', parseHTML: (element) => element.getAttribute('data-background') || '#102a2d' },
+      textColor: { default: '#ecfeff', parseHTML: (element) => element.getAttribute('data-text-color') || '#ecfeff' },
+      border: { default: '#2dd4bf', parseHTML: (element) => element.getAttribute('data-border') || '#2dd4bf' },
+      showColumnHeaders: { default: true, parseHTML: (element) => element.getAttribute('data-show-headers') !== 'false' },
+      stripedRows: { default: true, parseHTML: (element) => element.getAttribute('data-striped-rows') !== 'false' },
+    }
+  },
+  parseHTML: () => [{ tag: 'div[data-typesetly-node="litrpg-block"]' }],
+  renderHTML: ({ node, HTMLAttributes }) => {
+    const columns = decodeLitRpgColumns(node.attrs.columns)
+    const rows = decodeLitRpgRows(node.attrs.rows)
+    const heading = ['div', { class: 'litrpg-block-heading' },
+      ['strong', { class: 'litrpg-block-title' }, node.attrs.title || 'LitRPG Block'],
+      ...(node.attrs.subtitle
+        ? [['span', { class: 'litrpg-block-subtitle' }, node.attrs.subtitle]]
+        : []),
+    ]
+    const tableChildren = [
+      ...(node.attrs.showColumnHeaders
+        ? [['thead', {}, ['tr', {}, ...columns.map((column) => ['th', {}, column])]]]
+        : []),
+      ['tbody', {}, ...rows.map((row) => [
+        'tr',
+        {},
+        ...columns.map((_, index) => ['td', {}, row.cells[index] || '']),
+      ])],
+    ]
+    const children = [
+      heading,
+      ['table', { class: 'litrpg-block-table' }, ...tableChildren],
+      ...(node.attrs.footer
+        ? [['div', { class: 'litrpg-block-footer' }, node.attrs.footer]]
+        : []),
+    ]
+
+    return [
+      'div',
+      mergeAttributes(HTMLAttributes, {
+        'data-typesetly-node': 'litrpg-block',
+        'data-kind': node.attrs.kind,
+        'data-title': node.attrs.title,
+        'data-subtitle': node.attrs.subtitle,
+        'data-columns': node.attrs.columns,
+        'data-rows': node.attrs.rows,
+        'data-footer': node.attrs.footer,
+        'data-appearance': node.attrs.appearance,
+        'data-density': node.attrs.density,
+        'data-width': node.attrs.width,
+        'data-accent': node.attrs.accent,
+        'data-background': node.attrs.background,
+        'data-text-color': node.attrs.textColor,
+        'data-border': node.attrs.border,
+        'data-show-headers': String(node.attrs.showColumnHeaders),
+        'data-striped-rows': String(node.attrs.stripedRows),
+        class: 'litrpg-block',
+        style: `--litrpg-accent:${node.attrs.accent};--litrpg-bg:${node.attrs.background};--litrpg-text:${node.attrs.textColor};--litrpg-border:${node.attrs.border}`,
+      }),
+      ...children,
+    ]
+  },
 })
 
 export const ManuscriptImage = Node.create({

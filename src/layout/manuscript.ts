@@ -1,4 +1,5 @@
 import type { BookProject, BookTheme, Chapter } from '../types'
+import { litRpgDraftFromAttrs, type LitRpgBlockDraft } from '../editor/litrpg.ts'
 
 export type ManuscriptBlock =
   | { type: 'paragraph'; text: string; html: string }
@@ -6,6 +7,7 @@ export type ManuscriptBlock =
   | { type: 'scene-break' }
   | { type: 'page-break' }
   | { type: 'callout'; text: string; variant: 'callout' | 'message'; sender: string; direction: string; theme: string }
+  | { type: 'litrpg-block'; draft: LitRpgBlockDraft }
   | { type: 'image'; src: string; alt: string; caption: string; layout: string; width: number; link: string; decorative: boolean; focalX: number; focalY: number }
   | { type: 'list-item'; text: string; ordered: boolean; ordinal: number }
   | { type: 'styled-block'; text: string; variant: 'verse' | 'hangingIndent' | 'attributedQuote'; attribution: string }
@@ -38,6 +40,14 @@ export function parseManuscript(html: string): { blocks: ManuscriptBlock[]; note
       blocks.push({ type: 'page-break' })
     } else if (nodeType === 'scene-break' || tag === 'hr') {
       blocks.push({ type: 'scene-break' })
+    } else if (nodeType === 'litrpg-block') {
+      blocks.push({
+        type: 'litrpg-block',
+        draft: litRpgDraftFromAttrs({
+          ...element.dataset,
+          showColumnHeaders: element.dataset.showHeaders,
+        }),
+      })
     } else if (nodeType === 'callout' || tag === 'blockquote') {
       if (nodeType === 'attributedQuote') {
         blocks.push({ type: 'styled-block', text: element.textContent || '', variant: 'attributedQuote', attribution: element.dataset.attribution || '' })

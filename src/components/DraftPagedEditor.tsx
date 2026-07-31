@@ -32,6 +32,7 @@ import {
   TextAppearance,
   VerseBlock,
 } from '../editor/extensions'
+import { LitRpgBlockEditorExtension } from '../editor/LitRpgBlockEditorExtension'
 import {
   externalProofreadingEnabledForPage,
   FindHighlight,
@@ -172,6 +173,7 @@ function createPageExtensions() {
     PageBreak,
     Footnote,
     Callout,
+    LitRpgBlockEditorExtension,
     SmallCaps,
     SansSerif,
     Monospace,

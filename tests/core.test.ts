@@ -6,7 +6,16 @@ import { EditorState, TextSelection } from '@tiptap/pm/state'
 import { buildCalloutNode, replaceCalloutRange } from '../src/editor/callouts.ts'
 import { countWords } from '../src/data.ts'
 import { plainTextFromHtml, wordDiff } from '../src/editor/diff.ts'
-import { Callout } from '../src/editor/extensions.ts'
+import { Callout, LitRpgBlock } from '../src/editor/extensions.ts'
+import {
+  buildLitRpgBlockNode,
+  litRpgDraftFromAttrs,
+  litRpgPreset,
+  moveLitRpgColumn,
+  moveLitRpgRow,
+  normalizeLitRpgDraft,
+  replaceLitRpgBlockRange,
+} from '../src/editor/litrpg.ts'
 import {
   EXTERNAL_PROOFREADING_CHARACTER_LIMIT,
   collectFindMatches,
@@ -370,4 +379,66 @@ test('message dialog transaction replaces an existing callout without nesting it
   assert.equal(editor.getJSON().content?.[0]?.attrs?.variant, 'message')
   assert.equal(editor.getJSON().content?.[0]?.content?.[0]?.content?.[0]?.text, 'Replacement')
   editor.destroy()
+})
+
+test('LitRPG presets provide structured tables for each supported block type', () => {
+  const statScreen = litRpgPreset('stat-screen')
+  const systemMessage = litRpgPreset('system-message')
+  const skillSelection = litRpgPreset('skill-selection')
+  const itemInfo = litRpgPreset('item-info')
+
+  assert.deepEqual(statScreen.columns, ['Attribute', 'Value'])
+  assert.equal(systemMessage.columns.length, 1)
+  assert.deepEqual(skillSelection.columns, ['Skill', 'Rank', 'Effect'])
+  assert.equal(itemInfo.rows.some((row) => row.cells.includes('Damage')), true)
+})
+
+test('LitRPG block normalization keeps table cells aligned and rejects unsafe colors', () => {
+  const normalized = normalizeLitRpgDraft({
+    ...litRpgPreset('stat-screen'),
+    columns: ['Name', 'Value', 'Notes'],
+    rows: [{ cells: ['Strength', '12'] }],
+    accent: 'red; background: black',
+  })
+
+  assert.deepEqual(normalized.rows[0].cells, ['Strength', '12', ''])
+  assert.equal(normalized.accent, '#5eead4')
+})
+
+test('LitRPG builder transaction inserts one editable structured node', () => {
+  const editor = new Editor({
+    element: null,
+    extensions: [StarterKit, LitRpgBlock],
+    content: {
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Before' }] }],
+    },
+  })
+  const node = buildLitRpgBlockNode({
+    ...litRpgPreset('item-info'),
+    title: 'Starforged Ring',
+  })
+
+  assert.equal(replaceLitRpgBlockRange(editor, { from: 0, to: 0 }, node), true)
+  const inserted = editor.getJSON().content?.[0]
+  assert.equal(inserted?.type, 'litrpgBlock')
+  assert.equal(inserted?.attrs?.title, 'Starforged Ring')
+  const restored = litRpgDraftFromAttrs(inserted?.attrs || {})
+  assert.deepEqual(restored.columns, ['Property', 'Details'])
+  assert.equal(restored.rows[0].cells[0], 'Damage')
+  editor.destroy()
+})
+
+test('LitRPG rows and columns can be repositioned without detaching their values', () => {
+  const columns = ['Skill', 'Rank', 'Effect']
+  const rows = [
+    { cells: ['Power Strike', 'Common', '+25% damage'] },
+    { cells: ['Blink', 'Rare', 'Short teleport'] },
+  ]
+  const movedRows = moveLitRpgRow(rows, 1, -1)
+  assert.equal(movedRows[0].cells[0], 'Blink')
+
+  const movedColumns = moveLitRpgColumn(columns, rows, 2, -1)
+  assert.deepEqual(movedColumns.columns, ['Skill', 'Effect', 'Rank'])
+  assert.deepEqual(movedColumns.rows[0].cells, ['Power Strike', '+25% damage', 'Common'])
 })

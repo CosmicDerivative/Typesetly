@@ -427,6 +427,41 @@ export function Previewer() {
                       </div>
                     )
                   }
+                  if (b.type === 'litrpg-block') {
+                    const block = b.draft
+                    return (
+                      <div
+                        key={i}
+                        className="preview-litrpg"
+                        data-appearance={block.appearance}
+                        data-density={block.density}
+                        data-width={block.width}
+                        data-striped-rows={String(block.stripedRows)}
+                        style={{
+                          '--litrpg-accent': block.accent,
+                          '--litrpg-bg': block.background,
+                          '--litrpg-text': block.textColor,
+                          '--litrpg-border': block.border,
+                        } as CSSProperties}
+                      >
+                        <div className="preview-litrpg-heading">
+                          <strong>{block.title}</strong>
+                          {block.subtitle && <span>{block.subtitle}</span>}
+                        </div>
+                        <table>
+                          {block.showColumnHeaders && (
+                            <thead><tr>{block.columns.map((column, columnIndex) => <th key={columnIndex}>{column}</th>)}</tr></thead>
+                          )}
+                          <tbody>
+                            {block.rows.map((row, rowIndex) => (
+                              <tr key={rowIndex}>{block.columns.map((_, columnIndex) => <td key={columnIndex}>{row.cells[columnIndex] || ''}</td>)}</tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        {block.footer && <div className="preview-litrpg-footer">{block.footer}</div>}
+                      </div>
+                    )
+                  }
                   if (b.type === 'styled-block') {
                     return (
                       <div key={i} className={`preview-styled ${b.variant}`}>

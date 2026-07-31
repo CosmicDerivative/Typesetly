@@ -347,6 +347,36 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
     y = bottom - lineHeight * 0.45
   }
 
+  const drawLitRpgBlock = (block: Extract<ReturnType<typeof parseManuscript>['blocks'][number], { type: 'litrpg-block' }>['draft']) => {
+    const margin = margins()
+    const rowText = block.rows.map((row) => block.columns
+      .map((column, index) => `${column}: ${row.cells[index] || '—'}`)
+      .join('  •  '))
+    const estimatedHeight = lineHeight * Math.max(4, rowText.length * 1.5 + 3)
+    ensureSpace(Math.min(estimatedHeight, pageHeight - margin.top - margin.bottom))
+    const startingPage = pageNumber
+    const top = y + 5
+    drawLine(block.title || 'LitRPG Block', {
+      font: sansBold,
+      size: Math.max(9, fontSize),
+      color: rgb(.12, .28, .32),
+    })
+    if (block.subtitle) drawLine(block.subtitle, { size: Math.max(7, fontSize - 2), color: rgb(.32, .38, .42) })
+    for (const row of rowText) drawParagraph(row, true)
+    if (block.footer) drawLine(block.footer, { size: Math.max(7, fontSize - 2), color: rgb(.35, .38, .42) })
+    if (pageNumber === startingPage) {
+      page.drawRectangle({
+        x: margin.left - 6,
+        y: y - 2,
+        width: pageWidth - margin.left - margin.right + 12,
+        height: top - y + 5,
+        borderColor: rgb(.22, .54, .58),
+        borderWidth: 1,
+      })
+    }
+    y -= lineHeight * .35
+  }
+
   const embedImage = async (dataUrl: string): Promise<PDFImage | null> => {
     const parsed = dataUrlBytes(dataUrl)
     if (!parsed) return null
@@ -527,6 +557,15 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
             borderWidth: 0.7,
           })
         }
+      } else if (block.type === 'litrpg-block') {
+        const searchableText = [
+          block.draft.title,
+          block.draft.subtitle,
+          ...block.draft.rows.flatMap((row) => row.cells),
+          block.draft.footer,
+        ].join(' ')
+        registerPageFootnotes(searchableText)
+        drawLitRpgBlock(block.draft)
       } else if (block.type === 'styled-block') {
         const text = block.attribution ? `${block.text} — ${block.attribution}` : block.text
         registerPageFootnotes(text)
