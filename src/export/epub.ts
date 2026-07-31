@@ -365,11 +365,14 @@ p:first-of-type { text-indent: 0; }
 .litrpg-block-subtitle { display: block; margin-top: .2em; font-size: .8em; opacity: .78; }
 .litrpg-block-table { width: 100%; border-collapse: collapse; color: inherit; font: inherit; }
 .litrpg-block-table th, .litrpg-block-table td { padding: var(--litrpg-cell-padding, .5em); border-right: 1px solid var(--litrpg-border, #999); border-bottom: 1px solid var(--litrpg-border, #999); text-align: left; vertical-align: top; }
+.litrpg-block[data-show-cell-borders="false"] .litrpg-block-table th,
+.litrpg-block[data-show-cell-borders="false"] .litrpg-block-table td { border-right: 0; border-bottom: 0; }
 .litrpg-block[data-density="compact"] th, .litrpg-block[data-density="compact"] td { padding: max(.2em, calc(var(--litrpg-cell-padding, .5em) * .7)); }
 .litrpg-block-table th { color: var(--litrpg-accent, #333); font-size: .8em; text-transform: uppercase; }
 .litrpg-block-footer { padding: .55em .8em; font-size: .8em; font-style: italic; opacity: .8; }
 .litrpg-freeform-canvas { position: relative; min-height: 10em; overflow: hidden; background-image: linear-gradient(color-mix(in srgb, var(--litrpg-border, #777) 18%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--litrpg-border, #777) 18%, transparent) 1px, transparent 1px); background-size: 16px 16px; }
 .litrpg-freeform-item { position: absolute; box-sizing: border-box; padding: var(--litrpg-cell-padding, .5em); border: 1px solid var(--litrpg-border, #777); background: color-mix(in srgb, var(--litrpg-bg, #f7f7f7) 82%, #000); overflow: hidden; overflow-wrap: anywhere; }
+.litrpg-block[data-show-cell-borders="false"] .litrpg-freeform-item { border-color: transparent; }
 .litrpg-freeform-item.is-title, .litrpg-freeform-item.is-column { color: var(--litrpg-accent, #333); font-weight: bold; }
 .litrpg-freeform-item.is-title { text-transform: uppercase; }
 .litrpg-freeform-item.is-column { font-size: .8em; text-transform: uppercase; }

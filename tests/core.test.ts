@@ -590,6 +590,14 @@ test('LitRPG block normalization keeps table cells aligned and rejects unsafe co
 
   assert.deepEqual(normalized.rows[0].cells, ['Strength', '12', ''])
   assert.equal(normalized.accent, '#5eead4')
+  assert.equal(normalized.showCellBorders, true)
+})
+
+test('LitRPG showCellBorders defaults on and can be disabled', () => {
+  assert.equal(normalizeLitRpgDraft({ title: 'Legacy block' }).showCellBorders, true)
+  assert.equal(normalizeLitRpgDraft({ showCellBorders: false }).showCellBorders, false)
+  assert.equal(litRpgDraftFromAttrs({ title: 'From attrs' }).showCellBorders, true)
+  assert.equal(litRpgDraftFromAttrs({ title: 'Hidden', showCellBorders: 'false' }).showCellBorders, false)
 })
 
 test('LitRPG builder transaction inserts one editable structured node', () => {

@@ -545,15 +545,17 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
             color: cellFill,
             opacity: Math.min(1, bgOpacity + 0.08),
           })
-          drawBorderRect(
-            fieldX,
-            fieldBottom,
-            fieldWidth,
-            fieldHeight,
-            cellBorderThickness,
-            terminal && field.kind === 'title',
-            field.kind === 'title' ? accentColor : borderColor,
-          )
+          if (block.showCellBorders) {
+            drawBorderRect(
+              fieldX,
+              fieldBottom,
+              fieldWidth,
+              fieldHeight,
+              cellBorderThickness,
+              terminal && field.kind === 'title',
+              field.kind === 'title' ? accentColor : borderColor,
+            )
+          }
         }
 
         let lineY = fieldTop - fieldPad - size * 0.85
@@ -707,7 +709,7 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
       let colX = innerX + padX
       cells.forEach((lines, index) => {
         const cellWidth = colWidths[index]
-        if (!translucent) {
+        if (!translucent && block.showCellBorders) {
           drawBorderRect(colX, rowBottom, cellWidth, rowHeight, cellBorderThickness, false)
         }
         let lineY = rowTop - sizes[index] * 0.95 - 2

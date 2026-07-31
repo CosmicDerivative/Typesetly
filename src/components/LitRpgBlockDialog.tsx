@@ -498,6 +498,10 @@ export function LitRpgBlockDialog({
               Show column headings
             </label>
             <label className="check-row">
+              <input type="checkbox" checked={draft.showCellBorders} onChange={(event) => patch({ showCellBorders: event.target.checked })} />
+              Show cell borders
+            </label>
+            <label className="check-row">
               <input type="checkbox" checked={draft.backgroundOpacity < 100} onChange={(event) => patch({ backgroundOpacity: event.target.checked ? 72 : 100 })} />
               Translucent background
             </label>
@@ -611,6 +615,7 @@ function LitRpgPreview({ draft }: { draft: LitRpgBlockDraft }) {
       data-alignment={draft.alignment}
       data-layout-mode={draft.layoutMode}
       data-striped-rows={String(draft.stripedRows)}
+      data-show-cell-borders={String(draft.showCellBorders)}
       style={{
         '--litrpg-accent': draft.accent,
         '--litrpg-bg': draft.background,

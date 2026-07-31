@@ -231,6 +231,7 @@ function litRpgDocxTable(block: LitRpgBlockDraft) {
   }
   const cellBorder = (isFirstColumn: boolean, emphasize = false) => {
     if (translucent && freeform) return noneBorder
+    if (!block.showCellBorders) return noneBorder
     const size = emphasize ? Math.max(edgeSize, 8) : edgeSize || 1
     const color = edgeSize || emphasize ? borderColor : bg
     return {
@@ -454,11 +455,46 @@ function litRpgDocxTable(block: LitRpgBlockDraft) {
     }))
   }
 
-  return new Table({
+  const table = new Table({
     width: { size: tableWidth, type: WidthType.DXA },
     columnWidths,
     alignment,
     rows,
+  })
+
+  if (block.showCellBorders || freeform) return table
+
+  const outerSide = (size: number, style = borderStyle) => (
+    size > 0
+      ? { style, size, color: borderColor }
+      : { style: BorderStyle.NONE, size: 0, color: bg }
+  )
+
+  return new Table({
+    width: { size: tableWidth, type: WidthType.DXA },
+    columnWidths: [tableWidth],
+    alignment,
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            width: { size: tableWidth, type: WidthType.DXA },
+            shading: { type: ShadingType.CLEAR, fill: bg },
+            borders: {
+              top: outerSide(edgeSize),
+              bottom: outerSide(edgeSize),
+              left: outerSide(
+                Math.max(leftSize || 0, edgeSize),
+                block.appearance === 'minimal' && !translucent ? BorderStyle.SINGLE : borderStyle,
+              ),
+              right: outerSide(edgeSize),
+            },
+            margins: { top: 0, bottom: 0, left: 0, right: 0 },
+            children: [table],
+          }),
+        ],
+      }),
+    ],
   })
 }
 

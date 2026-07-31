@@ -453,6 +453,17 @@
   background: color-mix(in srgb, var(--litrpg-accent) 7%, transparent);
 }
 
+.preview-litrpg[data-show-cell-borders="false"] th,
+.preview-litrpg[data-show-cell-borders="false"] td {
+  border-right: 0;
+  border-bottom: 0;
+}
+
+.preview-litrpg[data-show-cell-borders="false"] .litrpg-freeform-item {
+  border-color: transparent;
+  box-shadow: none;
+}
+
 .preview-litrpg-footer {
   padding: 7px 10px;
   font-style: italic;

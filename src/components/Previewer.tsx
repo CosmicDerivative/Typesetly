@@ -443,6 +443,7 @@ export function Previewer() {
                           data-alignment={block.alignment}
                           data-layout-mode={block.layoutMode}
                         data-striped-rows={String(block.stripedRows)}
+                        data-show-cell-borders={String(block.showCellBorders)}
                         data-translucent={translucent ? 'true' : 'false'}
                         style={{
                           '--litrpg-accent': block.accent,

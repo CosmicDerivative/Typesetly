@@ -49,6 +49,7 @@ export interface LitRpgBlockDraft {
   border: string
   showColumnHeaders: boolean
   stripedRows: boolean
+  showCellBorders: boolean
 }
 
 /** Provenance metadata stored on TipTap attrs (not part of visual draft). */
@@ -414,6 +415,7 @@ export const LITRPG_BLOCK_PRESETS: ReadonlyArray<{
       border: '#2dd4bf',
       showColumnHeaders: true,
       stripedRows: true,
+      showCellBorders: true,
     },
   },
   {
@@ -446,6 +448,7 @@ export const LITRPG_BLOCK_PRESETS: ReadonlyArray<{
       border: '#22c55e',
       showColumnHeaders: false,
       stripedRows: false,
+      showCellBorders: true,
     },
   },
   {
@@ -482,6 +485,7 @@ export const LITRPG_BLOCK_PRESETS: ReadonlyArray<{
       border: '#8b5cf6',
       showColumnHeaders: true,
       stripedRows: true,
+      showCellBorders: true,
     },
   },
   {
@@ -518,6 +522,7 @@ export const LITRPG_BLOCK_PRESETS: ReadonlyArray<{
       border: '#d97706',
       showColumnHeaders: true,
       stripedRows: false,
+      showCellBorders: true,
     },
   },
 ]
@@ -590,6 +595,7 @@ export function normalizeLitRpgDraft(input: Partial<LitRpgBlockDraft>): LitRpgBl
     border: safeColor(input.border || '', fallback.border),
     showColumnHeaders: input.showColumnHeaders ?? fallback.showColumnHeaders,
     stripedRows: input.stripedRows ?? fallback.stripedRows,
+    showCellBorders: input.showCellBorders ?? true,
   }
 }
 
@@ -630,6 +636,7 @@ export function decodeLitRpgRows(value: unknown): LitRpgRow[] {
 export function litRpgDraftFromAttrs(attrs: Record<string, unknown>): LitRpgBlockDraft {
   const showHeaders = attrs.showColumnHeaders ?? attrs.showHeaders
   const stripedRows = attrs.stripedRows
+  const showCellBorders = attrs.showCellBorders
   return normalizeLitRpgDraft({
     kind: attrs.kind as LitRpgBlockKind,
     title: String(attrs.title || ''),
@@ -656,6 +663,7 @@ export function litRpgDraftFromAttrs(attrs: Record<string, unknown>): LitRpgBloc
     border: String(attrs.border || ''),
     showColumnHeaders: showHeaders !== false && showHeaders !== 'false',
     stripedRows: stripedRows === true || stripedRows === 'true',
+    showCellBorders: showCellBorders !== false && showCellBorders !== 'false',
   })
 }
 

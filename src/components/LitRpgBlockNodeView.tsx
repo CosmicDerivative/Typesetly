@@ -445,6 +445,7 @@ export function LitRpgBlockNodeView({
       data-alignment={draft.alignment}
       data-layout-mode={draft.layoutMode}
       data-striped-rows={String(draft.stripedRows)}
+      data-show-cell-borders={String(draft.showCellBorders)}
       style={{
         '--litrpg-accent': draft.accent,
         '--litrpg-bg': draft.background,
