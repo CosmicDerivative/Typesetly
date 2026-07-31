@@ -10,6 +10,7 @@ import { DEVICE_PROFILES, profileDescription, renderedDeviceWidth } from '../pre
 import { estimateBookPages, readingTimeMinutes } from '../layout/pagination'
 import { DrawerControls } from './DrawerControls'
 import { useResolvedImageSrc } from '../library/useResolvedImageSrc'
+import { colorWithOpacity } from '../editor/litrpg'
 
 export function Previewer() {
   const {
@@ -435,20 +436,28 @@ export function Previewer() {
                         className="preview-litrpg"
                         data-appearance={block.appearance}
                         data-density={block.density}
-                        data-width={block.width}
+                          data-width={block.width}
+                          data-width-percent={String(block.widthPercent)}
+                          data-alignment={block.alignment}
                         data-striped-rows={String(block.stripedRows)}
                         style={{
                           '--litrpg-accent': block.accent,
-                          '--litrpg-bg': block.background,
+                            '--litrpg-bg': block.background,
+                            '--litrpg-bg-alpha': colorWithOpacity(block.background, block.backgroundOpacity),
                           '--litrpg-text': block.textColor,
-                          '--litrpg-border': block.border,
+                            '--litrpg-border': block.border,
+                            '--litrpg-width': `${block.widthPercent}%`,
+                            '--litrpg-radius': `${block.borderRadius}px`,
+                            '--litrpg-border-width': `${block.borderWidth}px`,
+                            '--litrpg-cell-padding': `${block.cellPadding}px`,
                         } as CSSProperties}
                       >
                         <div className="preview-litrpg-heading">
                           <strong>{block.title}</strong>
                           {block.subtitle && <span>{block.subtitle}</span>}
                         </div>
-                        <table>
+                          <table>
+                            <colgroup>{block.columns.map((_, columnIndex) => <col key={columnIndex} style={{ width: `${block.columnWidths[columnIndex]}%` }} />)}</colgroup>
                           {block.showColumnHeaders && (
                             <thead><tr>{block.columns.map((column, columnIndex) => <th key={columnIndex}>{column}</th>)}</tr></thead>
                           )}

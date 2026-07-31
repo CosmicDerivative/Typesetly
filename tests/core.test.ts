@@ -14,6 +14,8 @@ import {
   moveLitRpgColumn,
   moveLitRpgRow,
   normalizeLitRpgDraft,
+  resizeLitRpgColumn,
+  colorWithOpacity,
   replaceLitRpgBlockRange,
 } from '../src/editor/litrpg.ts'
 import {
@@ -441,4 +443,71 @@ test('LitRPG rows and columns can be repositioned without detaching their values
   const movedColumns = moveLitRpgColumn(columns, rows, 2, -1)
   assert.deepEqual(movedColumns.columns, ['Skill', 'Effect', 'Rank'])
   assert.deepEqual(movedColumns.rows[0].cells, ['Power Strike', '+25% damage', 'Common'])
+})
+
+test('LitRPG geometry, translucency, and column sizing stay valid', () => {
+  const normalized = normalizeLitRpgDraft({
+    ...litRpgPreset('item-info'),
+    widthPercent: 12,
+    borderRadius: 100,
+    borderWidth: -2,
+    backgroundOpacity: 64,
+    cellPadding: 30,
+  })
+  assert.equal(normalized.widthPercent, 30)
+  assert.equal(normalized.borderRadius, 40)
+  assert.equal(normalized.borderWidth, 0)
+  assert.equal(normalized.backgroundOpacity, 64)
+  assert.equal(normalized.cellPadding, 24)
+  assert.equal(colorWithOpacity('#102a2d', 64), 'rgba(16, 42, 45, 0.64)')
+
+  const resized = resizeLitRpgColumn([34, 20, 46], 1, 40)
+  assert.equal(Math.round(resized.reduce((sum, width) => sum + width, 0)), 100)
+  assert.equal(Math.round(resized[1]), 40)
+  assert.equal(resized.every((width) => width >= 10), true)
+})
+
+test('LitRPG block survives an HTML save and chapter reload round trip', () => {
+  const original = new Editor({
+    element: null,
+    extensions: [StarterKit, LitRpgBlock],
+    content: {
+      type: 'doc',
+      content: [buildLitRpgBlockNode({
+        ...litRpgPreset('system-message'),
+        title: 'Quest Updated',
+        alignment: 'right',
+        widthPercent: 61,
+        backgroundOpacity: 57,
+        borderRadius: 19,
+        columnWidths: [100],
+      })],
+    },
+  })
+  const render = LitRpgBlock.config.renderHTML
+  const attributes = LitRpgBlock.config.addAttributes
+  assert.ok(render)
+  assert.ok(attributes)
+  const spec = render.call(LitRpgBlock, {
+    node: original.state.doc.child(0),
+    HTMLAttributes: {},
+  } as never) as unknown[]
+  const savedAttributes = spec[1] as Record<string, string>
+  const element = {
+    getAttribute: (name: string) => savedAttributes[name] ?? null,
+  } as Element
+  const restoredAttrs = Object.fromEntries(
+    Object.entries(attributes.call(LitRpgBlock)).map(([name, config]) => [
+      name,
+      config.parseHTML ? config.parseHTML(element) : config.default,
+    ]),
+  )
+  const draft = litRpgDraftFromAttrs(restoredAttrs)
+  assert.equal(draft.title, 'Quest Updated')
+  assert.equal(draft.alignment, 'right')
+  assert.equal(draft.widthPercent, 61)
+  assert.equal(draft.backgroundOpacity, 57)
+  assert.equal(draft.borderRadius, 19)
+  assert.deepEqual(draft.columnWidths, [100])
+  original.destroy()
 })

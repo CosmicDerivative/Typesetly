@@ -329,18 +329,21 @@ p:first-of-type { text-indent: 0; }
 .text-message[data-direction="incoming"] { margin-right: auto; margin-left: 0; color: #222; background: #e9edf2; }
 .text-message[data-theme="android"] { border: 1px solid #c7d7c5; border-radius: .45em; color: #243423; background: #dff0dc; }
 .text-message > p { margin: 0; text-indent: 0; }
-.litrpg-block { margin: 1em 0; border: 1px solid var(--litrpg-border, #555); border-radius: .35em; color: var(--litrpg-text, #111); background: var(--litrpg-bg, #f7f7f7); overflow: hidden; }
-.litrpg-block[data-width="compact"] { width: 86%; margin-right: auto; margin-left: auto; }
-.litrpg-block[data-appearance="terminal"] { border-style: dashed; border-radius: 0; font-family: monospace; }
-.litrpg-block[data-appearance="minimal"] { border-width: 0 0 0 .25em; border-radius: 0; }
-.litrpg-block[data-appearance="ornate"] { border: .25em double var(--litrpg-border, #555); font-family: serif; }
+.litrpg-block { box-sizing: border-box; width: min(var(--litrpg-width, 100%), 100%); margin: 1em 0; border: var(--litrpg-border-width, 1px) solid var(--litrpg-border, #555); border-radius: var(--litrpg-radius, .35em); color: var(--litrpg-text, #111); background-color: var(--litrpg-bg-alpha, var(--litrpg-bg, #f7f7f7)); overflow: hidden; }
+.litrpg-block[data-width="compact"]:not([data-width-percent]) { width: 86%; margin-right: auto; margin-left: auto; }
+.litrpg-block[data-alignment="center"] { float: none; clear: both; margin-right: auto; margin-left: auto; }
+.litrpg-block[data-alignment="left"] { float: left; clear: left; margin: .25em 1em .7em 0; }
+.litrpg-block[data-alignment="right"] { float: right; clear: right; margin: .25em 0 .7em 1em; }
+.litrpg-block[data-appearance="terminal"] { border-style: dashed; font-family: monospace; }
+.litrpg-block[data-appearance="minimal"] { border-width: 0 0 0 var(--litrpg-border-width, .25em); }
+.litrpg-block[data-appearance="ornate"] { border-style: double; font-family: serif; }
 .litrpg-block[data-appearance="ornate"] .litrpg-block-heading { border-bottom: .2em double var(--litrpg-border, #555); text-align: center; }
 .litrpg-block-heading { padding: .7em .85em; border-bottom: 1px solid var(--litrpg-border, #777); }
 .litrpg-block-title { display: block; color: var(--litrpg-accent, #333); letter-spacing: .04em; text-transform: uppercase; }
 .litrpg-block-subtitle { display: block; margin-top: .2em; font-size: .8em; opacity: .78; }
 .litrpg-block-table { width: 100%; border-collapse: collapse; color: inherit; font: inherit; }
-.litrpg-block-table th, .litrpg-block-table td { padding: .5em .65em; border-right: 1px solid var(--litrpg-border, #999); border-bottom: 1px solid var(--litrpg-border, #999); text-align: left; vertical-align: top; }
-.litrpg-block[data-density="compact"] th, .litrpg-block[data-density="compact"] td { padding: .3em .5em; }
+.litrpg-block-table th, .litrpg-block-table td { padding: var(--litrpg-cell-padding, .5em); border-right: 1px solid var(--litrpg-border, #999); border-bottom: 1px solid var(--litrpg-border, #999); text-align: left; vertical-align: top; }
+.litrpg-block[data-density="compact"] th, .litrpg-block[data-density="compact"] td { padding: max(.2em, calc(var(--litrpg-cell-padding, .5em) * .7)); }
 .litrpg-block-table th { color: var(--litrpg-accent, #333); font-size: .8em; text-transform: uppercase; }
 .litrpg-block-footer { padding: .55em .8em; font-size: .8em; font-style: italic; opacity: .8; }
 .verse { margin: 1em ${theme.specialBlocks.verseIndentEm}em; line-height: ${theme.specialBlocks.verseLineSpacing}; white-space: pre-wrap; }

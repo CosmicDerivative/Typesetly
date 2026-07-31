@@ -253,36 +253,40 @@
 }
 
 .preview-litrpg {
-  width: 100%;
+  width: min(var(--litrpg-width, 100%), 100%);
   box-sizing: border-box;
   margin: .9em 0;
-  border: 1px solid var(--litrpg-border);
-  border-radius: 7px;
+  border: var(--litrpg-border-width, 1px) solid var(--litrpg-border);
+  border-radius: var(--litrpg-radius, 7px);
   color: var(--litrpg-text);
-  background: var(--litrpg-bg);
+  background-color: var(--litrpg-bg-alpha, var(--litrpg-bg));
   box-shadow: inset 0 3px 0 var(--litrpg-accent);
   font: .82em/1.4 ui-monospace, SFMono-Regular, Consolas, monospace;
   text-align: left;
   overflow: hidden;
 }
 
-.preview-litrpg[data-width="compact"] {
+.preview-litrpg[data-width="compact"]:not([data-width-percent]) {
   width: 86%;
   margin-right: auto;
   margin-left: auto;
 }
 
+.preview-litrpg[data-alignment="center"] { clear: both; margin-right: auto; margin-left: auto; }
+.preview-litrpg[data-alignment="left"] { float: left; clear: left; margin: .25em 1em .65em 0; }
+.preview-litrpg[data-alignment="right"] { float: right; clear: right; margin: .25em 0 .65em 1em; }
+
 .preview-litrpg[data-appearance="terminal"] {
   border-style: dashed;
-  border-radius: 2px;
+  border-radius: var(--litrpg-radius, 2px);
   background-image: repeating-linear-gradient(0deg, transparent 0 3px, rgba(255, 255, 255, .035) 3px 4px);
   font-family: 'Courier New', monospace;
   text-shadow: 0 0 6px var(--litrpg-accent);
 }
 
 .preview-litrpg[data-appearance="minimal"] {
-  border-width: 0 0 0 4px;
-  border-radius: 0;
+  border-width: 0 0 0 var(--litrpg-border-width, 4px);
+  border-radius: var(--litrpg-radius, 0);
   box-shadow: none;
   font-family: 'Source Sans 3', 'Segoe UI', sans-serif;
 }
@@ -292,8 +296,9 @@
 }
 
 .preview-litrpg[data-appearance="ornate"] {
-  border: 4px double var(--litrpg-border);
-  border-radius: 3px 12px 3px 12px;
+  border-style: double;
+  border-width: var(--litrpg-border-width, 4px);
+  border-radius: var(--litrpg-radius, 12px);
   font-family: 'Libre Baskerville', Palatino, serif;
 }
 
@@ -329,7 +334,7 @@
 
 .preview-litrpg th,
 .preview-litrpg td {
-  padding: 6px 8px;
+  padding: var(--litrpg-cell-padding, 8px);
   border-right: 1px solid var(--litrpg-border);
   border-bottom: 1px solid var(--litrpg-border);
   text-align: left;
@@ -338,7 +343,7 @@
 
 .preview-litrpg[data-density="compact"] th,
 .preview-litrpg[data-density="compact"] td {
-  padding: 4px 7px;
+  padding: max(3px, calc(var(--litrpg-cell-padding, 8px) * .7));
 }
 
 .preview-litrpg[data-striped-rows="true"] tbody tr:nth-child(even) {
@@ -778,6 +783,12 @@
   font-size: inherit;
   line-height: inherit;
   color: inherit;
+}
+
+.preview-body::after {
+  display: block;
+  clear: both;
+  content: "";
 }
 
 .preview-para {

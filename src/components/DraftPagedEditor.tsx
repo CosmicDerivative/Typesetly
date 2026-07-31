@@ -33,6 +33,7 @@ import {
   VerseBlock,
 } from '../editor/extensions'
 import { LitRpgBlockEditorExtension } from '../editor/LitRpgBlockEditorExtension'
+import { dropLitRpgAcrossPages } from '../editor/litrpgDrag'
 import {
   externalProofreadingEnabledForPage,
   FindHighlight,
@@ -1419,11 +1420,14 @@ export function DraftPagedEditor({
           chapterTitle={chapterTitle}
           chrome={index === 0 ? firstPageChrome : null}
           onChromeHeight={(height) => {
+            const changed = chromeHeightsRef.current[index] !== height
             chromeHeightsRef.current[index] = height
+            if (changed) queueReflow(index)
           }}
           onEditorReady={(editor) => {
             editorsRef.current[index] = editor
             if (index === focusedIndexRef.current) onActiveEditorChange(editor)
+            queueReflow(index)
           }}
           onEditorDestroy={() => {
             if (editorsRef.current[index]) editorsRef.current[index] = null
@@ -1680,6 +1684,9 @@ function DraftPageSheet({
         spellcheck: spellcheck ? 'true' : 'false',
       },
       transformPastedHTML: sanitizePastedHtml,
+      handleDrop(view, event) {
+        return dropLitRpgAcrossPages(view, event)
+      },
       handleTextInput(view, from, to, text) {
         if (!smartQuotes) return false
         const previousCharacter = view.state.doc.textBetween(Math.max(0, from - 1), from)

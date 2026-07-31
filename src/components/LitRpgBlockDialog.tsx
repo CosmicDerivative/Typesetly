@@ -5,6 +5,9 @@ import {
   moveLitRpgColumn,
   moveLitRpgRow,
   normalizeLitRpgDraft,
+  normalizeLitRpgColumnWidths,
+  resizeLitRpgColumn,
+  colorWithOpacity,
   type LitRpgBlockDraft,
   type LitRpgBlockKind,
 } from '../editor/litrpg'
@@ -42,6 +45,7 @@ export function LitRpgBlockDialog({
     if (draft.columns.length >= 4) return
     patch({
       columns: [...draft.columns, `Column ${draft.columns.length + 1}`],
+      columnWidths: normalizeLitRpgColumnWidths([], draft.columns.length + 1),
       rows: draft.rows.map((row) => ({ cells: [...row.cells, ''] })),
     })
   }
@@ -50,6 +54,10 @@ export function LitRpgBlockDialog({
     if (draft.columns.length <= 1) return
     patch({
       columns: draft.columns.filter((_, index) => index !== columnIndex),
+      columnWidths: normalizeLitRpgColumnWidths(
+        draft.columnWidths.filter((_, index) => index !== columnIndex),
+        draft.columns.length - 1,
+      ),
       rows: draft.rows.map((row) => ({
         cells: row.cells.filter((_, index) => index !== columnIndex),
       })),
@@ -129,10 +137,11 @@ export function LitRpgBlockDialog({
               </select>
             </label>
             <label>
-              Width
-              <select value={draft.width} onChange={(event) => patch({ width: event.target.value as LitRpgBlockDraft['width'] })}>
-                <option value="full">Full width</option>
-                <option value="compact">Compact</option>
+              Text flow
+              <select value={draft.alignment} onChange={(event) => patch({ alignment: event.target.value as LitRpgBlockDraft['alignment'] })}>
+                <option value="left">Float left — wrap right</option>
+                <option value="center">Centered — text above/below</option>
+                <option value="right">Float right — wrap left</option>
               </select>
             </label>
             <label>
@@ -141,6 +150,22 @@ export function LitRpgBlockDialog({
                 <option value="comfortable">Comfortable</option>
                 <option value="compact">Compact</option>
               </select>
+            </label>
+            <label className="litrpg-range-control">
+              <span>Width <output>{Math.round(draft.widthPercent)}%</output></span>
+              <input type="range" min="30" max="100" value={draft.widthPercent} onChange={(event) => patch({ widthPercent: Number(event.target.value), width: Number(event.target.value) < 95 ? 'compact' : 'full' })} />
+            </label>
+            <label className="litrpg-range-control">
+              <span>Corner shape <output>{Math.round(draft.borderRadius)}px</output></span>
+              <input type="range" min="0" max="40" value={draft.borderRadius} onChange={(event) => patch({ borderRadius: Number(event.target.value) })} />
+            </label>
+            <label className="litrpg-range-control">
+              <span>Border <output>{Math.round(draft.borderWidth)}px</output></span>
+              <input type="range" min="0" max="8" value={draft.borderWidth} onChange={(event) => patch({ borderWidth: Number(event.target.value) })} />
+            </label>
+            <label className="litrpg-range-control">
+              <span>Cell padding <output>{Math.round(draft.cellPadding)}px</output></span>
+              <input type="range" min="3" max="24" value={draft.cellPadding} onChange={(event) => patch({ cellPadding: Number(event.target.value) })} />
             </label>
             <div className="litrpg-color-grid">
               <label>Accent<input type="color" value={draft.accent} onChange={(event) => patch({ accent: event.target.value })} /></label>
@@ -152,6 +177,16 @@ export function LitRpgBlockDialog({
               <input type="checkbox" checked={draft.showColumnHeaders} onChange={(event) => patch({ showColumnHeaders: event.target.checked })} />
               Show column headings
             </label>
+            <label className="check-row">
+              <input type="checkbox" checked={draft.backgroundOpacity < 100} onChange={(event) => patch({ backgroundOpacity: event.target.checked ? 72 : 100 })} />
+              Translucent background
+            </label>
+            {draft.backgroundOpacity < 100 && (
+              <label className="litrpg-range-control litrpg-opacity-control">
+                <span>Background opacity <output>{Math.round(draft.backgroundOpacity)}%</output></span>
+                <input type="range" min="10" max="95" value={draft.backgroundOpacity} onChange={(event) => patch({ backgroundOpacity: Number(event.target.value) })} />
+              </label>
+            )}
             <label className="check-row">
               <input type="checkbox" checked={draft.stripedRows} onChange={(event) => patch({ stripedRows: event.target.checked })} />
               Alternate row shading
@@ -176,16 +211,27 @@ export function LitRpgBlockDialog({
                   <button
                     type="button"
                     disabled={columnIndex === 0}
-                    onClick={() => patch(moveLitRpgColumn(draft.columns, draft.rows, columnIndex, -1))}
+                    onClick={() => patch(moveLitRpgColumn(draft.columns, draft.rows, columnIndex, -1, draft.columnWidths))}
                     aria-label={`Move ${column || `column ${columnIndex + 1}`} left`}
                   >←</button>
                   <button
                     type="button"
                     disabled={columnIndex === draft.columns.length - 1}
-                    onClick={() => patch(moveLitRpgColumn(draft.columns, draft.rows, columnIndex, 1))}
+                    onClick={() => patch(moveLitRpgColumn(draft.columns, draft.rows, columnIndex, 1, draft.columnWidths))}
                     aria-label={`Move ${column || `column ${columnIndex + 1}`} right`}
                   >→</button>
                   <button type="button" disabled={draft.columns.length <= 1} onClick={() => removeColumn(columnIndex)} aria-label={`Remove ${column || `column ${columnIndex + 1}`}`}>×</button>
+                </span>
+                <span className="litrpg-column-width-control">
+                  <input
+                    type="range"
+                    min="10"
+                    max={100 - 10 * (draft.columns.length - 1)}
+                    value={draft.columnWidths[columnIndex]}
+                    onChange={(event) => patch({ columnWidths: resizeLitRpgColumn(draft.columnWidths, columnIndex, Number(event.target.value)) })}
+                    aria-label={`Width of ${column || `column ${columnIndex + 1}`}`}
+                  />
+                  <output>{Math.round(draft.columnWidths[columnIndex])}%</output>
                 </span>
               </label>
             ))}
@@ -239,12 +285,19 @@ function LitRpgPreview({ draft }: { draft: LitRpgBlockDraft }) {
       data-appearance={draft.appearance}
       data-density={draft.density}
       data-width={draft.width}
+      data-width-percent={String(draft.widthPercent)}
+      data-alignment={draft.alignment}
       data-striped-rows={String(draft.stripedRows)}
       style={{
         '--litrpg-accent': draft.accent,
         '--litrpg-bg': draft.background,
+        '--litrpg-bg-alpha': colorWithOpacity(draft.background, draft.backgroundOpacity),
         '--litrpg-text': draft.textColor,
         '--litrpg-border': draft.border,
+        '--litrpg-width': `${draft.widthPercent}%`,
+        '--litrpg-radius': `${draft.borderRadius}px`,
+        '--litrpg-border-width': `${draft.borderWidth}px`,
+        '--litrpg-cell-padding': `${draft.cellPadding}px`,
       } as CSSProperties}
     >
       <div className="litrpg-block-heading">
@@ -252,6 +305,7 @@ function LitRpgPreview({ draft }: { draft: LitRpgBlockDraft }) {
         {draft.subtitle && <span className="litrpg-block-subtitle">{draft.subtitle}</span>}
       </div>
       <table className="litrpg-block-table">
+        <colgroup>{draft.columns.map((_, index) => <col key={index} style={{ width: `${draft.columnWidths[index]}%` }} />)}</colgroup>
         {draft.showColumnHeaders && (
           <thead><tr>{draft.columns.map((column, index) => <th key={index}>{column || `Column ${index + 1}`}</th>)}</tr></thead>
         )}

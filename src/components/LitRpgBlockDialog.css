@@ -83,6 +83,32 @@
   gap: 0 10px;
 }
 
+.litrpg-range-control {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+.litrpg-range-control > span,
+.litrpg-column-width-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.litrpg-range-control output,
+.litrpg-column-width-control output {
+  color: #6c7b88;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.litrpg-opacity-control {
+  grid-column: 1 / -1;
+}
+
 .litrpg-color-grid {
   display: grid;
   grid-column: 1 / -1;
@@ -109,6 +135,24 @@
 
 .litrpg-column-input-action {
   grid-template-columns: minmax(0, 1fr) repeat(3, 28px);
+}
+
+.litrpg-column-width-control {
+  margin-top: 5px;
+}
+
+.litrpg-column-width-control input {
+  min-width: 0;
+}
+
+.litrpg-column-width-control output {
+  min-width: 30px;
+  text-align: right;
+}
+
+.litrpg-builder-preview[data-alignment="left"],
+.litrpg-builder-preview[data-alignment="right"] {
+  float: none;
 }
 
 .litrpg-input-action button,
