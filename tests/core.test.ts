@@ -9,7 +9,10 @@ import { plainTextFromHtml, wordDiff } from '../src/editor/diff.ts'
 import { Callout, LitRpgBlock } from '../src/editor/extensions.ts'
 import {
   buildLitRpgBlockNode,
+  cloneLitRpgDraft,
   litRpgDraftFromAttrs,
+  litRpgDraftFromStored,
+  litRpgElementKey,
   litRpgPreset,
   moveLitRpgColumn,
   moveLitRpgRow,
@@ -18,6 +21,17 @@ import {
   colorWithOpacity,
   replaceLitRpgBlockRange,
 } from '../src/editor/litrpg.ts'
+import {
+  litRpgColumnWidthFractions,
+  litRpgFreeformBands,
+  litRpgFreeformFields,
+  litRpgIsTranslucent,
+  litRpgManuscriptLines,
+  litRpgOpaqueWordFill,
+  litRpgTitleDisplay,
+  litRpgUsesBoxedFields,
+  litRpgWordColor,
+} from '../src/export/litrpgExport.ts'
 import {
   EXTERNAL_PROOFREADING_CHARACTER_LIMIT,
   collectFindMatches,
@@ -260,27 +274,74 @@ test('chapter pages split on breaks, pack by budget, and rejoin for storage', as
 
   const {
     pruneEmptyDraftPages,
+    lastContentPageIndex,
     countBlankParagraphs,
+    draftOverflowMoveIndex,
   } = await import('../src/layout/chapterPages.ts')
 
-  // Non-last empty sheets are always removed; a blank last page can be kept.
+  assert.equal(lastContentPageIndex(['<p>Hi</p>', '<p></p>', '<p></p>']), 0)
+  assert.equal(lastContentPageIndex(['<p>A</p>', '<p>B</p>', '<p></p>']), 1)
+
+  // Holes between content are always removed; trailing blanks can be kept.
   assert.deepEqual(
     pruneEmptyDraftPages(['<p>Hi</p>', '<p></p>', '<p>There</p>']),
     ['<p>Hi</p>', '<p>There</p>'],
   )
   assert.deepEqual(
+    pruneEmptyDraftPages([
+      '<p>One</p>',
+      '<p></p>',
+      '<p><br class="ProseMirror-trailingBreak"></p>',
+      '<p>Two</p>',
+      '<p></p>',
+    ]),
+    ['<p>One</p>', '<p>Two</p>'],
+  )
+  assert.deepEqual(
     pruneEmptyDraftPages(['<p>Hi</p>', '<p></p>'], { preserveLastEmptyPage: true }),
     ['<p>Hi</p>', '<p></p>'],
+  )
+  // Preserve keeps every trailing blank end page, not only the final sheet.
+  assert.deepEqual(
+    pruneEmptyDraftPages(
+      ['<p>Hi</p>', '<p></p>', '<p></p><p></p>'],
+      { preserveLastEmptyPage: true },
+    ),
+    ['<p>Hi</p>', '<p></p>', '<p></p><p></p>'],
   )
   assert.deepEqual(
     pruneEmptyDraftPages(['<p>Hi</p>', '<p></p>'], { preserveLastEmptyPage: false }),
     ['<p>Hi</p>'],
   )
+  // Drop blank last pages outright — never fold empties onto the previous sheet
+  // (that created mid-page multi-line gaps after Enter-at-end).
   assert.deepEqual(
     pruneEmptyDraftPages(['<p>Hi</p>', '<p></p><p></p>'], { preserveLastEmptyPage: false }),
-    ['<p>Hi</p><p></p><p></p>'],
+    ['<p>Hi</p>'],
+  )
+  assert.deepEqual(
+    pruneEmptyDraftPages(['<p>Hi</p>', '<p></p><p></p><p></p>'], { preserveLastEmptyPage: false }),
+    ['<p>Hi</p>'],
+  )
+  assert.deepEqual(
+    pruneEmptyDraftPages(
+      ['<p>Hi</p>', '<p></p>', '<p></p>'],
+      { preserveLastEmptyPage: false },
+    ),
+    ['<p>Hi</p>'],
   )
   assert.equal(countBlankParagraphs('<p></p><p></p>'), 2)
+  assert.equal(isEmptyPageHtml('<p><br class="ProseMirror-trailingBreak"></p>'), true)
+
+  // Enter caret in trailing blank → move the blank, not the prior real block.
+  assert.equal(draftOverflowMoveIndex([false, false, true], 2), 2)
+  assert.equal(draftOverflowMoveIndex([false, true, true], 1), 1)
+  // Caret still in real content → skip trailing empties (LitRPG-safe path).
+  assert.equal(draftOverflowMoveIndex([false, false, true], 1), 1)
+  assert.equal(draftOverflowMoveIndex([false, true], 0), 0)
+  // Tall LitRPG alone on a sheet: move index is the atom (not trailing empties).
+  assert.equal(draftOverflowMoveIndex([false], 0), 0)
+  assert.equal(draftOverflowMoveIndex([false, true], null), 0)
 
   // TipTap scene breaks are bare <hr> tags — must not be dropped while paging.
   const withScene = '<p>A</p><hr data-typesetly-node="scene-break"><p>B</p>'
@@ -292,6 +353,29 @@ test('chapter pages split on breaks, pack by budget, and rejoin for storage', as
   assert.equal(joinChapterPages(scenePages).includes('data-typesetly-node="scene-break"'), true)
   assert.equal(joinChapterPages(scenePages).includes('<p>A</p>'), true)
   assert.equal(joinChapterPages(scenePages).includes('<p>B</p>'), true)
+
+  // Structured blocks contain nested div/table markup. They must remain one
+  // atomic top-level block when a chapter is reopened and split into pages.
+  const nestedLitRpg = '<p>Before</p><div data-typesetly-node="litrpg-block"><div class="litrpg-block-heading"><strong>Status</strong></div><table><tbody><tr><td>Strength</td><td>10</td></tr></tbody></table><div class="litrpg-block-footer">Points: 0</div></div><p>After</p>'
+  assert.deepEqual(splitTopLevelBlocks(nestedLitRpg), [
+    '<p>Before</p>',
+    '<div data-typesetly-node="litrpg-block"><div class="litrpg-block-heading"><strong>Status</strong></div><table><tbody><tr><td>Strength</td><td>10</td></tr></tbody></table><div class="litrpg-block-footer">Points: 0</div></div>',
+    '<p>After</p>',
+  ])
+  const nestedPages = splitChapterIntoPages(nestedLitRpg, 20)
+  assert.equal(joinChapterPages(nestedPages), nestedLitRpg)
+
+  // Freeform LitRPG markup with nested absolute items must also stay one block
+  // across split/join so reload cannot invent a second visual instance.
+  const freeformLitRpg = '<p>Lead</p><div data-typesetly-node="litrpg-block" data-layout-mode="freeform" data-canvas-height="400"><div class="litrpg-freeform-canvas" style="height:400px"><div class="litrpg-freeform-item is-title" style="left:4%;top:14px;width:58%;height:34px">Status</div></div></div><p>Tail</p>'
+  const freeformBlocks = splitTopLevelBlocks(freeformLitRpg)
+  assert.equal(freeformBlocks.length, 3)
+  assert.equal((freeformBlocks[1]!.match(/data-typesetly-node="litrpg-block"/g) || []).length, 1)
+  const freeformPages = splitChapterIntoPages(freeformLitRpg, 30)
+  const rejoined = joinChapterPages(freeformPages)
+  assert.equal((rejoined.match(/data-typesetly-node="litrpg-block"/g) || []).length, 1)
+  assert.equal(rejoined, freeformLitRpg)
+  assert.equal(isEmptyPageHtml(freeformBlocks[1]!), false)
 
   const long = Array.from({ length: 40 }, (_, index) => `<p>Block ${index} with enough words to consume budget.</p>`).join('')
   const pages = splitChapterIntoPages(long, 120)
@@ -393,6 +477,107 @@ test('LitRPG presets provide structured tables for each supported block type', (
   assert.equal(systemMessage.columns.length, 1)
   assert.deepEqual(skillSelection.columns, ['Skill', 'Rank', 'Effect'])
   assert.equal(itemInfo.rows.some((row) => row.cells.includes('Damage')), true)
+  assert.equal(itemInfo.subtitle, 'Rare - One-Handed Sword')
+  assert.equal(itemInfo.footer, '"It remembers every battle."')
+})
+
+test('LitRPG data-attrs restore a structured draft for export helpers', () => {
+  const draft = litRpgDraftFromAttrs({
+    title: 'Status',
+    subtitle: 'Level 12',
+    columns: '["Attribute","Value"]',
+    columnWidths: '[40,60]',
+    rows: '[{"cells":["Strength","10"]},{"cells":[""," "]}]',
+    footer: 'Unspent: 2',
+    appearance: 'panel',
+    showHeaders: 'true',
+    stripedRows: 'true',
+    widthPercent: '74',
+    alignment: 'center',
+    accent: '#5eead4',
+    background: '#102a2d',
+  })
+
+  assert.equal(draft.title, 'Status')
+  assert.equal(draft.subtitle, 'Level 12')
+  assert.deepEqual(draft.columns, ['Attribute', 'Value'])
+  assert.deepEqual(draft.rows[0].cells, ['Strength', '10'])
+  assert.equal(draft.footer, 'Unspent: 2')
+  assert.equal(litRpgTitleDisplay(draft), 'STATUS')
+  assert.equal(litRpgTitleDisplay({ title: 'Quiet', appearance: 'minimal' }), 'Quiet')
+  assert.deepEqual(litRpgColumnWidthFractions({ columns: draft.columns, columnWidths: [40, 60] }), [0.4, 0.6])
+  assert.deepEqual(litRpgColumnWidthFractions({ columns: ['A', 'B'], columnWidths: [] }), [0.5, 0.5])
+  assert.equal(litRpgWordColor('#2dd4bf'), '2DD4BF')
+  assert.equal(litRpgWordColor('not-a-color'), '111111')
+})
+
+test('LitRPG freeform export helpers keep boxed fields and translucent fills', () => {
+  const draft = normalizeLitRpgDraft({
+    ...litRpgPreset('stat-screen'),
+    layoutMode: 'freeform',
+    backgroundOpacity: 55,
+    stripedRows: true,
+  })
+  assert.equal(litRpgUsesBoxedFields(draft), true)
+  assert.equal(litRpgUsesBoxedFields({ layoutMode: 'table' }), false)
+  assert.equal(litRpgIsTranslucent(draft), true)
+  assert.equal(litRpgIsTranslucent({ backgroundOpacity: 100 }), false)
+
+  const fields = litRpgFreeformFields(draft)
+  assert.equal(fields.some((field) => field.kind === 'title' && field.text === 'CHARACTER STATUS'), true)
+  assert.equal(fields.some((field) => field.kind === 'cell' && field.text === 'Strength'), true)
+  assert.equal(fields.every((field) => field.layout.width > 0 && field.layout.height > 0), true)
+
+  assert.equal(litRpgOpaqueWordFill('#102a2d', 100), '102A2D')
+  assert.notEqual(litRpgOpaqueWordFill('#102a2d', 55), '102A2D')
+  assert.equal(litRpgOpaqueWordFill('#102a2d', 0), 'FFFFFF')
+})
+
+test('LitRPG translucent blocks keep authored field text and spatial pairing', () => {
+  const translucent = normalizeLitRpgDraft({
+    ...litRpgPreset('stat-screen'),
+    layoutMode: 'freeform',
+    backgroundOpacity: 72,
+  })
+  const opaque = normalizeLitRpgDraft({
+    ...litRpgPreset('stat-screen'),
+    layoutMode: 'freeform',
+    backgroundOpacity: 100,
+  })
+
+  assert.equal(litRpgIsTranslucent(translucent), true)
+  assert.equal(litRpgIsTranslucent(opaque), false)
+
+  const lines = litRpgManuscriptLines(translucent)
+  assert.equal(lines[0]?.text, 'Character Status')
+  assert.equal(lines[1]?.text, 'Level 1 Adventurer')
+  assert.equal(lines.some((line) => line.text.includes('Attribute:')), false)
+  assert.equal(lines.some((line) => line.text.includes(' • ')), false)
+  assert.equal(lines.find((line) => line.kind === 'header')?.text, 'Attribute  Value')
+  assert.equal(lines.find((line) => line.kind === 'row')?.text, 'Strength  10')
+  assert.equal(lines.at(-1)?.text, 'Unspent attribute points: 0')
+
+  const withoutHeaders = litRpgManuscriptLines(normalizeLitRpgDraft({
+    ...litRpgPreset('stat-screen'),
+    showColumnHeaders: false,
+    backgroundOpacity: 40,
+  }))
+  assert.equal(withoutHeaders.some((line) => line.kind === 'header'), false)
+  assert.equal(withoutHeaders.find((line) => line.kind === 'row')?.text, 'Strength  10')
+
+  const authoredFields = litRpgFreeformFields(translucent, { preserveAuthoredCase: true })
+  assert.equal(authoredFields.find((field) => field.kind === 'title')?.text, 'Character Status')
+  assert.equal(authoredFields.find((field) => field.kind === 'column')?.text, 'Attribute')
+
+  const strength = authoredFields.find((field) => field.text === 'Strength')
+  const ten = authoredFields.find((field) => field.key === litRpgElementKey.cell(0, 1))
+  assert.ok(strength && ten)
+  assert.equal(strength.layout.y, ten.layout.y)
+  assert.ok(strength.layout.x < ten.layout.x)
+
+  const bands = litRpgFreeformBands(authoredFields)
+  const strengthBand = bands.find((band) => band.some((field) => field.text === 'Strength'))
+  assert.deepEqual(strengthBand?.map((field) => field.text), ['Strength', '10'])
 })
 
 test('LitRPG block normalization keeps table cells aligned and rejects unsafe colors', () => {
@@ -446,8 +631,9 @@ test('LitRPG rows and columns can be repositioned without detaching their values
 })
 
 test('LitRPG geometry, translucency, and column sizing stay valid', () => {
+  const itemPreset = litRpgPreset('item-info')
   const normalized = normalizeLitRpgDraft({
-    ...litRpgPreset('item-info'),
+    ...itemPreset,
     widthPercent: 12,
     borderRadius: 100,
     borderWidth: -2,
@@ -460,6 +646,9 @@ test('LitRPG geometry, translucency, and column sizing stay valid', () => {
   assert.equal(normalized.backgroundOpacity, 64)
   assert.equal(normalized.cellPadding, 24)
   assert.equal(colorWithOpacity('#102a2d', 64), 'rgba(16, 42, 45, 0.64)')
+  assert.equal(normalized.layoutMode, 'freeform')
+  assert.ok(Object.keys(normalized.elementLayouts).length >= 8)
+  assert.ok(normalized.canvasHeight >= normalized.elementLayouts.footer.y + normalized.elementLayouts.footer.height)
 
   const resized = resizeLitRpgColumn([34, 20, 46], 1, 40)
   assert.equal(Math.round(resized.reduce((sum, width) => sum + width, 0)), 100)
@@ -481,6 +670,12 @@ test('LitRPG block survives an HTML save and chapter reload round trip', () => {
         backgroundOpacity: 57,
         borderRadius: 19,
         columnWidths: [100],
+        layoutMode: 'freeform',
+        canvasHeight: 640,
+        elementLayouts: {
+          ...litRpgPreset('system-message').elementLayouts,
+          title: { x: 43, y: 171, width: 37, height: 52 },
+        },
       })],
     },
   })
@@ -509,5 +704,53 @@ test('LitRPG block survives an HTML save and chapter reload round trip', () => {
   assert.equal(draft.backgroundOpacity, 57)
   assert.equal(draft.borderRadius, 19)
   assert.deepEqual(draft.columnWidths, [100])
+  assert.equal(draft.layoutMode, 'freeform')
+  assert.equal(draft.canvasHeight, 640)
+  assert.deepEqual(draft.elementLayouts.title, { x: 43, y: 171, width: 37, height: 52 })
   original.destroy()
+})
+
+test('LitRPG character screen tips deep-clone so past inserts stay frozen', () => {
+  const tip = litRpgPreset('stat-screen')
+  tip.rows = [{ cells: ['Strength', '10'] }, { cells: ['Agility', '10'] }]
+  const chapterOne = cloneLitRpgDraft(tip)
+  const chapterOneNode = buildLitRpgBlockNode({
+    ...chapterOne,
+    sourceScreenId: 'screen-kharem',
+    revision: '1',
+  })
+
+  // Continuity tip advances for later chapters only.
+  tip.rows[0].cells[1] = '18'
+  tip.title = 'Character Status - Mid-arc'
+  const chapterFive = cloneLitRpgDraft(tip)
+  const chapterFiveNode = buildLitRpgBlockNode({
+    ...chapterFive,
+    sourceScreenId: 'screen-kharem',
+    revision: '2',
+  })
+
+  const chapterOneDraft = litRpgDraftFromAttrs(chapterOneNode.attrs)
+  const chapterFiveDraft = litRpgDraftFromAttrs(chapterFiveNode.attrs)
+  assert.equal(chapterOneDraft.rows[0].cells[1], '10')
+  assert.equal(chapterOneDraft.title, 'Character Status')
+  assert.equal(chapterFiveDraft.rows[0].cells[1], '18')
+  assert.equal(chapterFiveDraft.title, 'Character Status - Mid-arc')
+  assert.equal(chapterOneNode.attrs.sourceScreenId, 'screen-kharem')
+  assert.equal(chapterFiveNode.attrs.revision, '2')
+  assert.notEqual(chapterOneNode.attrs.rows, chapterFiveNode.attrs.rows)
+})
+
+test('LitRPG user templates round-trip through stored draft helpers', () => {
+  const draft = litRpgPreset('item-info')
+  draft.title = 'Moonblade'
+  draft.footer = 'Bound to Kharem'
+  const stored = cloneLitRpgDraft(draft) as unknown as Record<string, unknown>
+  stored.title = 'Moonblade'
+  const restored = litRpgDraftFromStored(stored)
+  assert.equal(restored.title, 'Moonblade')
+  assert.equal(restored.footer, 'Bound to Kharem')
+  assert.equal(restored.kind, 'item-info')
+  restored.title = 'Changed'
+  assert.equal(draft.title, 'Moonblade')
 })

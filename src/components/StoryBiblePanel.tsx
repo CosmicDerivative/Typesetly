@@ -16,9 +16,17 @@ import { useEffect, useMemo, useState } from 'react'
 import { useApp } from '../BookContext'
 import { getMentionIndex, type EntityMentions } from '../story/mentions'
 import {
+  cloneLitRpgDraft,
+} from '../editor/litrpg'
+import {
+  litRpgScreenDisplayLabel,
+  requestOpenLitRpgLibrary,
+} from '../editor/litrpgLibrary'
+import {
   defaultStoryBible,
   type BookProject,
   type CharacterProfile,
+  type LitRpgCharacterScreen,
   type WorldbuildingCategory,
   type WorldbuildingEntry,
 } from '../types'
@@ -239,6 +247,24 @@ export function StoryBiblePanel() {
       setScope('book')
       setSelectedKey(`${project.id}:${id}`)
     }
+  }
+
+  const openLitRpgScreen = (screen: LitRpgCharacterScreen) => {
+    requestOpenLitRpgLibrary({
+      draft: cloneLitRpgDraft(screen.draft),
+      provenance: {
+        sourceScreenId: screen.id,
+        sourceTemplateId: '',
+        revision: String(screen.revision),
+      },
+      initialTab: 'design',
+    })
+    if (workspace) {
+      setMode('draft')
+      setRightPanel('none')
+      return
+    }
+    setRightPanel('none')
   }
 
   const openMention = (bookId: string, chapterId: string) => {
@@ -563,6 +589,39 @@ export function StoryBiblePanel() {
                   <label>Relationship notes<textarea rows={3} value={selectedCharacter.relationships} placeholder="Free-form context; use Mind map for explicit links." onChange={(event) => updateCharacter(selectedCharacter.id, { relationships: event.target.value })} /></label>
                   <label>Notes<textarea rows={4} value={selectedCharacter.notes} onChange={(event) => updateCharacter(selectedCharacter.id, { notes: event.target.value })} /></label>
                   <label>Tags<input defaultValue={selectedCharacter.tags.join(', ')} placeholder="family, rival, point-of-view" onBlur={(event) => updateCharacter(selectedCharacter.id, { tags: tagsFromInput(event.target.value) })} /></label>
+                  <div className="story-litrpg-screens">
+                    <div className="story-form-heading">
+                      <div>
+                        <small>LitRPG screens</small>
+                        <strong>Current tips linked to this character</strong>
+                      </div>
+                    </div>
+                    {((project.litrpgCharacterScreens || []).filter((screen) => screen.characterId === selectedCharacter.id)).length > 0 ? (
+                      <ul className="story-litrpg-list">
+                        {(project.litrpgCharacterScreens || [])
+                          .filter((screen) => screen.characterId === selectedCharacter.id)
+                          .map((screen) => (
+                            <li key={screen.id}>
+                              <div>
+                                <strong>{litRpgScreenDisplayLabel(screen, bible.characters)}</strong>
+                                <small>rev {screen.revision} · {screen.kind || screen.draft.kind}</small>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => openLitRpgScreen(screen)}
+                                title="Open this tip in the LitRPG builder"
+                              >
+                                Open in builder
+                              </button>
+                            </li>
+                          ))}
+                      </ul>
+                    ) : (
+                      <p className="story-litrpg-empty">
+                        No LitRPG screens linked yet. Save a tip from a chapter LitRPG block and assign this character.
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
 

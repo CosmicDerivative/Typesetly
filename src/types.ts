@@ -168,6 +168,8 @@ export interface TrackedChange {
   status: 'pending' | 'accepted' | 'rejected'
 }
 
+import type { LitRpgBlockDraft, LitRpgBlockKind } from './editor/litrpg'
+
 export interface CalloutPreset {
   id: string
   name: string
@@ -176,6 +178,31 @@ export interface CalloutPreset {
   border: string
   direction: 'incoming' | 'outgoing'
   messageTheme: 'ios' | 'android'
+}
+
+/** Reusable LitRPG layout/content shell saved at book level (not character-bound). */
+export interface LitRpgUserTemplate {
+  id: string
+  name: string
+  kind: LitRpgBlockKind
+  draft: LitRpgBlockDraft
+  createdAt: string
+  updatedAt: string
+}
+
+/**
+ * Current tip for a character (or named) status screen. Chapter inserts are
+ * deep clones; updating the tip never rewrites past inserts.
+ */
+export interface LitRpgCharacterScreen {
+  id: string
+  characterId?: string
+  name: string
+  kind: LitRpgBlockKind
+  draft: LitRpgBlockDraft
+  revision: number
+  createdAt: string
+  updatedAt: string
 }
 
 export interface BookDetails {
@@ -445,6 +472,8 @@ export interface BookProject {
   trackChanges?: boolean
   trackedChanges?: TrackedChange[]
   calloutPresets?: CalloutPreset[]
+  litrpgTemplates?: LitRpgUserTemplate[]
+  litrpgCharacterScreens?: LitRpgCharacterScreen[]
   epubStartChapterId?: string
   trashItems?: TrashItem[]
   storyBible?: StoryBible

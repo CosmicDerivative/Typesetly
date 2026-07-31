@@ -1,5 +1,6 @@
 import {
   AlignmentType,
+  BorderStyle,
   Document,
   ExternalHyperlink,
   HeadingLevel,
@@ -7,12 +8,34 @@ import {
   Packer,
   PageBreak,
   Paragraph,
+  ShadingType,
+  Table,
+  TableCell,
+  TableRow,
   TextRun,
   UnderlineType,
+  VerticalAlign,
+  WidthType,
 } from 'docx'
 import { saveAs } from 'file-saver'
+import { litRpgDraftFromAttrs, type LitRpgBlockDraft } from '../editor/litrpg'
 import { exportableChapters, parseManuscript } from '../layout/manuscript'
 import type { BookProject, Chapter, ExportResult } from '../types'
+import {
+  litRpgAuthoredTitle,
+  litRpgColumnWidthFractions,
+  litRpgFreeformBands,
+  litRpgFreeformFields,
+  litRpgIsTranslucent,
+  litRpgManuscriptWordInk,
+  litRpgOpaqueWordFill,
+  litRpgTitleDisplay,
+  litRpgUsesBoxedFields,
+  litRpgWordColor,
+  mixLitRpgRgb,
+  litRpgRgb,
+  type LitRpgExportField,
+} from './litrpgExport'
 
 function base64Bytes(dataUrl: string) {
   const match = /^data:image\/(png|jpeg|jpg|gif);base64,(.+)$/i.exec(dataUrl)
@@ -33,6 +56,12 @@ function wordColor(value?: string) {
     .map((part) => Math.max(0, Math.min(255, Number(part))).toString(16).padStart(2, '0'))
     .join('')
     .toUpperCase()
+}
+
+function mixWordFill(background: string, accent: string, amount: number) {
+  const mixed = mixLitRpgRgb(litRpgRgb(background), litRpgRgb(accent), amount)
+  const channel = (value: number) => Math.round(value * 255).toString(16).padStart(2, '0').toUpperCase()
+  return `${channel(mixed.r)}${channel(mixed.g)}${channel(mixed.b)}`
 }
 
 function transformedText(value: string, transform?: string) {
@@ -140,14 +169,312 @@ function runsFromElement(element: HTMLElement): Array<TextRun | ExternalHyperlin
   return output.length ? output : [new TextRun({ text: element.textContent || '' })]
 }
 
-async function chapterParagraphs(chapter: Chapter): Promise<Paragraph[]> {
+function litRpgDocxTable(block: LitRpgBlockDraft) {
+  const columns = block.columns.length ? block.columns : ['Value']
+  const columnCount = columns.length
+  const fullWidth = 9360
+  const tableWidth = Math.round(fullWidth * (Math.min(100, Math.max(30, block.widthPercent || 100)) / 100))
+  const fractions = litRpgColumnWidthFractions(block)
+  const columnWidths = fractions.map((fraction, index) => {
+    if (index === fractions.length - 1) {
+      return tableWidth - fractions.slice(0, -1).reduce((sum, value) => sum + Math.round(value * tableWidth), 0)
+    }
+    return Math.round(fraction * tableWidth)
+  })
+  const translucent = litRpgIsTranslucent(block)
+  const freeform = litRpgUsesBoxedFields(block)
+  const boxed = freeform && !translucent
+  const manuscriptInk = litRpgManuscriptWordInk()
+  const bg = translucent
+    ? 'FFFFFF'
+    : litRpgOpaqueWordFill(block.background || '#102a2d', block.backgroundOpacity ?? 100)
+  const accent = translucent ? manuscriptInk.title : litRpgWordColor(block.accent, '5EEAD4')
+  const text = translucent ? manuscriptInk.body : litRpgWordColor(block.textColor, 'ECFEFF')
+  const muted = translucent ? manuscriptInk.muted : text
+  const borderColor = translucent ? manuscriptInk.border : litRpgWordColor(block.border, '2DD4BF')
+  const stripe = mixWordFill(block.background || '#102a2d', block.accent || '#5eead4', 0.14)
+  const cellFill = mixWordFill(block.background || '#102a2d', '#000000', 0.1)
+  const compact = block.density === 'compact'
+  const font = translucent
+    ? 'Arial'
+    : block.appearance === 'terminal'
+      ? 'Courier New'
+      : block.appearance === 'ornate'
+        ? 'Times New Roman'
+        : 'Arial'
+  const pad = Math.max(40, Math.round((block.cellPadding || 8) * (compact ? 5 : 7)))
+  const bodySize = compact ? 16 : 18
+  const titleSize = compact ? 18 : 22
+  const metaSize = compact ? 14 : 16
+  const borderStyle = translucent
+    ? BorderStyle.SINGLE
+    : block.appearance === 'terminal'
+      ? BorderStyle.DASHED
+      : block.appearance === 'ornate'
+        ? BorderStyle.DOUBLE
+        : BorderStyle.SINGLE
+  const edgeSize = translucent
+    ? Math.max(4, Math.round((block.borderWidth || 1) * 4))
+    : block.appearance === 'minimal'
+      ? (boxed ? Math.max(6, Math.round((block.borderWidth || 1) * 6)) : 0)
+      : Math.max(boxed ? 8 : 4, Math.round((block.borderWidth || 1) * (boxed ? 8 : 6)))
+  const leftSize = translucent
+    ? edgeSize
+    : block.appearance === 'minimal'
+      ? Math.max(18, Math.round((block.borderWidth || 4) * 8))
+      : edgeSize
+  const noneBorder = {
+    top: { style: BorderStyle.NONE, size: 0, color: bg },
+    bottom: { style: BorderStyle.NONE, size: 0, color: bg },
+    left: { style: BorderStyle.NONE, size: 0, color: bg },
+    right: { style: BorderStyle.NONE, size: 0, color: bg },
+  }
+  const cellBorder = (isFirstColumn: boolean, emphasize = false) => {
+    if (translucent && freeform) return noneBorder
+    const size = emphasize ? Math.max(edgeSize, 8) : edgeSize || 1
+    const color = edgeSize || emphasize ? borderColor : bg
+    return {
+      top: { style: borderStyle, size, color },
+      bottom: { style: borderStyle, size, color },
+      left: {
+        style: block.appearance === 'minimal' && !translucent ? BorderStyle.SINGLE : borderStyle,
+        size: isFirstColumn ? Math.max(leftSize || edgeSize || 1, size) : size,
+        color: (isFirstColumn && leftSize) || edgeSize || emphasize ? borderColor : bg,
+      },
+      right: { style: borderStyle, size, color },
+    }
+  }
+  const cellText = (value: string | undefined) => (value && value.trim() ? value : '-')
+  const alignment = block.alignment === 'left'
+    ? AlignmentType.LEFT
+    : block.alignment === 'right'
+      ? AlignmentType.RIGHT
+      : AlignmentType.CENTER
+  const displayTitle = translucent ? litRpgAuthoredTitle(block) : litRpgTitleDisplay(block)
+  const fieldRun = (field: LitRpgExportField) => new TextRun({
+    text: field.text,
+    bold: field.kind === 'title' || field.kind === 'column',
+    italics: field.kind === 'subtitle' || field.kind === 'footer',
+    color: field.kind === 'title' || field.kind === 'column'
+      ? accent
+      : field.kind === 'subtitle' || field.kind === 'footer'
+        ? muted
+        : text,
+    font,
+    size: field.kind === 'title'
+      ? titleSize
+      : field.kind === 'column' || field.kind === 'subtitle' || field.kind === 'footer'
+        ? metaSize
+        : bodySize,
+  })
+
+  if (freeform) {
+    const fields = litRpgFreeformFields(block, { preserveAuthoredCase: translucent })
+    const bands = litRpgFreeformBands(fields)
+    const contentWidth = Math.max(1200, tableWidth - pad * 2)
+    const bandTables = bands.map((band) => {
+      const rawWidths = band.map((field) => Math.max(600, Math.round((field.layout.width / 100) * contentWidth)))
+      const widthSum = rawWidths.reduce((sum, width) => sum + width, 0) || contentWidth
+      const widths = rawWidths.map((width, index) => (
+        index === rawWidths.length - 1
+          ? contentWidth - rawWidths.slice(0, -1).reduce((sum, value) => sum + value, 0)
+          : Math.round((width / widthSum) * contentWidth)
+      ))
+      return new Table({
+        width: { size: contentWidth, type: WidthType.DXA },
+        columnWidths: widths,
+        rows: [
+          new TableRow({
+            children: band.map((field, index) => new TableCell({
+              width: { size: widths[index], type: WidthType.DXA },
+              verticalAlign: VerticalAlign.TOP,
+              shading: { type: ShadingType.CLEAR, fill: boxed ? cellFill : bg },
+              borders: cellBorder(index === 0, boxed && field.kind === 'title'),
+              margins: {
+                top: Math.round(pad * 0.45),
+                bottom: Math.round(pad * 0.45),
+                left: Math.round(pad * 0.45),
+                right: Math.round(pad * 0.45),
+              },
+              children: [new Paragraph({ children: [fieldRun(field)] })],
+            })),
+          }),
+        ],
+      })
+    })
+
+    return new Table({
+      width: { size: tableWidth, type: WidthType.DXA },
+      columnWidths: [tableWidth],
+      alignment,
+      rows: [
+        new TableRow({
+          children: [
+            new TableCell({
+              width: { size: tableWidth, type: WidthType.DXA },
+              shading: { type: ShadingType.CLEAR, fill: bg },
+              borders: {
+                top: { style: BorderStyle.SINGLE, size: edgeSize, color: borderColor },
+                bottom: { style: BorderStyle.SINGLE, size: edgeSize, color: borderColor },
+                left: { style: BorderStyle.SINGLE, size: edgeSize, color: borderColor },
+                right: { style: BorderStyle.SINGLE, size: edgeSize, color: borderColor },
+              },
+              margins: { top: pad, bottom: pad, left: pad, right: pad },
+              children: bandTables.length
+                ? bandTables
+                : [new Paragraph({ children: [new TextRun({ text: displayTitle, bold: true, color: accent, font, size: titleSize })] })],
+            }),
+          ],
+        }),
+      ],
+    })
+  }
+
+  const spanCell = (
+    content: Paragraph[],
+    fill: string,
+    options: { firstColumn?: boolean; emphasize?: boolean } = {},
+  ) => new TableCell({
+    columnSpan: columnCount,
+    width: { size: tableWidth, type: WidthType.DXA },
+    verticalAlign: VerticalAlign.CENTER,
+    shading: { type: ShadingType.CLEAR, fill },
+    borders: cellBorder(options.firstColumn !== false, options.emphasize),
+    margins: { top: pad, bottom: pad, left: pad, right: pad },
+    children: content,
+  })
+
+  const rows: TableRow[] = [
+    new TableRow({
+      children: [
+        spanCell([
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: displayTitle,
+                bold: true,
+                color: accent,
+                font,
+                size: titleSize,
+              }),
+            ],
+          }),
+        ], boxed ? cellFill : bg, { emphasize: boxed }),
+      ],
+    }),
+  ]
+
+  if (block.subtitle) {
+    rows.push(new TableRow({
+      children: [
+        spanCell([
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: block.subtitle,
+                color: muted,
+                font,
+                size: metaSize,
+                italics: true,
+              }),
+            ],
+          }),
+        ], boxed ? cellFill : bg, { emphasize: boxed }),
+      ],
+    }))
+  }
+
+  if (block.showColumnHeaders) {
+    rows.push(new TableRow({
+      children: columns.map((column, index) => new TableCell({
+        width: { size: columnWidths[index], type: WidthType.DXA },
+        verticalAlign: VerticalAlign.CENTER,
+        shading: { type: ShadingType.CLEAR, fill: boxed ? cellFill : stripe },
+        borders: cellBorder(index === 0, boxed),
+        margins: { top: pad, bottom: pad, left: pad, right: pad },
+        children: [
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: column || `Column ${index + 1}`,
+                bold: true,
+                color: accent,
+                font,
+                size: metaSize,
+              }),
+            ],
+          }),
+        ],
+      })),
+    }))
+  }
+
+  for (const [rowIndex, row] of block.rows.entries()) {
+    const fill = !boxed && block.stripedRows && rowIndex % 2 === 1 ? stripe : boxed ? cellFill : bg
+    rows.push(new TableRow({
+      children: columns.map((_, index) => new TableCell({
+        width: { size: columnWidths[index], type: WidthType.DXA },
+        verticalAlign: VerticalAlign.TOP,
+        shading: { type: ShadingType.CLEAR, fill },
+        borders: cellBorder(index === 0, boxed),
+        margins: { top: pad, bottom: pad, left: pad, right: pad },
+        children: [
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: cellText(row.cells[index]),
+                color: text,
+                font,
+                size: bodySize,
+              }),
+            ],
+          }),
+        ],
+      })),
+    }))
+  }
+
+  if (block.footer) {
+    rows.push(new TableRow({
+      children: [
+        spanCell([
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: block.footer,
+                color: translucent ? muted : text,
+                font,
+                size: metaSize,
+                italics: true,
+              }),
+            ],
+          }),
+        ], boxed ? cellFill : bg, { emphasize: boxed }),
+      ],
+    }))
+  }
+
+  return new Table({
+    width: { size: tableWidth, type: WidthType.DXA },
+    columnWidths,
+    alignment,
+    rows,
+  })
+}
+
+async function chapterParagraphs(chapter: Chapter): Promise<Array<Paragraph | Table>> {
   const documentValue = new DOMParser().parseFromString(chapter.content, 'text/html')
-  const paragraphs: Paragraph[] = []
+  const paragraphs: Array<Paragraph | Table> = []
   for (const element of Array.from(documentValue.body.children) as HTMLElement[]) {
     const tag = element.tagName.toLowerCase()
     const nodeType = element.dataset.typesetlyNode
     if (nodeType === 'page-break') {
       paragraphs.push(new Paragraph({ children: [new PageBreak()] }))
+    } else if (nodeType === 'litrpg-block') {
+      paragraphs.push(litRpgDocxTable(litRpgDraftFromAttrs({
+        ...element.dataset,
+        showColumnHeaders: element.dataset.showHeaders,
+      })))
     } else if (nodeType === 'scene-break' || tag === 'hr') {
       paragraphs.push(new Paragraph({ text: '* * *', alignment: AlignmentType.CENTER, spacing: { before: 220, after: 220 } }))
     } else if (nodeType === 'verse' || nodeType === 'hangingIndent' || nodeType === 'attributedQuote') {
@@ -225,7 +552,7 @@ async function chapterParagraphs(chapter: Chapter): Promise<Paragraph[]> {
 }
 
 export async function exportProjectToDocx(project: BookProject): Promise<ExportResult> {
-  const children: Paragraph[] = []
+  const children: Array<Paragraph | Table> = []
   for (const chapter of exportableChapters(project)) {
     if (chapter.type === 'title-page') {
       children.push(

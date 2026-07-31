@@ -4,6 +4,9 @@ import {
   decodeLitRpgColumns,
   decodeLitRpgColumnWidths,
   decodeLitRpgRows,
+  decodeLitRpgElementLayouts,
+  litRpgElementKey,
+  normalizeLitRpgElementLayouts,
 } from './litrpg.ts'
 
 function styleMark(name: string, style: string, tag = 'span') {
@@ -262,6 +265,9 @@ export const LitRpgBlock = Node.create({
       width: { default: 'full', parseHTML: (element) => element.getAttribute('data-width') || 'full' },
       widthPercent: { default: 100, parseHTML: (element) => Number(element.getAttribute('data-width-percent') || 100) },
       alignment: { default: 'center', parseHTML: (element) => element.getAttribute('data-alignment') || 'center' },
+      layoutMode: { default: 'freeform', parseHTML: (element) => element.getAttribute('data-layout-mode') || 'freeform' },
+      canvasHeight: { default: 320, parseHTML: (element) => Number(element.getAttribute('data-canvas-height') || 320) },
+      elementLayouts: { default: '{}', parseHTML: (element) => element.getAttribute('data-element-layouts') || '{}' },
       borderRadius: { default: 8, parseHTML: (element) => Number(element.getAttribute('data-border-radius') || 8) },
       borderWidth: { default: 1, parseHTML: (element) => Number(element.getAttribute('data-border-width') || 1) },
       backgroundOpacity: { default: 100, parseHTML: (element) => Number(element.getAttribute('data-background-opacity') || 100) },
@@ -272,6 +278,9 @@ export const LitRpgBlock = Node.create({
       border: { default: '#2dd4bf', parseHTML: (element) => element.getAttribute('data-border') || '#2dd4bf' },
       showColumnHeaders: { default: true, parseHTML: (element) => element.getAttribute('data-show-headers') !== 'false' },
       stripedRows: { default: true, parseHTML: (element) => element.getAttribute('data-striped-rows') !== 'false' },
+      sourceScreenId: { default: '', parseHTML: (element) => element.getAttribute('data-litrpg-source-id') || '' },
+      sourceTemplateId: { default: '', parseHTML: (element) => element.getAttribute('data-litrpg-source-template-id') || '' },
+      revision: { default: '', parseHTML: (element) => element.getAttribute('data-litrpg-revision') || '' },
     }
   },
   parseHTML: () => [{ tag: 'div[data-typesetly-node="litrpg-block"]' }],
@@ -279,6 +288,19 @@ export const LitRpgBlock = Node.create({
     const columns = decodeLitRpgColumns(node.attrs.columns)
     const columnWidths = decodeLitRpgColumnWidths(node.attrs.columnWidths)
     const rows = decodeLitRpgRows(node.attrs.rows)
+    const elementLayouts = normalizeLitRpgElementLayouts(
+      decodeLitRpgElementLayouts(node.attrs.elementLayouts),
+      columns,
+      rows,
+    )
+    const freeformItem = (key: string, className: string, content: string) => {
+      const layout = elementLayouts[key]
+      if (!layout || !content) return null
+      return ['div', {
+        class: `litrpg-freeform-item ${className}`,
+        style: `position:absolute;left:${layout.x}%;top:${layout.y}px;width:${layout.width}%;height:${layout.height}px`,
+      }, content]
+    }
     const heading = ['div', { class: 'litrpg-block-heading' },
       ['strong', { class: 'litrpg-block-title' }, node.attrs.title || 'LitRPG Block'],
       ...(node.attrs.subtitle
@@ -295,7 +317,7 @@ export const LitRpgBlock = Node.create({
         ...columns.map((_, index) => ['td', {}, row.cells[index] || '']),
       ])],
     ]
-    const children = [
+    const tableLayoutChildren = [
       heading,
       ['table', { class: 'litrpg-block-table' },
         ['colgroup', {}, ...columns.map((_, index) => [
@@ -308,6 +330,33 @@ export const LitRpgBlock = Node.create({
         ? [['div', { class: 'litrpg-block-footer' }, node.attrs.footer]]
         : []),
     ]
+    const freeformChildren = [
+      freeformItem(litRpgElementKey.title, 'is-title', node.attrs.title || 'LitRPG Block'),
+      ...(node.attrs.subtitle
+        ? [freeformItem(litRpgElementKey.subtitle, 'is-subtitle', node.attrs.subtitle)]
+        : []),
+      ...(node.attrs.showColumnHeaders
+        ? columns.map((column, columnIndex) => freeformItem(
+          litRpgElementKey.column(columnIndex),
+          'is-column',
+          column,
+        ))
+        : []),
+      ...rows.flatMap((row, rowIndex) => columns.map((_, columnIndex) => freeformItem(
+        litRpgElementKey.cell(rowIndex, columnIndex),
+        'is-cell',
+        row.cells[columnIndex] || '',
+      ))),
+      ...(node.attrs.footer
+        ? [freeformItem(litRpgElementKey.footer, 'is-footer', node.attrs.footer)]
+        : []),
+    ].filter(Boolean)
+    const children = node.attrs.layoutMode === 'freeform'
+      ? [['div', {
+        class: 'litrpg-freeform-canvas',
+        style: `position:relative;height:${node.attrs.canvasHeight}px`,
+      }, ...freeformChildren]]
+      : tableLayoutChildren
 
     return [
       'div',
@@ -325,6 +374,9 @@ export const LitRpgBlock = Node.create({
         'data-width': node.attrs.width,
         'data-width-percent': String(node.attrs.widthPercent),
         'data-alignment': node.attrs.alignment,
+        'data-layout-mode': node.attrs.layoutMode,
+        'data-canvas-height': String(node.attrs.canvasHeight),
+        'data-element-layouts': node.attrs.elementLayouts,
         'data-border-radius': String(node.attrs.borderRadius),
         'data-border-width': String(node.attrs.borderWidth),
         'data-background-opacity': String(node.attrs.backgroundOpacity),
@@ -335,6 +387,9 @@ export const LitRpgBlock = Node.create({
         'data-border': node.attrs.border,
         'data-show-headers': String(node.attrs.showColumnHeaders),
         'data-striped-rows': String(node.attrs.stripedRows),
+        'data-litrpg-source-id': node.attrs.sourceScreenId || '',
+        'data-litrpg-source-template-id': node.attrs.sourceTemplateId || '',
+        'data-litrpg-revision': node.attrs.revision || '',
         class: 'litrpg-block',
         style: `--litrpg-accent:${node.attrs.accent};--litrpg-bg:${node.attrs.background};--litrpg-bg-alpha:${colorWithOpacity(node.attrs.background, node.attrs.backgroundOpacity)};--litrpg-text:${node.attrs.textColor};--litrpg-border:${node.attrs.border};--litrpg-width:${node.attrs.widthPercent}%;--litrpg-radius:${node.attrs.borderRadius}px;--litrpg-border-width:${node.attrs.borderWidth}px;--litrpg-cell-padding:${node.attrs.cellPadding}px`,
       }),

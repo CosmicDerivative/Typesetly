@@ -52,42 +52,97 @@ export function countBlankParagraphs(html: string) {
 }
 
 /**
+ * Which top-level block should overflow-move first.
+ *
+ * When the caret is inside a trailing empty-paragraph run (Enter at end of a
+ * full page), move that run so the blank lands on the next sheet. Otherwise
+ * skip trailing empties and move the last real block (avoids minting empty
+ * pages when a tall LitRPG is what actually overflows).
+ */
+export function draftOverflowMoveIndex(
+  childIsEmpty: boolean[],
+  caretChildIndex: number | null | undefined,
+) {
+  const last = childIsEmpty.length - 1
+  if (last < 0) return 0
+
+  let trailingStart = -1
+  if (childIsEmpty[last]) {
+    trailingStart = last
+    while (trailingStart > 0 && childIsEmpty[trailingStart - 1]) {
+      trailingStart -= 1
+    }
+  }
+
+  if (
+    trailingStart >= 0
+    && caretChildIndex !== null
+    && caretChildIndex !== undefined
+    && caretChildIndex >= trailingStart
+  ) {
+    return trailingStart
+  }
+
+  let moveIndex = last
+  while (moveIndex > 0 && childIsEmpty[moveIndex]) {
+    moveIndex -= 1
+  }
+  return moveIndex
+}
+
+/** Index of the last page with author-visible content, or -1 if all blank. */
+export function lastContentPageIndex(pages: string[]) {
+  for (let index = pages.length - 1; index >= 0; index -= 1) {
+    if (!isEmptyPageHtml(pages[index] || '')) return index
+  }
+  return -1
+}
+
+/**
  * Drop sheets that no longer hold content, without erasing intentional
- * trailing Enter blanks on the last page.
+ * trailing Enter blanks at the end of the document.
  *
  * Rules:
- * 1. Always remove empty pages that are not last (leftovers after pull/move).
- * 2. Keep a blank last page when `preserveLastEmptyPage` is set (focused end
- *    surface, or previous page still overflowing onto it).
- * 3. Otherwise drop a blank last page; if it had multiple empty paragraphs,
- *    fold those onto the previous page so Enter lines survive as content.
+ * 1. Always remove empty pages that sit *before* the last content page
+ *    (holes after pull/move or after the author clears a middle sheet).
+ *    Never leave a blank hole between content pages.
+ * 2. Trailing blank page(s) after the last content page are kept when
+ *    `preserveLastEmptyPage` is set (caret on/after last content, or Enter
+ *    overflow creating end sheets). Multiple intentional blank end pages
+ *    must all survive — not only the final sheet.
+ * 3. Otherwise drop trailing blank page(s) entirely. Never fold their empty
+ *    paragraphs onto the previous page — that synthesized mid-page multi-line
+ *    gaps when the author left the blank sheet (Enter-at-end jump).
  */
 export function pruneEmptyDraftPages(
   pages: string[],
   options: { preserveLastEmptyPage?: boolean } = {},
 ) {
   const normalized = (pages.length ? pages : [EMPTY_PAGE]).map(normalizePageHtml)
-  const withoutMiddle: string[] = []
-  for (let index = 0; index < normalized.length; index += 1) {
-    const page = normalized[index]!
-    const isLast = index === normalized.length - 1
-    if (!isLast && isEmptyPageHtml(page)) continue
-    withoutMiddle.push(page)
+  const lastContent = lastContentPageIndex(normalized)
+
+  if (lastContent < 0) {
+    // Entirely blank: keep the sheets when preserving end blanks, else one empty.
+    if (options.preserveLastEmptyPage) return normalized.length ? normalized : [EMPTY_PAGE]
+    return [EMPTY_PAGE]
   }
 
-  if (!withoutMiddle.length) return [EMPTY_PAGE]
-  if (withoutMiddle.length === 1) return withoutMiddle
+  const contentPages: string[] = []
+  for (let index = 0; index <= lastContent; index += 1) {
+    const page = normalized[index]!
+    if (isEmptyPageHtml(page)) continue
+    contentPages.push(page)
+  }
+  if (!contentPages.length) return [EMPTY_PAGE]
 
-  const last = withoutMiddle[withoutMiddle.length - 1]!
-  if (!isEmptyPageHtml(last) || options.preserveLastEmptyPage) return withoutMiddle
+  if (!options.preserveLastEmptyPage) return contentPages
 
-  const previous = withoutMiddle[withoutMiddle.length - 2]!
-  const blankCount = countBlankParagraphs(last)
-  if (blankCount <= 1) return withoutMiddle.slice(0, -1)
-  return [
-    ...withoutMiddle.slice(0, -2),
-    normalizePageHtml(`${previous}${last}`),
-  ]
+  const trailing: string[] = []
+  for (let index = lastContent + 1; index < normalized.length; index += 1) {
+    const page = normalized[index]!
+    if (isEmptyPageHtml(page)) trailing.push(page)
+  }
+  return trailing.length ? [...contentPages, ...trailing] : contentPages
 }
 
 /**
@@ -176,12 +231,40 @@ function splitOnExplicitPageBreaks(html: string) {
 export function splitTopLevelBlocks(html: string) {
   const source = normalizePageHtml(html)
   const blocks: string[] = []
-  const tagPattern =
-    /<([a-z0-9]+)(\s[^>]*)?>[\s\S]*?<\/\1>|<((?:area|base|br|col|embed|hr|img|input|link|meta|source|track|wbr))(\s[^>]*)?\/?>|<([a-z0-9]+)(\s[^>]*)?\/>/gi
+  const voidTags = new Set([
+    'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link',
+    'meta', 'source', 'track', 'wbr',
+  ])
+  const tagPattern = /<!--[\s\S]*?-->|<\/?([a-z0-9]+)\b[^>]*>/gi
+  let depth = 0
+  let blockStart = -1
   let match: RegExpExecArray | null
   while ((match = tagPattern.exec(source))) {
-    blocks.push(match[0])
+    if (match[0].startsWith('<!--')) continue
+    const tag = (match[1] || '').toLowerCase()
+    const closing = match[0].startsWith('</')
+    const selfClosing = match[0].endsWith('/>') || voidTags.has(tag)
+
+    if (!closing) {
+      if (depth === 0) blockStart = match.index
+      if (selfClosing) {
+        if (depth === 0 && blockStart >= 0) {
+          blocks.push(source.slice(blockStart, tagPattern.lastIndex))
+          blockStart = -1
+        }
+      } else {
+        depth += 1
+      }
+      continue
+    }
+
+    if (depth > 0) depth -= 1
+    if (depth === 0 && blockStart >= 0) {
+      blocks.push(source.slice(blockStart, tagPattern.lastIndex))
+      blockStart = -1
+    }
   }
+  if (blockStart >= 0) blocks.push(source.slice(blockStart))
   return blocks.length ? blocks : [source]
 }
 

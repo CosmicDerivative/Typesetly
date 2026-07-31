@@ -1,7 +1,9 @@
 import { saveAs } from 'file-saver'
 import JSZip from 'jszip'
+import { litRpgDraftFromAttrs } from '../editor/litrpg'
 import { decorateFirstSentenceHtml, exportableChapters, headingParts } from '../layout/manuscript'
 import type { BookProject, BookTheme, Chapter, ExportResult } from '../types'
+import { litRpgFreeformExportMarkup, litRpgIsTranslucent, litRpgUsesBoxedFields } from './litrpgExport'
 import { preflightBook } from './preflight'
 
 function escapeXml(value: string) {
@@ -94,6 +96,26 @@ function chapterBody(
   ))) {
     pageBreak.outerHTML = '<div class="page-break"></div>'
   }
+
+  for (const token of Array.from(documentValue.querySelectorAll(
+    '[data-typesetly-node="litrpg-block"]',
+  ))) {
+    const element = token as HTMLElement
+    const draft = litRpgDraftFromAttrs({
+      ...Object.fromEntries(Array.from(element.attributes).map((attr) => [
+        attr.name.replace(/^data-/, '').replace(/-([a-z])/g, (_, letter: string) => letter.toUpperCase()),
+        attr.value,
+      ])),
+      showColumnHeaders: element.getAttribute('data-show-headers') ?? undefined,
+    })
+    if (litRpgIsTranslucent(draft)) {
+      element.setAttribute('data-translucent', 'true')
+    }
+    if (litRpgUsesBoxedFields(draft)) {
+      element.innerHTML = litRpgFreeformExportMarkup(draft, escapeXml)
+    }
+  }
+
   for (const sceneBreak of Array.from(documentValue.querySelectorAll(
     'hr, [data-typesetly-node="scene-break"]',
   ))) {
@@ -346,6 +368,26 @@ p:first-of-type { text-indent: 0; }
 .litrpg-block[data-density="compact"] th, .litrpg-block[data-density="compact"] td { padding: max(.2em, calc(var(--litrpg-cell-padding, .5em) * .7)); }
 .litrpg-block-table th { color: var(--litrpg-accent, #333); font-size: .8em; text-transform: uppercase; }
 .litrpg-block-footer { padding: .55em .8em; font-size: .8em; font-style: italic; opacity: .8; }
+.litrpg-freeform-canvas { position: relative; min-height: 10em; overflow: hidden; background-image: linear-gradient(color-mix(in srgb, var(--litrpg-border, #777) 18%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--litrpg-border, #777) 18%, transparent) 1px, transparent 1px); background-size: 16px 16px; }
+.litrpg-freeform-item { position: absolute; box-sizing: border-box; padding: var(--litrpg-cell-padding, .5em); border: 1px solid var(--litrpg-border, #777); background: color-mix(in srgb, var(--litrpg-bg, #f7f7f7) 82%, #000); overflow: hidden; overflow-wrap: anywhere; }
+.litrpg-freeform-item.is-title, .litrpg-freeform-item.is-column { color: var(--litrpg-accent, #333); font-weight: bold; }
+.litrpg-freeform-item.is-title { text-transform: uppercase; }
+.litrpg-freeform-item.is-column { font-size: .8em; text-transform: uppercase; }
+.litrpg-freeform-item.is-subtitle, .litrpg-freeform-item.is-footer { font-size: .8em; font-style: italic; opacity: .8; }
+.litrpg-block[data-translucent="true"] { color: #334155; background: transparent; background-color: transparent; box-shadow: none; border-color: #64748b; font-family: ${theme.typography.bodyFont}, serif; }
+.litrpg-block[data-translucent="true"] .litrpg-block-heading { padding: .65em .8em .25em; border-bottom: 0; background: transparent; }
+.litrpg-block[data-translucent="true"] .litrpg-block-title { color: #1f2937; letter-spacing: 0; text-transform: none; }
+.litrpg-block[data-translucent="true"] .litrpg-block-subtitle { color: #64748b; }
+.litrpg-block[data-translucent="true"] .litrpg-block-table th,
+.litrpg-block[data-translucent="true"] .litrpg-block-table td { border-color: color-mix(in srgb, #64748b 45%, transparent); background: transparent; }
+.litrpg-block[data-translucent="true"] .litrpg-block-table th { color: #1f2937; text-transform: none; letter-spacing: 0; }
+.litrpg-block[data-translucent="true"] .litrpg-block-footer { padding: .35em .8em .7em; color: #64748b; }
+.litrpg-block[data-translucent="true"] .litrpg-freeform-canvas { position: relative; background-image: none; }
+.litrpg-block[data-translucent="true"] .litrpg-freeform-item { position: absolute; border: 0; background: transparent; color: #334155; }
+.litrpg-block[data-translucent="true"] .litrpg-freeform-item.is-title,
+.litrpg-block[data-translucent="true"] .litrpg-freeform-item.is-column { color: #1f2937; text-transform: none; letter-spacing: 0; }
+.litrpg-block[data-translucent="true"] .litrpg-freeform-item.is-subtitle,
+.litrpg-block[data-translucent="true"] .litrpg-freeform-item.is-footer { color: #64748b; opacity: 1; }
 .verse { margin: 1em ${theme.specialBlocks.verseIndentEm}em; line-height: ${theme.specialBlocks.verseLineSpacing}; white-space: pre-wrap; }
 .hangingIndent { padding-left: ${theme.specialBlocks.hangingIndentEm}em; text-indent: -${theme.specialBlocks.hangingIndentEm}em; }
 .attributedQuote { margin: 1em ${theme.specialBlocks.quoteIndentEm}em; padding-left: 1em; border-left: ${theme.specialBlocks.quoteBorderWidth}px solid #999; font-style: ${theme.specialBlocks.quoteItalic ? 'italic' : 'normal'}; }

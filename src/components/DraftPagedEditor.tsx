@@ -47,8 +47,10 @@ import {
   estimateCharsPerPage,
   isEmptyPageHtml,
   joinChapterPages,
+  lastContentPageIndex,
   normalizePageHtml,
   pruneEmptyDraftPages,
+  draftOverflowMoveIndex,
   splitChapterIntoPages,
 } from '../layout/chapterPages'
 import {
@@ -202,6 +204,51 @@ function serializeDocument(editor: Editor, doc: ProseMirrorNode) {
   return wrapper.innerHTML
 }
 
+/** Atom / structural blocks that must never be mid-split across Draft pages. */
+function isUnsplittablePageNode(node: ProseMirrorNode) {
+  if (node.isAtom) return true
+  return node.type.name === 'litrpgBlock'
+    || node.type.name === 'manuscriptImage'
+    || node.type.name === 'sceneBreak'
+    || node.type.name === 'pageBreak'
+}
+
+/** True when every top-level node is an empty paragraph (aside from `except`). */
+function pageHasOnlyEmptyParagraphs(
+  doc: ProseMirrorNode,
+  except?: ProseMirrorNode | null,
+) {
+  for (let index = 0; index < doc.childCount; index += 1) {
+    const child = doc.child(index)
+    if (except && child === except) continue
+    if (child.type.name !== 'paragraph' || child.textContent.trim()) return false
+  }
+  return true
+}
+
+function isEmptyParagraphNode(node: ProseMirrorNode) {
+  return node.type.name === 'paragraph' && !node.textContent.trim()
+}
+
+/** Start index of the trailing empty-paragraph run, or -1 if the page does not end blank. */
+function firstTrailingEmptyParagraphIndex(doc: ProseMirrorNode) {
+  if (doc.childCount === 0) return -1
+  if (!isEmptyParagraphNode(doc.child(doc.childCount - 1))) return -1
+  let index = doc.childCount - 1
+  while (index > 0 && isEmptyParagraphNode(doc.child(index - 1))) {
+    index -= 1
+  }
+  return index
+}
+
+function positionAtChildIndex(doc: ProseMirrorNode, childIndex: number) {
+  let position = 0
+  for (let index = 0; index < childIndex; index += 1) {
+    position += doc.child(index).nodeSize
+  }
+  return position
+}
+
 /**
  * Measure a candidate page document using the live editor's width, typography,
  * paragraph mode, and CSS without mutating the visible editor or its selection.
@@ -217,6 +264,13 @@ function measureProbeHeight(editor: Editor, doc: ProseMirrorNode) {
   probe.removeAttribute('contenteditable')
   probe.removeAttribute('data-lt-active')
   probe.innerHTML = serializeDocument(editor, doc)
+  // Static HTML from DOMSerializer omits the React LitRPG node-view chrome
+  // (inline toolbar via padding-top). Match that reserved height so candidates
+  // are not underestimated and pulled onto a page that then permanently overflows.
+  for (const block of probe.querySelectorAll('.litrpg-block')) {
+    const element = block as HTMLElement
+    if (!element.style.paddingTop) element.style.paddingTop = '30px'
+  }
   probe.style.width = `${width}px`
   probe.style.maxHeight = 'none'
   probe.style.height = 'auto'
@@ -263,6 +317,10 @@ function measureCandidateHeight(editor: Editor, doc: ProseMirrorNode) {
     computed.letterSpacing,
     computed.lineHeight,
     computed.textAlign,
+    live.style.minHeight,
+    live.style.maxHeight,
+    computed.minHeight,
+    computed.maxHeight,
   ].join('|')
   let calibration = measurementCalibration.get(editor)
   if (
@@ -274,7 +332,20 @@ function measureCandidateHeight(editor: Editor, doc: ProseMirrorNode) {
     calibration = {
       doc: editor.state.doc,
       signature,
+      // Ignore clamped scrollHeight when overflow is visible + max-height is set;
+      // only keep a positive live-vs-probe delta for node-view chrome (LitRPG).
       offset: Math.max(0, live.scrollHeight - baseline),
+    }
+    // If scrollHeight is clamped to max-height, the delta is meaningless/negative
+    // and must not inflate candidates (that re-created false "always overflowing").
+    const maxHeightPx = Number.parseFloat(live.style.maxHeight || computed.maxHeight)
+    if (
+      Number.isFinite(maxHeightPx)
+      && maxHeightPx > 0
+      && live.scrollHeight <= maxHeightPx + 2
+      && baseline > live.scrollHeight + 2
+    ) {
+      calibration.offset = 0
     }
     measurementCalibration.set(editor, calibration)
   }
@@ -313,6 +384,19 @@ function withLastNode(doc: ProseMirrorNode, replacement: ProseMirrorNode) {
   if (!last) return doc
   const before = doc.content.cut(0, doc.content.size - last.nodeSize)
   return doc.type.create(doc.attrs, before.append(Fragment.from(replacement)))
+}
+
+function withNodeAtIndex(
+  doc: ProseMirrorNode,
+  index: number,
+  replacement: ProseMirrorNode,
+) {
+  if (index < 0 || index >= doc.childCount) return doc
+  const nodes: ProseMirrorNode[] = []
+  for (let childIndex = 0; childIndex < doc.childCount; childIndex += 1) {
+    nodes.push(childIndex === index ? replacement : doc.child(childIndex))
+  }
+  return doc.type.create(doc.attrs, Fragment.from(nodes))
 }
 
 function withAppendedNode(doc: ProseMirrorNode, node: ProseMirrorNode) {
@@ -414,7 +498,11 @@ function splitParagraphForCurrentPage(
 }
 
 function pageOverflows(editor: Editor, maxHeight: number) {
-  return editor.view.dom.scrollHeight > maxHeight + 2
+  // Grammar-tool overlays need overflow:visible on the live prose-editor, which
+  // clamps scrollHeight to the used/max height in Chromium — so a full page
+  // never reports overflow and Enter blanks stretch the sheet instead of moving.
+  // Measure unconstrained content height (same probe as pull-fit checks).
+  return measureCandidateHeight(editor, editor.state.doc) > maxHeight + 2
 }
 
 const PAGE_REFLOW_META = 'typesetlyPageReflow'
@@ -587,17 +675,67 @@ export function DraftPagedEditor({
     emitTimerRef.current = window.setTimeout(flushChapter, 180)
   }, [flushChapter, onChapterHtmlChange])
 
+  const shouldPreserveTrailingBlankPages = useCallback((pageHtmls: string[]) => {
+    // Pending Enter/overflow handoff — keep the destination blank sheet.
+    if (pendingCaretRef.current) return true
+
+    const lastContent = lastContentPageIndex(pageHtmls)
+    const focused = focusedIndexRef.current
+
+    // Entirely blank chapter: keep sheets the author is editing.
+    if (lastContent < 0) return pageHtmls.length > 0
+
+    // Caret is on an intentional trailing blank end page.
+    if (focused > lastContent) return true
+
+    // Caret on the last content page only while trailing empties are the active
+    // Enter run (about to overflow) — not for the whole busy/reflow window.
+    if (focused === lastContent) {
+      const editor = editorsRef.current[lastContent]
+      if (editor) {
+        const doc = editor.state.doc
+        const trailingStart = firstTrailingEmptyParagraphIndex(doc)
+        if (trailingStart >= 0) {
+          const selectionFrom = editor.state.selection.from
+          let childStart = 0
+          for (let childIndex = 0; childIndex < doc.childCount; childIndex += 1) {
+            const childEnd = childStart + doc.child(childIndex).nodeSize
+            if (
+              selectionFrom >= childStart
+              && selectionFrom <= childEnd
+              && childIndex >= trailingStart
+            ) {
+              return true
+            }
+            childStart = childEnd
+          }
+        }
+      }
+      // Last content page still overflows onto already-minted trailing blanks.
+      if (lastContent < pageHtmls.length - 1) {
+        const previous = editorsRef.current[lastContent]
+        const chrome = chromeHeightsRef.current[lastContent] || 0
+        if (previous && pageOverflows(previous, draftPageBodyHeight(metrics, chrome))) {
+          return true
+        }
+      }
+    }
+    return false
+  }, [metrics])
+
   const commitPages = useCallback((
     nextPages: string[],
-    options?: { preserveLastEmptyPage?: boolean },
+    options?: { preserveLastEmptyPage?: boolean; pruneEmptyPages?: boolean },
   ) => {
-    const lastIndex = Math.max(0, nextPages.length - 1)
-    const preserveLastEmptyPage = options?.preserveLastEmptyPage ?? (
-      busyRef.current
-      || focusedIndexRef.current >= lastIndex
-      || Boolean(pendingCaretRef.current)
-    )
-    const normalized = pruneEmptyDraftPages(nextPages, { preserveLastEmptyPage })
+    // Never preserve solely because reflow is busy — that kept every minted
+    // trailing blank and looped empty-page growth.
+    const preserveLastEmptyPage = options?.preserveLastEmptyPage
+      ?? shouldPreserveTrailingBlankPages(nextPages)
+    // Mid-reflow page growth must not prune: removing a middle empty sheet
+    // remounts every later TipTap instance and invalidates page indices.
+    const normalized = options?.pruneEmptyPages === false
+      ? (nextPages.length ? nextPages : ['<p></p>']).map(normalizePageHtml)
+      : pruneEmptyDraftPages(nextPages, { preserveLastEmptyPage })
     pagesRef.current = normalized
     setPages((current) => {
       if (
@@ -610,7 +748,7 @@ export function DraftPagedEditor({
     })
     emitChapter(normalized)
     return normalized
-  }, [emitChapter])
+  }, [emitChapter, shouldPreserveTrailingBlankPages])
 
   useEffect(() => {
     if (chapterId !== renderedChapterIdRef.current) {
@@ -789,6 +927,10 @@ export function DraftPagedEditor({
   const beginCrossPageSelection = useCallback((event: PointerEvent) => {
     if (event.button !== 0) return
     const target = event.target instanceof Element ? event.target : null
+    if (target?.closest('button, input, textarea, select, [data-litrpg-interaction]')) {
+      dragAnchorRef.current = null
+      return
+    }
     if (!target?.closest('.prose-editor')) {
       clearCrossPageSelection()
       dragAnchorRef.current = null
@@ -899,6 +1041,23 @@ export function DraftPagedEditor({
     busyRef.current = true
     const epoch = contentEpochRef.current
     try {
+      // Drop empty *content holes* before measuring. Pulling into a hole then
+      // pruning mid-pass remounts every later page editor and re-queues reflow.
+      // Do not drop intentional trailing blank end pages here.
+      {
+        const live = readLivePages()
+        const preserveLastEmptyPage = shouldPreserveTrailingBlankPages(live)
+        const pruned = pruneEmptyDraftPages(live, { preserveLastEmptyPage })
+        if (pruned.length !== live.length) {
+          if (focusedIndexRef.current > pruned.length - 1) {
+            focusedIndexRef.current = Math.max(0, pruned.length - 1)
+          }
+          commitPages(live, { preserveLastEmptyPage })
+          await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()))
+          if (contentEpochRef.current !== epoch) return
+        }
+      }
+
       for (let pass = 0; pass < 24; pass += 1) {
         if (contentEpochRef.current !== epoch) return
         let moved = false
@@ -908,6 +1067,28 @@ export function DraftPagedEditor({
           if (contentEpochRef.current !== epoch) return
           let editor = editorsRef.current[index]
           if (!editor) continue
+
+          // Empty sheets with real content after them are layout holes — remove
+          // and restart this pass. Trailing blank end pages (no content after)
+          // must stay so Enter-at-end can mint intentional empty sheets.
+          if (isEmptyPageHtml(editor.getHTML())) {
+            const liveSnapshot = readLivePages()
+            const hasContentAfter = liveSnapshot
+              .slice(index + 1)
+              .some((page) => !isEmptyPageHtml(page))
+            if (hasContentAfter) {
+              const live = liveSnapshot.filter((_, pageIndex) => pageIndex !== index)
+              if (focusedIndexRef.current > index) {
+                focusedIndexRef.current -= 1
+              } else if (focusedIndexRef.current === index) {
+                focusedIndexRef.current = Math.max(0, index - 1)
+              }
+              commitPages(live.length ? live : ['<p></p>'], { preserveLastEmptyPage: false })
+              moved = true
+              break
+            }
+          }
+
           const chrome = chromeHeightsRef.current[index] || 0
           const maxHeight = draftPageBodyHeight(metrics, chrome)
 
@@ -925,37 +1106,108 @@ export function DraftPagedEditor({
               break
             }
 
-            const last = doc.child(doc.childCount - 1)
-            const from = doc.content.size - last.nodeSize
+            const pendingHere = pendingCaretRef.current?.pageIndex === index
+              ? pendingCaretRef.current
+              : null
+            // Prefer the handoff position when overflow already queued a caret
+            // move onto this sheet — the live selection may still be stale until
+            // focusPage runs after reflow settles.
+            const selectionFrom = pendingHere?.position !== undefined
+              ? pendingHere.position
+              : focusedIndexRef.current === index
+                ? editor.state.selection.from
+                : undefined
+
+            // Enter at the end of a full page creates trailing blank paragraph(s).
+            // Overflow those blanks first so the caret lands in the new line on the
+            // next sheet. Skipping them (LitRPG safeguard) would push the previous
+            // real block and map the caret into already-authored next-page text.
+            const childIsEmpty: boolean[] = []
+            for (let childIndex = 0; childIndex < doc.childCount; childIndex += 1) {
+              childIsEmpty.push(isEmptyParagraphNode(doc.child(childIndex)))
+            }
+            let caretChildIndex: number | null = null
+            if (selectionFrom !== undefined) {
+              let childStart = 0
+              for (let childIndex = 0; childIndex < doc.childCount; childIndex += 1) {
+                const childEnd = childStart + doc.child(childIndex).nodeSize
+                if (selectionFrom >= childStart && selectionFrom <= childEnd) {
+                  caretChildIndex = childIndex
+                  break
+                }
+                childStart = childEnd
+              }
+            }
+            const moveIndex = draftOverflowMoveIndex(childIsEmpty, caretChildIndex)
+            const caretInTrailingEmpty = (() => {
+              const trailingStart = firstTrailingEmptyParagraphIndex(doc)
+              return (
+                trailingStart >= 0
+                && caretChildIndex !== null
+                && caretChildIndex >= trailingStart
+              )
+            })()
+            const last = doc.child(moveIndex)
+            const from = positionAtChildIndex(doc, moveIndex)
             if (from < 0) break
-            const split = splitParagraphForCurrentPage(
-              editor,
-              last,
-              (prefix) => withLastNode(doc, prefix),
-              maxHeight,
-            )
+
+            // LitRPG / other atoms are unsplittable. If nothing real remains
+            // before this atom, pushing it only mints an empty sheet and the
+            // next pass prunes/remounts forever (probe height under-counts the
+            // live node-view chrome, so a measure-only guard is not enough).
+            if (
+              isUnsplittablePageNode(last)
+              && pageHasOnlyEmptyParagraphs(doc, last)
+            ) {
+              let onlyEmptiesBefore = true
+              for (let before = 0; before < moveIndex; before += 1) {
+                if (!isEmptyParagraphNode(doc.child(before))) {
+                  onlyEmptiesBefore = false
+                  break
+                }
+              }
+              if (onlyEmptiesBefore) break
+            }
+
+            const split = caretInTrailingEmpty || isUnsplittablePageNode(last)
+              ? null
+              : splitParagraphForCurrentPage(
+                editor,
+                last,
+                (prefix) => withNodeAtIndex(doc, moveIndex, prefix),
+                maxHeight,
+              )
+            // When not mid-splitting a paragraph, move the block plus any
+            // trailing blank paragraphs so empties do not become their own page.
             const movedNode = split?.suffix || last
             const movedPositionBase = split
               ? from + split.prefix.content.size
               : from
-            const pendingHere = pendingCaretRef.current?.pageIndex === index
-              ? pendingCaretRef.current
-              : null
-            const selectionFrom = focusedIndexRef.current === index
-              ? editor.state.selection.from
-              : pendingHere?.position
             const caretFollowsBlock =
               selectionFrom !== undefined
-              && selectionFrom > movedPositionBase
+              && (
+                caretInTrailingEmpty
+                  ? selectionFrom >= movedPositionBase
+                  : selectionFrom > movedPositionBase
+              )
             const mappedCaretPosition = caretFollowsBlock
               ? Math.max(1, selectionFrom - movedPositionBase)
               : undefined
-            const html = serializeNode(editor, movedNode)
+            const html = split
+              ? serializeNode(editor, movedNode)
+              : (() => {
+                const wrapper = document.createElement('div')
+                const serializer = DOMSerializer.fromSchema(editor.schema)
+                for (let childIndex = moveIndex; childIndex < doc.childCount; childIndex += 1) {
+                  wrapper.appendChild(serializer.serializeNode(doc.child(childIndex)))
+                }
+                return wrapper.innerHTML
+              })()
             const nextIndex = index + 1
             let nextEditor = editorsRef.current[nextIndex]
             const removeMovedContent = () => {
               const transaction = split
-                ? editor!.state.tr.replaceWith(from, editor!.state.doc.content.size, split.prefix)
+                ? editor!.state.tr.replaceWith(from, from + last.nodeSize, split.prefix)
                 : editor!.state.tr.delete(from, editor!.state.doc.content.size)
               editor!.view.dispatch(
                 transaction
@@ -979,6 +1231,9 @@ export function DraftPagedEditor({
                   pageIndex: nextIndex,
                   position: mappedCaretPosition,
                 }
+                // Mark focus on the destination immediately so trailing-blank
+                // preserve survives later prune passes before focusPage runs.
+                focusedIndexRef.current = nextIndex
               }
               moved = true
               continue
@@ -986,6 +1241,12 @@ export function DraftPagedEditor({
 
             // No next sheet yet: delete locally, then commit a new page already
             // seeded with this block so nothing is left without a destination.
+            // Never mint a brand-new empty sheet from reflow alone — only when
+            // the caret follows (user Enter overflow). Otherwise empty pages
+            // spawn in a loop whenever preserve keeps trailing blanks.
+            if (isEmptyPageHtml(html) && !caretFollowsBlock) {
+              break
+            }
             removeMovedContent()
             const live = readLivePages()
             while (live.length < nextIndex) live.push('<p></p>')
@@ -993,15 +1254,16 @@ export function DraftPagedEditor({
             live[nextIndex] = existingNext && !isEmptyPageHtml(existingNext)
               ? normalizePageHtml(`${html}${existingNext}`)
               : normalizePageHtml(html)
-            commitPages(live)
-            nextEditor = await waitForEditor(nextIndex, epoch)
-            if (contentEpochRef.current !== epoch) return
             if (caretFollowsBlock) {
               pendingCaretRef.current = {
                 pageIndex: nextIndex,
                 position: mappedCaretPosition,
               }
+              focusedIndexRef.current = nextIndex
             }
+            commitPages(live, { pruneEmptyPages: false })
+            nextEditor = await waitForEditor(nextIndex, epoch)
+            if (contentEpochRef.current !== epoch) return
             if (!nextEditor) {
               // Pages state still holds the seeded HTML; stop this pass and
               // let the next reflow continue once editors mount.
@@ -1014,6 +1276,8 @@ export function DraftPagedEditor({
           // Pull from the next page while there is room.
           // Do not pull when the next page is blank-only: those empties are
           // intentional trailing lines / a new page the user just created.
+          // Also do not pull a leading blank paragraph — that is an Enter that
+          // just overflowed onto this sheet and must keep the caret.
           for (let pull = 0; pull < 20; pull += 1) {
             if (contentEpochRef.current !== epoch) return
             editor = editorsRef.current[index]
@@ -1023,14 +1287,25 @@ export function DraftPagedEditor({
             if (pageOverflows(editor, maxHeight)) break
 
             const sourceFirst = nextEditor.state.doc.child(0)
+            if (!sourceFirst || isEmptyParagraphNode(sourceFirst)) break
             // Each page editor owns its own ProseMirror schema instance.
             // Clone the source node into the destination schema before
             // measuring or inserting it; foreign-schema nodes can otherwise
             // be rejected while the source deletion still succeeds.
             const first = cloneNodeForEditor(editor, sourceFirst)
+            // Tall LitRPG atoms that already sit alone on the next sheet must
+            // stay there (clipped). Pulling them back restarts push/prune flash.
+            if (
+              isUnsplittablePageNode(first)
+              && pageHasOnlyEmptyParagraphs(nextEditor.state.doc, sourceFirst)
+            ) {
+              break
+            }
             const currentDoc = editor.state.doc
             const combinedDoc = withPageNodeAppended(currentDoc, first)
             if (measureCandidateHeight(editor, combinedDoc) > maxHeight + 2) {
+              // Never mid-split atoms (LitRPG status blocks, images, …).
+              if (isUnsplittablePageNode(first)) break
               const split = splitParagraphForCurrentPage(
                 editor,
                 first,
@@ -1065,6 +1340,36 @@ export function DraftPagedEditor({
             if (nextEditor.state.doc.childCount === 0) {
               nextEditor.commands.setContent('<p></p>', { emitUpdate: false })
             }
+            // Live node views (LitRPG toolbar) can still overflow after a probe
+            // that looked fine — undo immediately to avoid push/pull thrash.
+            if (pageOverflows(editor, maxHeight)) {
+              const pulled = editor.state.doc.lastChild
+              if (pulled) {
+                const restoredHtml = serializeNode(editor, pulled)
+                editor.view.dispatch(
+                  editor.state.tr
+                    .delete(
+                      editor.state.doc.content.size - pulled.nodeSize,
+                      editor.state.doc.content.size,
+                    )
+                    .setMeta(PAGE_REFLOW_META, true)
+                    .setMeta('addToHistory', false),
+                )
+                if (editor.state.doc.childCount === 0) {
+                  editor.commands.setContent('<p></p>', { emitUpdate: false })
+                }
+                const nextHtml = nextEditor.getHTML()
+                nextEditor.commands.setContent(
+                  normalizePageHtml(
+                    isEmptyPageHtml(nextHtml)
+                      ? restoredHtml
+                      : `${restoredHtml}${nextHtml}`,
+                  ),
+                  { emitUpdate: false },
+                )
+              }
+              break
+            }
             moved = true
           }
 
@@ -1081,7 +1386,9 @@ export function DraftPagedEditor({
 
         if (contentEpochRef.current !== epoch) return
         if (moved) {
-          commitPages(readLivePages())
+          // Keep the live HTML snapshot in the ref only. Committing/pruning here
+          // remounts later TipTap sheets mid-pass and queues endless reflow.
+          pagesRef.current = readLivePages()
           await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()))
         } else {
           break
@@ -1090,34 +1397,31 @@ export function DraftPagedEditor({
     } finally {
       const follow = pendingCaretRef.current
       const stillCurrent = contentEpochRef.current === epoch
-      busyRef.current = false
-      if (!stillCurrent) {
-        pendingCaretRef.current = null
-      } else {
-        const live = readLivePages()
-        const lastIndex = Math.max(0, live.length - 1)
-        let preserveLastEmptyPage =
-          Boolean(follow)
-          || focusedIndexRef.current >= lastIndex
-        if (!preserveLastEmptyPage && live.length > 1 && isEmptyPageHtml(live[lastIndex] || '')) {
-          const previous = editorsRef.current[lastIndex - 1]
-          const chrome = chromeHeightsRef.current[lastIndex - 1] || 0
-          if (previous && pageOverflows(previous, draftPageBodyHeight(metrics, chrome))) {
-            preserveLastEmptyPage = true
-          }
-        }
-        commitPages(live, { preserveLastEmptyPage })
-
-        if (follow) {
+      try {
+        if (!stillCurrent) {
           pendingCaretRef.current = null
-          const editor = await waitForEditor(follow.pageIndex, epoch)
-          if (editor && contentEpochRef.current === epoch) {
-            focusPage(follow.pageIndex, follow.where, follow.position)
+        } else {
+          const live = readLivePages()
+          // Do not use busyRef here — we are still busy through settle, but
+          // trailing blanks should only survive when caret/overflow says so.
+          const preserveLastEmptyPage = shouldPreserveTrailingBlankPages(live)
+          // Stay busy through commit so remounted sheets' onEditorReady cannot
+          // re-queue reflow mid-settle (LitRPG empty-page flash loop).
+          commitPages(live, { preserveLastEmptyPage })
+
+          if (follow) {
+            pendingCaretRef.current = null
+            const editor = await waitForEditor(follow.pageIndex, epoch)
+            if (editor && contentEpochRef.current === epoch) {
+              focusPage(follow.pageIndex, follow.where, follow.position)
+            }
           }
         }
+      } finally {
+        busyRef.current = false
       }
     }
-  }, [commitPages, focusPage, metrics, readLivePages, waitForEditor])
+  }, [commitPages, focusPage, metrics, readLivePages, shouldPreserveTrailingBlankPages, waitForEditor])
 
   const queueReflow = useCallback((fromIndex: number) => {
     window.clearTimeout(reflowTimerRef.current)
@@ -1425,9 +1729,11 @@ export function DraftPagedEditor({
             if (changed) queueReflow(index)
           }}
           onEditorReady={(editor) => {
+            const newlyReady = editorsRef.current[index] !== editor
             editorsRef.current[index] = editor
             if (index === focusedIndexRef.current) onActiveEditorChange(editor)
-            queueReflow(index)
+            // Remounts during an in-flight reflow must not each schedule another.
+            if (newlyReady && !busyRef.current) queueReflow(index)
           }}
           onEditorDestroy={() => {
             if (editorsRef.current[index]) editorsRef.current[index] = null
@@ -1458,6 +1764,26 @@ export function DraftPagedEditor({
             const next = readLivePages()
             while (next.length <= index) next.push('<p></p>')
             next[index] = normalizePageHtml(html)
+
+            // Clearing a middle sheet must drop it immediately when content
+            // remains after it (a hole). Trailing blank end pages are intentional.
+            const hasContentAfter = next
+              .slice(index + 1)
+              .some((page) => !isEmptyPageHtml(page))
+            if (hasContentAfter && isEmptyPageHtml(next[index]!)) {
+              contentEpochRef.current += 1
+              const focusAt = Math.max(0, index - 1)
+              focusedIndexRef.current = focusAt
+              setActivePageIndex(focusAt)
+              pendingCaretRef.current = { pageIndex: focusAt, where: 'end' }
+              commitPages(next, { preserveLastEmptyPage: false })
+              window.requestAnimationFrame(() => {
+                focusPage(focusAt, 'end')
+                queueReflow(focusAt)
+              })
+              return
+            }
+
             pagesRef.current = next
             emitChapter(next)
             queueReflow(index)
@@ -1752,10 +2078,15 @@ function DraftPageSheet({
     dom.setAttribute('data-chapter-title', chapterTitle || 'Chapter')
     dom.setAttribute('aria-label', `${chapterTitle || 'Chapter'}, page ${index + 1}`)
     dom.setAttribute('lang', language || 'en')
+    // Lock the content box to trim metrics — never let min-height/auto grow
+    // the sheet to absorb Enter blanks.
+    dom.style.minHeight = '0'
+    dom.style.height = 'auto'
     dom.style.maxHeight = `${maxBody}px`
-    // Never visually discard authored text. Paged mode still measures against
-    // maxHeight and moves overflow forward, but the final line remains visible
-    // during that handoff instead of being clipped at the paper edge.
+    // Ancestor .editor-page-body clips paint to the sheet; keep the editable
+    // overflow visible so grammar-tool overlays are not clipped mid-badge.
+    // Overflow detection must not use scrollHeight while this is visible
+    // (see pageOverflows → measureCandidateHeight).
     dom.style.overflow = 'visible'
   }, [
     allowExternalProofreading,
@@ -1783,6 +2114,7 @@ function DraftPageSheet({
         width: metrics.widthPx,
         height: metrics.heightPx,
         minHeight: metrics.heightPx,
+        maxHeight: metrics.heightPx,
         marginBottom: metrics.gapPx,
         paddingTop: metrics.marginTopPx,
         paddingRight: metrics.marginRightPx,
@@ -1797,8 +2129,10 @@ function DraftPageSheet({
       <div
         className="editor-page-body"
         style={{
+          height: maxBody,
           maxHeight: maxBody,
-          overflow: 'visible',
+          minHeight: 0,
+          overflow: 'hidden',
         }}
       >
         <EditorContent

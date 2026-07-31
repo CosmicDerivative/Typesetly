@@ -1,30 +1,63 @@
-.dialog-card-wide {
-  width: min(980px, 100%);
-  max-height: min(90vh, 900px);
-  overflow: auto;
+/* Wider card when the LitRPG builder is open */
+.dialog-card-wide:has(.litrpg-builder) {
+  width: min(920px, calc(100vw - 32px));
+  max-height: min(92vh, 920px);
+  border-radius: 16px;
+  padding: 22px 22px 18px;
+  background:
+    linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--workspace-focus, #d8aa58) 10%, transparent),
+      transparent 42%
+    ),
+    var(--workspace-panel, var(--paper-50, #fff));
+  border: 1px solid color-mix(in srgb, var(--workspace-border, var(--line, #cad3dc)) 85%, transparent);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, #fff 8%, transparent) inset,
+    0 28px 80px color-mix(in srgb, #000 35%, transparent);
+}
+
+.dialog-card-wide:has(.litrpg-builder)::before {
+  width: 100%;
+  height: 3px;
+  border-radius: 16px 16px 0 0;
+  background: linear-gradient(
+    90deg,
+    var(--workspace-focus, #d8aa58),
+    color-mix(in srgb, var(--workspace-focus, #d8aa58) 20%, transparent)
+  );
+}
+
+.dialog-card-wide:has(.litrpg-builder) h2 {
+  font-size: 1.35rem;
+  letter-spacing: -.01em;
+  color: var(--ink-900, var(--text-900, #1d2733));
+}
+
+.dialog-card-wide:has(.litrpg-builder) > p {
+  color: var(--ink-800, var(--text-700, #667483));
+  font-size: .92rem;
 }
 
 .litrpg-builder {
   display: grid;
-  gap: 18px;
+  gap: 14px;
+  color: var(--ink-900, var(--text-900, #1d2733));
 }
 
 .litrpg-builder-section {
   display: grid;
   gap: 12px;
-  padding-top: 16px;
-  border-top: 1px solid #e4e9ee;
-}
-
-.litrpg-builder-section:first-child {
-  padding-top: 0;
-  border-top: 0;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--workspace-border, var(--line, #cad3dc)) 70%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--workspace-panel-alt, var(--paper-100, #f4f4f5)) 92%, transparent);
 }
 
 .litrpg-builder-section-title {
   display: grid;
-  gap: 2px;
-  color: #243341;
+  gap: 3px;
+  color: var(--ink-900, var(--text-900, #1d2733));
 }
 
 .litrpg-builder-section-title.inline {
@@ -34,12 +67,24 @@
 
 .litrpg-builder-section-title > div {
   display: grid;
-  gap: 2px;
+  gap: 3px;
+}
+
+.litrpg-builder-section-title strong {
+  font-size: .84rem;
+  font-weight: 650;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  color: var(--ink-900, var(--text-900, #1d2733));
 }
 
 .litrpg-builder-section-title span {
-  color: #71808e;
-  font-size: 12px;
+  color: var(--ink-800, var(--text-700, #667483));
+  font-size: .78rem;
+  line-height: 1.4;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
 }
 
 .litrpg-preset-grid {
@@ -50,31 +95,201 @@
 
 .litrpg-preset-grid button {
   display: grid;
-  gap: 4px;
-  padding: 11px;
-  border: 1px solid #cad4de;
-  border-radius: 8px;
-  color: #344554;
-  background: #f8fafc;
+  gap: 5px;
+  padding: 12px 11px;
+  border: 1px solid color-mix(in srgb, var(--workspace-border, var(--line, #cad3dc)) 80%, transparent);
+  border-radius: 12px;
+  color: var(--ink-900, var(--text-900, #1d2733));
+  background: color-mix(in srgb, var(--workspace-panel, var(--paper-50, #fff)) 88%, transparent);
   text-align: left;
   cursor: pointer;
+  transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+}
+
+.litrpg-preset-grid button:hover {
+  border-color: color-mix(in srgb, var(--workspace-focus, #d8aa58) 55%, var(--workspace-border, #cad3dc));
 }
 
 .litrpg-preset-grid button.active {
-  border-color: #477fa1;
-  background: #edf6fb;
-  box-shadow: 0 0 0 1px #477fa1;
+  border-color: var(--workspace-focus, #d8aa58);
+  background: color-mix(in srgb, var(--workspace-focus, #d8aa58) 16%, var(--workspace-panel, #fff));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--workspace-focus, #d8aa58) 40%, transparent);
+}
+
+.litrpg-preset-grid button strong {
+  font-size: .9rem;
+  color: var(--ink-900, var(--text-900, #1d2733));
 }
 
 .litrpg-preset-grid button span {
-  color: #71808e;
-  font-size: 11px;
+  color: var(--ink-800, var(--text-700, #667483));
+  font-size: .72rem;
   line-height: 1.35;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.litrpg-builder-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid color-mix(in srgb, var(--workspace-border, var(--line, #cad3dc)) 70%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--workspace-panel-alt, var(--paper-100, #f4f4f5)) 88%, transparent);
+}
+
+.litrpg-builder-tabs button {
+  border: 1px solid transparent;
+  border-radius: 9px;
+  padding: .55rem .9rem;
+  color: var(--ink-800, var(--text-700, #667483));
+  background: transparent;
+  font-weight: 600;
+  font-size: .88rem;
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease, color .15s ease;
+}
+
+.litrpg-builder-tabs button:hover {
+  color: var(--ink-900, var(--text-900, #1d2733));
+  background: color-mix(in srgb, var(--workspace-panel, var(--paper-50, #fff)) 70%, transparent);
+}
+
+.litrpg-builder-tabs button.active {
+  color: var(--workspace-active-ink, var(--ink-950, #0e2235));
+  border-color: color-mix(in srgb, var(--workspace-focus, #d8aa58) 55%, var(--workspace-border, #cad3dc));
+  background: color-mix(in srgb, var(--workspace-focus, #d8aa58) 18%, var(--workspace-panel, #fff));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--workspace-focus, #d8aa58) 28%, transparent);
+}
+
+.litrpg-builder-library,
+.litrpg-builder-design {
+  display: grid;
+  gap: 14px;
+}
+
+.litrpg-library-search input {
+  width: 100%;
+  color: var(--ink-900, var(--text-900, #1d2733));
+  background: color-mix(in srgb, var(--workspace-panel, var(--paper-50, #fff)) 94%, transparent);
+  border-color: color-mix(in srgb, var(--workspace-border, var(--line, #cad3dc)) 80%, transparent);
+}
+
+.litrpg-library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.litrpg-library-group {
+  display: grid;
+  gap: 8px;
+}
+
+.litrpg-library-group h4 {
+  margin: 0;
+  font-size: .78rem;
+  font-weight: 650;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--ink-800, var(--text-700, #667483));
+}
+
+.litrpg-library-empty {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px dashed color-mix(in srgb, var(--workspace-border, var(--line, #cad3dc)) 75%, transparent);
+  border-radius: 11px;
+  color: var(--ink-800, var(--text-700, #667483));
+  font-size: .84rem;
+  background: color-mix(in srgb, var(--workspace-panel, var(--paper-50, #fff)) 70%, transparent);
+}
+
+.litrpg-library-save {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.litrpg-library-save-stack {
+  grid-template-columns: 1fr;
+}
+
+.litrpg-library-save-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.litrpg-library-save input,
+.litrpg-library-save select {
+  width: 100%;
+  color: var(--ink-900, var(--text-900, #1d2733));
+  background: color-mix(in srgb, var(--workspace-panel, var(--paper-50, #fff)) 94%, transparent);
+  border-color: color-mix(in srgb, var(--workspace-border, var(--line, #cad3dc)) 80%, transparent);
+}
+
+.litrpg-library-save button,
+.litrpg-library-save-actions button,
+.litrpg-add-button {
+  border: 1px solid color-mix(in srgb, var(--workspace-focus, #d8aa58) 55%, var(--workspace-border, #cad3dc));
+  background: color-mix(in srgb, var(--workspace-focus, #d8aa58) 18%, var(--workspace-panel, #fff));
+  border-radius: 10px;
+  padding: .55rem .85rem;
+  cursor: pointer;
+  color: var(--workspace-active-ink, var(--ink-950, #0e2235));
+  font-weight: 600;
+  font-size: .84rem;
+  white-space: nowrap;
+}
+
+.litrpg-library-save button:hover,
+.litrpg-library-save-actions button:hover,
+.litrpg-add-button:hover {
+  background: color-mix(in srgb, var(--workspace-focus, #d8aa58) 28%, var(--workspace-panel, #fff));
+}
+
+.litrpg-library-secondary {
+  border-color: color-mix(in srgb, var(--workspace-border, var(--line, #cad3dc)) 80%, transparent) !important;
+  background: color-mix(in srgb, var(--workspace-panel, var(--paper-50, #fff)) 92%, transparent) !important;
+  color: var(--ink-900, var(--text-900, #1d2733)) !important;
+  font-weight: 550 !important;
+}
+
+.litrpg-library-secondary:hover {
+  border-color: color-mix(in srgb, var(--workspace-focus, #d8aa58) 45%, var(--workspace-border, #cad3dc)) !important;
+  background: color-mix(in srgb, var(--workspace-focus, #d8aa58) 12%, var(--workspace-panel, #fff)) !important;
 }
 
 .litrpg-builder-two-column {
   grid-template-columns: 1fr 1fr;
-  gap: 18px;
+  gap: 14px;
+}
+
+.litrpg-builder .dialog-content,
+.litrpg-builder label {
+  color: var(--ink-800, var(--text-700, #566574));
+}
+
+.litrpg-builder input,
+.litrpg-builder textarea,
+.litrpg-builder select {
+  color: var(--ink-900, var(--text-900, #1d2733));
+  background: color-mix(in srgb, var(--workspace-panel, var(--paper-50, #fff)) 94%, transparent);
+  border-color: color-mix(in srgb, var(--workspace-border, var(--line, #cad3dc)) 80%, transparent);
 }
 
 .litrpg-style-controls {
@@ -100,7 +315,7 @@
 
 .litrpg-range-control output,
 .litrpg-column-width-control output {
-  color: #6c7b88;
+  color: var(--ink-800, var(--text-700, #6c7b88));
   font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
@@ -119,6 +334,8 @@
 .litrpg-color-grid input[type="color"] {
   height: 38px;
   padding: 3px;
+  border-radius: 10px;
+  cursor: pointer;
 }
 
 .litrpg-column-editor,
@@ -157,17 +374,18 @@
 
 .litrpg-input-action button,
 .litrpg-row-actions button {
-  border: 1px solid #ccd5de;
-  border-radius: 5px;
-  color: #526677;
-  background: #f7f9fb;
+  border: 1px solid color-mix(in srgb, var(--workspace-border, var(--line, #cad3dc)) 75%, transparent);
+  border-radius: 8px;
+  color: var(--ink-900, var(--text-900, #344554));
+  background: color-mix(in srgb, var(--workspace-panel, var(--paper-50, #fff)) 90%, transparent);
   cursor: pointer;
 }
 
 .litrpg-input-action button:disabled,
-.litrpg-row-actions button:disabled {
+.litrpg-row-actions button:disabled,
+.litrpg-add-button:disabled {
   cursor: default;
-  opacity: .4;
+  opacity: .45;
 }
 
 .litrpg-row-editor {
@@ -186,7 +404,7 @@
 }
 
 .litrpg-row-number {
-  color: #7a8793;
+  color: var(--ink-800, var(--text-700, #7a8793));
   font-size: 11px;
   text-align: center;
 }
@@ -200,17 +418,13 @@
 
 .litrpg-add-button {
   width: fit-content;
-  padding: 7px 11px;
-  border: 1px solid #b8c8d5;
-  border-radius: 6px;
-  color: #315f7d;
-  background: #f4f9fc;
-  cursor: pointer;
 }
 
-.litrpg-add-button:disabled {
-  cursor: default;
-  opacity: .5;
+.litrpg-builder .check-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-900, var(--text-900, #1d2733));
 }
 
 @media (max-width: 760px) {
@@ -221,5 +435,16 @@
 
   .litrpg-color-grid {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .litrpg-library-save:not(.litrpg-library-save-stack) {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .litrpg-preset-grid,
+  .litrpg-builder-two-column {
+    grid-template-columns: 1fr;
   }
 }

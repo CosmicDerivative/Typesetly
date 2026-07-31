@@ -10,7 +10,8 @@ import { DEVICE_PROFILES, profileDescription, renderedDeviceWidth } from '../pre
 import { estimateBookPages, readingTimeMinutes } from '../layout/pagination'
 import { DrawerControls } from './DrawerControls'
 import { useResolvedImageSrc } from '../library/useResolvedImageSrc'
-import { colorWithOpacity } from '../editor/litrpg'
+import { colorWithOpacity, litRpgElementKey } from '../editor/litrpg'
+import { litRpgIsTranslucent } from '../export/litrpgExport'
 
 export function Previewer() {
   const {
@@ -430,6 +431,7 @@ export function Previewer() {
                   }
                   if (b.type === 'litrpg-block') {
                     const block = b.draft
+                    const translucent = litRpgIsTranslucent(block)
                     return (
                       <div
                         key={i}
@@ -439,7 +441,9 @@ export function Previewer() {
                           data-width={block.width}
                           data-width-percent={String(block.widthPercent)}
                           data-alignment={block.alignment}
+                          data-layout-mode={block.layoutMode}
                         data-striped-rows={String(block.stripedRows)}
+                        data-translucent={translucent ? 'true' : 'false'}
                         style={{
                           '--litrpg-accent': block.accent,
                             '--litrpg-bg': block.background,
@@ -452,7 +456,38 @@ export function Previewer() {
                             '--litrpg-cell-padding': `${block.cellPadding}px`,
                         } as CSSProperties}
                       >
-                        <div className="preview-litrpg-heading">
+                          {block.layoutMode === 'freeform' ? (
+                            <div className="litrpg-freeform-canvas" style={{ position: 'relative', height: `${block.canvasHeight}px` }}>
+                              {[
+                                { key: litRpgElementKey.title, value: block.title, className: 'is-title' },
+                                { key: litRpgElementKey.subtitle, value: block.subtitle, className: 'is-subtitle' },
+                                ...block.columns.flatMap((column, columnIndex) => [
+                                  ...(block.showColumnHeaders ? [{ key: litRpgElementKey.column(columnIndex), value: column, className: 'is-column' }] : []),
+                                  ...block.rows.map((row, rowIndex) => ({ key: litRpgElementKey.cell(rowIndex, columnIndex), value: row.cells[columnIndex] || '', className: 'is-cell' })),
+                                ]),
+                                { key: litRpgElementKey.footer, value: block.footer, className: 'is-footer' },
+                              ].filter((entry) => entry.value).map((entry) => {
+                                const layout = block.elementLayouts[entry.key]
+                                if (!layout) return null
+                                return (
+                                  <div
+                                    key={entry.key}
+                                    className={`litrpg-freeform-item ${entry.className}`}
+                                    style={{
+                                      position: 'absolute',
+                                      left: `${layout.x}%`,
+                                      top: `${layout.y}px`,
+                                      width: `${layout.width}%`,
+                                      height: `${layout.height}px`,
+                                    }}
+                                  >
+                                    {entry.value}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          ) : <>
+                          <div className="preview-litrpg-heading">
                           <strong>{block.title}</strong>
                           {block.subtitle && <span>{block.subtitle}</span>}
                         </div>
@@ -467,7 +502,8 @@ export function Previewer() {
                             ))}
                           </tbody>
                         </table>
-                        {block.footer && <div className="preview-litrpg-footer">{block.footer}</div>}
+                          {block.footer && <div className="preview-litrpg-footer">{block.footer}</div>}
+                          </>}
                       </div>
                     )
                   }

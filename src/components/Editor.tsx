@@ -49,11 +49,17 @@ import { useResolvedImageSrc } from '../library/useResolvedImageSrc'
 import { buildCalloutNode, replaceCalloutRange } from '../editor/callouts'
 import {
   buildLitRpgBlockNode,
+  cloneLitRpgDraft,
   litRpgDraftFromAttrs,
   litRpgPreset,
   replaceLitRpgBlockRange,
   type LitRpgBlockDraft,
+  type LitRpgBlockProvenance,
 } from '../editor/litrpg'
+import {
+  consumePendingOpenLitRpgLibrary,
+  type OpenLitRpgLibraryRequest,
+} from '../editor/litrpgLibrary'
 import { LitRpgBlockDialog } from './LitRpgBlockDialog'
 import { FONT_FAMILY_GROUPS } from '../themes/fonts'
 import {
@@ -129,6 +135,8 @@ export function EditorPane() {
   const [litRpgOpen, setLitRpgOpen] = useState(false)
   const [litRpgEditing, setLitRpgEditing] = useState(false)
   const [litRpgDraft, setLitRpgDraft] = useState<LitRpgBlockDraft>(() => litRpgPreset('stat-screen'))
+  const [litRpgProvenance, setLitRpgProvenance] = useState<LitRpgBlockProvenance>({})
+  const [litRpgInitialTab, setLitRpgInitialTab] = useState<'design' | 'library'>('design')
   const [quoteOpen, setQuoteOpen] = useState(false)
   const [quoteAttribution, setQuoteAttribution] = useState('')
   const imageRefInput = useRef<HTMLInputElement>(null)
@@ -175,11 +183,39 @@ export function EditorPane() {
       setEditor(detail.editor)
       setLitRpgEditing(true)
       setLitRpgDraft(litRpgDraftFromAttrs(detail.attrs))
+      setLitRpgProvenance({
+        sourceScreenId: String(detail.attrs.sourceScreenId || ''),
+        sourceTemplateId: String(detail.attrs.sourceTemplateId || ''),
+        revision: String(detail.attrs.revision || ''),
+      })
+      setLitRpgInitialTab('design')
       litRpgRangeRef.current = { from: detail.from, to: detail.to }
       setLitRpgOpen(true)
     }
+
+    const openFromLibrary = (detail: OpenLitRpgLibraryRequest | null | undefined) => {
+      if (!detail?.draft) return
+      setLitRpgEditing(false)
+      setLitRpgDraft(cloneLitRpgDraft(detail.draft))
+      setLitRpgProvenance(detail.provenance || {})
+      setLitRpgInitialTab(detail.initialTab || 'design')
+      litRpgRangeRef.current = null
+      setLitRpgOpen(true)
+    }
+
+    const openLitRpgLibrary = (event: Event) => {
+      const detail = (event as CustomEvent<OpenLitRpgLibraryRequest>).detail
+      consumePendingOpenLitRpgLibrary()
+      openFromLibrary(detail)
+    }
+
     window.addEventListener('typesetly:edit-litrpg-block', editLitRpgBlock)
-    return () => window.removeEventListener('typesetly:edit-litrpg-block', editLitRpgBlock)
+    window.addEventListener('typesetly:open-litrpg-library', openLitRpgLibrary)
+    openFromLibrary(consumePendingOpenLitRpgLibrary())
+    return () => {
+      window.removeEventListener('typesetly:edit-litrpg-block', editLitRpgBlock)
+      window.removeEventListener('typesetly:open-litrpg-library', openLitRpgLibrary)
+    }
   }, [])
 
   const wordCount = useMemo(() => {
@@ -415,13 +451,21 @@ export function EditorPane() {
     setLitRpgDraft(editing
       ? litRpgDraftFromAttrs(selectedNode.attrs as Record<string, unknown>)
       : litRpgPreset('stat-screen'))
+    setLitRpgProvenance(editing
+      ? {
+        sourceScreenId: String((selectedNode.attrs as Record<string, unknown>).sourceScreenId || ''),
+        sourceTemplateId: String((selectedNode.attrs as Record<string, unknown>).sourceTemplateId || ''),
+        revision: String((selectedNode.attrs as Record<string, unknown>).revision || ''),
+      }
+      : {})
+    setLitRpgInitialTab('design')
     litRpgRangeRef.current = editing
       ? { from, to: from + selectedNode.nodeSize }
       : { from, to }
     setLitRpgOpen(true)
   }
 
-  const applyLitRpgBlock = (draft: LitRpgBlockDraft) => {
+  const applyLitRpgBlock = (draft: LitRpgBlockDraft, provenance?: LitRpgBlockProvenance) => {
     if (!editor || editor.isDestroyed) {
       setLitRpgOpen(false)
       return
@@ -430,7 +474,10 @@ export function EditorPane() {
     setLitRpgOpen(false)
     litRpgRangeRef.current = null
     try {
-      replaceLitRpgBlockRange(editor, range, buildLitRpgBlockNode(draft))
+      replaceLitRpgBlockRange(editor, range, buildLitRpgBlockNode({
+        ...cloneLitRpgDraft(draft),
+        ...provenance,
+      }))
       window.requestAnimationFrame(() => {
         if (!editor.isDestroyed) editor.view.focus()
       })
@@ -1202,8 +1249,11 @@ export function EditorPane() {
       )}
       {litRpgOpen && (
         <LitRpgBlockDialog
+          key={`${litRpgInitialTab}:${litRpgProvenance.sourceScreenId || ''}:${litRpgProvenance.sourceTemplateId || ''}`}
           editing={litRpgEditing}
           initialDraft={litRpgDraft}
+          initialProvenance={litRpgProvenance}
+          initialTab={litRpgInitialTab}
           onCancel={() => {
             setLitRpgOpen(false)
             litRpgRangeRef.current = null

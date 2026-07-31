@@ -157,6 +157,21 @@ export interface AppContextValue {
   resolveTrackedChange: (id: string, resolution: 'accepted' | 'rejected') => void
   saveCalloutPreset: (preset: Omit<CalloutPreset, 'id'>) => void
   deleteCalloutPreset: (id: string) => void
+  saveLitRpgTemplate: (input: {
+    id?: string
+    name: string
+    draft: import('./editor/litrpg').LitRpgBlockDraft
+  }) => string
+  deleteLitRpgTemplate: (id: string) => void
+  saveLitRpgCharacterScreen: (input: {
+    id?: string
+    characterId?: string
+    name: string
+    draft: import('./editor/litrpg').LitRpgBlockDraft
+  }) => { id: string; revision: number }
+  deleteLitRpgCharacterScreen: (id: string) => void
+  duplicateLitRpgTemplate: (id: string) => string
+  duplicateLitRpgCharacterScreen: (id: string) => string
   createNamedRevision: (name: string) => void
   restoreNamedRevision: (id: string) => void
   toggleTimer: () => void

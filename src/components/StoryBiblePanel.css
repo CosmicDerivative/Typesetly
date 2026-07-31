@@ -668,6 +668,77 @@
   gap: 8px;
 }
 
+.story-litrpg-screens {
+  display: grid;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+}
+
+.story-litrpg-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.story-litrpg-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 9px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--paper-100, #f4f4f5) 80%, transparent);
+}
+
+.story-litrpg-list strong {
+  display: block;
+  color: var(--ink-900);
+  font-size: 11px;
+}
+
+.story-litrpg-list small {
+  color: var(--text-500);
+  font-size: 9px;
+}
+
+.story-litrpg-list button {
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--ink-900);
+  background: color-mix(in srgb, var(--sage-500) 12%, transparent);
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.story-litrpg-list button:hover {
+  border-color: color-mix(in srgb, var(--sage-500) 45%, var(--line));
+  background: color-mix(in srgb, var(--sage-500) 20%, transparent);
+}
+
+.story-litrpg-empty {
+  margin: 0;
+  color: var(--text-500);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.story-planner-view .story-litrpg-list strong {
+  font-size: 13px;
+}
+
+.story-planner-view .story-litrpg-list small,
+.story-planner-view .story-litrpg-list button,
+.story-planner-view .story-litrpg-empty {
+  font-size: 11px;
+}
+
 .series-reference-heading > span {
   padding: 4px 7px;
   border-radius: 999px;

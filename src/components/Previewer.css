@@ -325,6 +325,109 @@
   opacity: .75;
 }
 
+.preview-litrpg .litrpg-freeform-canvas {
+  position: relative;
+  min-height: 160px;
+  color: var(--litrpg-text);
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--litrpg-border) 22%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--litrpg-border) 22%, transparent) 1px, transparent 1px);
+  background-size: 16px 16px;
+  overflow: hidden;
+}
+
+.preview-litrpg .litrpg-freeform-item {
+  position: absolute;
+  box-sizing: border-box;
+  min-width: 0;
+  padding: var(--litrpg-cell-padding, 8px);
+  border: 1px solid color-mix(in srgb, var(--litrpg-border) 78%, transparent);
+  border-radius: max(2px, calc(var(--litrpg-radius, 8px) * .45));
+  color: var(--litrpg-text);
+  background: color-mix(in srgb, var(--litrpg-bg) 82%, #000);
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
+.preview-litrpg .litrpg-freeform-item.is-title,
+.preview-litrpg .litrpg-freeform-item.is-column {
+  color: var(--litrpg-accent);
+  font-weight: 700;
+}
+
+.preview-litrpg .litrpg-freeform-item.is-title { text-transform: uppercase; letter-spacing: .06em; }
+.preview-litrpg .litrpg-freeform-item.is-column { font-size: .76em; text-transform: uppercase; }
+.preview-litrpg .litrpg-freeform-item.is-subtitle,
+.preview-litrpg .litrpg-freeform-item.is-footer { font-size: .78em; font-style: italic; opacity: .8; }
+
+.preview-litrpg[data-translucent="true"] {
+  color: #334155;
+  background: transparent;
+  background-color: transparent;
+  border-color: #64748b;
+  box-shadow: none;
+  font-family: 'Source Sans 3', 'Segoe UI', sans-serif;
+}
+
+.preview-litrpg[data-translucent="true"] .preview-litrpg-heading {
+  padding-bottom: 4px;
+  border-bottom: 0;
+  background: transparent;
+}
+
+.preview-litrpg[data-translucent="true"] .preview-litrpg-heading strong,
+.preview-litrpg[data-translucent="true"] th {
+  color: #1f2937;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.preview-litrpg[data-translucent="true"] .preview-litrpg-heading span,
+.preview-litrpg[data-translucent="true"] .preview-litrpg-footer {
+  color: #64748b;
+  opacity: 1;
+}
+
+.preview-litrpg[data-translucent="true"] .preview-litrpg-footer {
+  padding-top: 4px;
+}
+
+.preview-litrpg[data-translucent="true"] .litrpg-freeform-canvas {
+  position: relative;
+  background-image: none;
+}
+
+.preview-litrpg[data-translucent="true"] .litrpg-freeform-item {
+  position: absolute;
+  border: 0;
+  background: transparent;
+  color: #334155;
+  border-radius: 0;
+}
+
+.preview-litrpg[data-translucent="true"] .litrpg-freeform-item.is-title,
+.preview-litrpg[data-translucent="true"] .litrpg-freeform-item.is-column {
+  color: #1f2937;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.preview-litrpg[data-translucent="true"] .litrpg-freeform-item.is-subtitle,
+.preview-litrpg[data-translucent="true"] .litrpg-freeform-item.is-footer {
+  color: #64748b;
+  opacity: 1;
+}
+
+.preview-litrpg[data-translucent="true"] th,
+.preview-litrpg[data-translucent="true"] td {
+  border-color: color-mix(in srgb, #64748b 45%, transparent);
+  background: transparent;
+}
+
+.preview-litrpg[data-translucent="true"][data-striped-rows="true"] tbody tr:nth-child(even) {
+  background: transparent;
+}
+
 .preview-litrpg table {
   width: 100%;
   border-collapse: collapse;

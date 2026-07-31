@@ -3,6 +3,17 @@ import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFP
 import { exportableChapters, headingParts, parseManuscript } from '../layout/manuscript'
 import { layoutShowsPageNumber, runningHeaderText } from '../layout/runningHeaders'
 import type { BookProject, BookTheme, Chapter, ExportResult } from '../types'
+import {
+  litRpgAuthoredTitle,
+  litRpgColumnWidthFractions,
+  litRpgFreeformFields,
+  litRpgIsTranslucent,
+  litRpgManuscriptInk,
+  litRpgRgb,
+  litRpgTitleDisplay,
+  litRpgUsesBoxedFields,
+  mixLitRpgRgb,
+} from './litrpgExport'
 import { pdfSafeText } from './pdfText'
 import { preflightBook } from './preflight'
 
@@ -77,6 +88,8 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
   const serifBold = await documentValue.embedFont(StandardFonts.TimesRomanBold)
   const sans = await documentValue.embedFont(StandardFonts.Helvetica)
   const sansBold = await documentValue.embedFont(StandardFonts.HelveticaBold)
+  const courier = await documentValue.embedFont(StandardFonts.Courier)
+  const courierBold = await documentValue.embedFont(StandardFonts.CourierBold)
   const pdfFont = (family: string, bold = false) => {
     const sansFamily = /sans|helvetica|source|arial|avenir|inter|roboto|lato|verdana|tahoma/i.test(family)
     return sansFamily ? (bold ? sansBold : sans) : (bold ? serifBold : serif)
@@ -349,32 +362,409 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
 
   const drawLitRpgBlock = (block: Extract<ReturnType<typeof parseManuscript>['blocks'][number], { type: 'litrpg-block' }>['draft']) => {
     const margin = margins()
-    const rowText = block.rows.map((row) => block.columns
-      .map((column, index) => `${column}: ${row.cells[index] || '—'}`)
-      .join('  •  '))
-    const estimatedHeight = lineHeight * Math.max(4, rowText.length * 1.5 + 3)
-    ensureSpace(Math.min(estimatedHeight, pageHeight - margin.top - margin.bottom))
-    const startingPage = pageNumber
-    const top = y + 5
-    drawLine(block.title || 'LitRPG Block', {
-      font: sansBold,
-      size: Math.max(9, fontSize),
-      color: rgb(.12, .28, .32),
-    })
-    if (block.subtitle) drawLine(block.subtitle, { size: Math.max(7, fontSize - 2), color: rgb(.32, .38, .42) })
-    for (const row of rowText) drawParagraph(row, true)
-    if (block.footer) drawLine(block.footer, { size: Math.max(7, fontSize - 2), color: rgb(.35, .38, .42) })
-    if (pageNumber === startingPage) {
+    const contentWidth = pageWidth - margin.left - margin.right
+    const widthPercent = Math.min(100, Math.max(30, block.widthPercent || 100))
+    const blockWidth = contentWidth * (widthPercent / 100)
+    const blockX = block.alignment === 'left'
+      ? margin.left
+      : block.alignment === 'right'
+        ? pageWidth - margin.right - blockWidth
+        : margin.left + (contentWidth - blockWidth) / 2
+
+    const translucent = litRpgIsTranslucent(block)
+    const boxed = litRpgUsesBoxedFields(block)
+    const compact = block.density === 'compact'
+    const padX = Math.max(6, (block.cellPadding || 8) * (compact ? 0.55 : 0.75))
+    const padY = compact ? 6 : 10
+    const titleSize = compact ? Math.max(8, fontSize - 1) : Math.max(9, fontSize)
+    const bodySize = compact ? Math.max(7, fontSize - 2) : Math.max(8, fontSize - 1)
+    const metaSize = Math.max(6, bodySize - 1)
+    const rowGap = compact ? 2 : 4
+    const sectionGap = compact ? 3 : 5
+    const accentBar = boxed || translucent || block.appearance === 'minimal' ? 0 : 3.5
+    const borderInset = !translucent && block.appearance === 'ornate' ? 3 : 0
+    const borderThickness = Math.max(
+      translucent ? 0.85 : block.appearance === 'minimal' ? 2.5 : 0.75,
+      Math.min(4, (block.borderWidth || 1) * (translucent ? 0.55 : 0.75)),
+    )
+    const cellBorderThickness = Math.max(0.6, Math.min(2.2, (block.borderWidth || 1) * 0.7))
+
+    const terminal = !translucent && block.appearance === 'terminal'
+    const ornate = !translucent && block.appearance === 'ornate'
+    const titleFont = translucent ? sansBold : terminal ? courierBold : ornate ? serifBold : sansBold
+    const textFont = translucent ? sans : terminal ? courier : ornate ? serif : sans
+    const headerFont = translucent ? sansBold : terminal ? courierBold : ornate ? serifBold : sansBold
+
+    const bgChannels = litRpgRgb(block.background)
+    const accentChannels = litRpgRgb(block.accent, { r: 0.2, g: 0.4, b: 0.45 })
+    const textChannels = litRpgRgb(block.textColor, { r: 0.95, g: 0.95, b: 0.95 })
+    const borderChannels = litRpgRgb(block.border, { r: 0.2, g: 0.55, b: 0.58 })
+    const manuscriptInk = litRpgManuscriptInk()
+    const bgColor = rgb(bgChannels.r, bgChannels.g, bgChannels.b)
+    const accentColor = translucent
+      ? rgb(manuscriptInk.title.r, manuscriptInk.title.g, manuscriptInk.title.b)
+      : rgb(accentChannels.r, accentChannels.g, accentChannels.b)
+    const textColor = translucent
+      ? rgb(manuscriptInk.body.r, manuscriptInk.body.g, manuscriptInk.body.b)
+      : rgb(textChannels.r, textChannels.g, textChannels.b)
+    const mutedColor = rgb(manuscriptInk.muted.r, manuscriptInk.muted.g, manuscriptInk.muted.b)
+    const borderColor = translucent
+      ? rgb(manuscriptInk.border.r, manuscriptInk.border.g, manuscriptInk.border.b)
+      : rgb(borderChannels.r, borderChannels.g, borderChannels.b)
+    const bgOpacity = Math.min(1, Math.max(0, (block.backgroundOpacity ?? 100) / 100))
+    const cellFillChannels = mixLitRpgRgb(bgChannels, { r: 0, g: 0, b: 0 }, 0.12)
+    const cellFill = rgb(cellFillChannels.r, cellFillChannels.g, cellFillChannels.b)
+    const stripeChannels = mixLitRpgRgb(bgChannels, accentChannels, 0.14)
+    const stripeColor = rgb(stripeChannels.r, stripeChannels.g, stripeChannels.b)
+    const gridChannels = mixLitRpgRgb(bgChannels, borderChannels, 0.22)
+    const gridColor = rgb(gridChannels.r, gridChannels.g, gridChannels.b)
+
+    const drawBorderRect = (
+      x: number,
+      rectBottom: number,
+      width: number,
+      height: number,
+      thickness: number,
+      dashed: boolean,
+      color = borderColor,
+    ) => {
+      const edges = [
+        { start: { x, y: rectBottom + height }, end: { x: x + width, y: rectBottom + height } },
+        { start: { x: x + width, y: rectBottom + height }, end: { x: x + width, y: rectBottom } },
+        { start: { x: x + width, y: rectBottom }, end: { x, y: rectBottom } },
+        { start: { x, y: rectBottom }, end: { x, y: rectBottom + height } },
+      ]
+      for (const edge of edges) {
+        page.drawLine({
+          start: edge.start,
+          end: edge.end,
+          thickness,
+          color,
+          ...(dashed ? { dashArray: [3.5, 2.5] } : {}),
+        })
+      }
+    }
+
+    const wrapCell = (value: string, font: PDFFont, size: number, width: number) => {
+      const wrapped = wrapForPdf(value, font, size, Math.max(12, width - 4), false)
+      return wrapped.length ? wrapped : ['-']
+    }
+
+    if (boxed) {
+      const fields = litRpgFreeformFields(block, { preserveAuthoredCase: translucent })
+      const canvasHeight = Math.max(
+        80,
+        block.canvasHeight || 0,
+        ...fields.map((field) => field.layout.y + field.layout.height + 12),
+      )
+      // Freeform y/height are authored in CSS px; treat 1px ≈ 1pt for print.
+      const blockHeight = Math.max(48, canvasHeight) + borderInset * 2
+      ensureSpace(Math.min(blockHeight + lineHeight * 0.4, pageHeight - margin.top - margin.bottom))
+
+      const top = y
+      const bottom = y - blockHeight
+      const innerX = blockX + borderInset
+      const innerTop = top - borderInset
+      const fillBottom = bottom + borderInset
+      const fillHeight = Math.max(1, innerTop - fillBottom)
+      const fillWidth = blockWidth - borderInset * 2
+
+      if (!translucent) {
+        page.drawRectangle({
+          x: innerX,
+          y: fillBottom,
+          width: fillWidth,
+          height: fillHeight,
+          color: bgColor,
+          opacity: bgOpacity,
+        })
+
+        const gridStep = 16
+        for (let gridX = innerX + gridStep; gridX < innerX + fillWidth; gridX += gridStep) {
+          page.drawLine({
+            start: { x: gridX, y: fillBottom },
+            end: { x: gridX, y: innerTop },
+            thickness: 0.4,
+            color: gridColor,
+            opacity: Math.min(1, bgOpacity * 0.45),
+          })
+        }
+        for (let gridY = fillBottom + gridStep; gridY < innerTop; gridY += gridStep) {
+          page.drawLine({
+            start: { x: innerX, y: gridY },
+            end: { x: innerX + fillWidth, y: gridY },
+            thickness: 0.4,
+            color: gridColor,
+            opacity: Math.min(1, bgOpacity * 0.45),
+          })
+        }
+      }
+
+      if (block.appearance === 'minimal' && !translucent) {
+        page.drawRectangle({
+          x: blockX,
+          y: bottom,
+          width: borderThickness,
+          height: blockHeight,
+          color: borderColor,
+        })
+      } else if (block.appearance === 'ornate' && !translucent) {
+        drawBorderRect(blockX, bottom, blockWidth, blockHeight, borderThickness, false)
+        drawBorderRect(innerX, fillBottom, fillWidth, fillHeight, Math.max(0.6, borderThickness * 0.55), false)
+      } else {
+        drawBorderRect(blockX, bottom, blockWidth, blockHeight, borderThickness, terminal)
+      }
+
+      for (const field of fields) {
+        const fieldX = innerX + (field.layout.x / 100) * fillWidth
+        const fieldWidth = Math.max(18, (field.layout.width / 100) * fillWidth)
+        const fieldHeight = Math.max(14, field.layout.height)
+        const fieldTop = innerTop - field.layout.y
+        const fieldBottom = fieldTop - fieldHeight
+        const isAccent = field.kind === 'title' || field.kind === 'column'
+        const fieldPad = Math.max(3, (block.cellPadding || 8) * 0.45)
+        const font = isAccent ? titleFont : field.kind === 'column' ? headerFont : textFont
+        const size = field.kind === 'title'
+          ? titleSize
+          : field.kind === 'column' || field.kind === 'subtitle' || field.kind === 'footer'
+            ? metaSize
+            : bodySize
+        const color = translucent && (field.kind === 'subtitle' || field.kind === 'footer')
+          ? mutedColor
+          : isAccent
+            ? accentColor
+            : textColor
+        const lines = wrapCell(field.text, font, size, fieldWidth - fieldPad * 2)
+
+        if (!translucent) {
+          page.drawRectangle({
+            x: fieldX,
+            y: fieldBottom,
+            width: fieldWidth,
+            height: fieldHeight,
+            color: cellFill,
+            opacity: Math.min(1, bgOpacity + 0.08),
+          })
+          drawBorderRect(
+            fieldX,
+            fieldBottom,
+            fieldWidth,
+            fieldHeight,
+            cellBorderThickness,
+            terminal && field.kind === 'title',
+            field.kind === 'title' ? accentColor : borderColor,
+          )
+        }
+
+        let lineY = fieldTop - fieldPad - size * 0.85
+        for (const line of lines) {
+          if (lineY < fieldBottom + 2) break
+          page.drawText(safeText(line, font), {
+            x: fieldX + fieldPad,
+            y: lineY,
+            size,
+            font,
+            color,
+          })
+          lineY -= size * 1.2
+        }
+      }
+
+      y = bottom - lineHeight * 0.35
+      return
+    }
+
+    const columns = block.columns.length ? block.columns : ['Value']
+    const fractions = litRpgColumnWidthFractions(block)
+    const innerWidth = Math.max(24, blockWidth - padX * 2 - borderInset * 2)
+    const colWidths = fractions.map((fraction) => fraction * innerWidth)
+    const cellText = (value: string | undefined) => (value && value.trim() ? value : '-')
+
+    const titleLines = wrapCell(
+      translucent ? litRpgAuthoredTitle(block) : litRpgTitleDisplay(block),
+      titleFont,
+      titleSize,
+      innerWidth,
+    )
+    const subtitleLines = block.subtitle
+      ? wrapCell(block.subtitle, textFont, metaSize, innerWidth)
+      : []
+    const headerLines = block.showColumnHeaders
+      ? columns.map((column, index) => wrapCell(column || `Column ${index + 1}`, headerFont, metaSize, colWidths[index]))
+      : []
+    const headerRowHeight = headerLines.length
+      ? Math.max(...headerLines.map((lines) => lines.length)) * metaSize * 1.25
+      : 0
+    const dataRows = block.rows.map((row) => columns.map((_, index) =>
+      wrapCell(cellText(row.cells[index]), textFont, bodySize, colWidths[index])))
+    const dataRowHeights = dataRows.map((cells) =>
+      Math.max(bodySize * 1.35 + 4, ...cells.map((lines) => lines.length * bodySize * 1.25 + 4)))
+    const footerLines = block.footer
+      ? wrapCell(block.footer, textFont, metaSize, innerWidth)
+      : []
+
+    const contentHeight =
+      accentBar
+      + padY
+      + titleLines.length * titleSize * 1.25
+      + (subtitleLines.length ? sectionGap + subtitleLines.length * metaSize * 1.25 : 0)
+      + (headerRowHeight ? sectionGap + headerRowHeight + rowGap : sectionGap)
+      + dataRowHeights.reduce((sum, height) => sum + height + rowGap, 0)
+      + (footerLines.length ? sectionGap + footerLines.length * metaSize * 1.25 : 0)
+      + padY
+    const blockHeight = contentHeight + borderInset * 2
+    ensureSpace(Math.min(blockHeight + lineHeight * 0.4, pageHeight - margin.top - margin.bottom))
+
+    const top = y
+    const bottom = y - blockHeight
+    const innerX = blockX + borderInset
+    const innerTop = top - borderInset
+    const fillBottom = bottom + borderInset
+    const fillHeight = Math.max(1, innerTop - fillBottom)
+
+    if (!translucent) {
       page.drawRectangle({
-        x: margin.left - 6,
-        y: y - 2,
-        width: pageWidth - margin.left - margin.right + 12,
-        height: top - y + 5,
-        borderColor: rgb(.22, .54, .58),
-        borderWidth: 1,
+        x: innerX,
+        y: fillBottom,
+        width: blockWidth - borderInset * 2,
+        height: fillHeight,
+        color: bgColor,
+        opacity: bgOpacity,
       })
     }
-    y -= lineHeight * .35
+
+    if (accentBar > 0) {
+      page.drawRectangle({
+        x: innerX,
+        y: innerTop - accentBar,
+        width: blockWidth - borderInset * 2,
+        height: accentBar,
+        color: accentColor,
+      })
+    }
+
+    if (block.appearance === 'minimal' && !translucent) {
+      page.drawRectangle({
+        x: blockX,
+        y: bottom,
+        width: borderThickness,
+        height: blockHeight,
+        color: borderColor,
+      })
+    } else if (block.appearance === 'ornate' && !translucent) {
+      drawBorderRect(blockX, bottom, blockWidth, blockHeight, borderThickness, false)
+      drawBorderRect(innerX, fillBottom, blockWidth - borderInset * 2, fillHeight, Math.max(0.6, borderThickness * 0.55), false)
+    } else {
+      drawBorderRect(blockX, bottom, blockWidth, blockHeight, borderThickness, terminal)
+    }
+
+    let cursorY = innerTop - accentBar - padY - titleSize
+    const drawWrapped = (
+      lines: string[],
+      font: PDFFont,
+      size: number,
+      color: ReturnType<typeof rgb>,
+      x: number,
+    ) => {
+      for (const line of lines) {
+        page.drawText(safeText(line, font), {
+          x,
+          y: cursorY,
+          size,
+          font,
+          color,
+        })
+        cursorY -= size * 1.25
+      }
+    }
+
+    drawWrapped(titleLines, titleFont, titleSize, accentColor, innerX + padX)
+    if (subtitleLines.length) {
+      cursorY -= sectionGap - metaSize * 0.15
+      drawWrapped(subtitleLines, textFont, metaSize, translucent ? mutedColor : textColor, innerX + padX)
+    }
+
+    const drawTableRow = (
+      cells: string[][],
+      rowTop: number,
+      rowHeight: number,
+      fonts: PDFFont[],
+      sizes: number[],
+      colors: ReturnType<typeof rgb>[],
+      fill: ReturnType<typeof rgb> | null,
+    ) => {
+      const rowBottom = rowTop - rowHeight
+      if (fill && !translucent) {
+        page.drawRectangle({
+          x: innerX + padX * 0.2,
+          y: rowBottom,
+          width: innerWidth + padX * 0.6,
+          height: rowHeight,
+          color: fill,
+          opacity: Math.min(1, bgOpacity + 0.06),
+        })
+      }
+      let colX = innerX + padX
+      cells.forEach((lines, index) => {
+        const cellWidth = colWidths[index]
+        if (!translucent) {
+          drawBorderRect(colX, rowBottom, cellWidth, rowHeight, cellBorderThickness, false)
+        }
+        let lineY = rowTop - sizes[index] * 0.95 - 2
+        for (const line of lines) {
+          page.drawText(safeText(line, fonts[index]), {
+            x: colX + 3,
+            y: lineY,
+            size: sizes[index],
+            font: fonts[index],
+            color: colors[index],
+          })
+          lineY -= sizes[index] * 1.25
+        }
+        colX += cellWidth
+      })
+    }
+
+    if (headerLines.length) {
+      cursorY -= sectionGap
+      const rowHeight = headerRowHeight + 4
+      const headerMix = mixLitRpgRgb(bgChannels, accentChannels, 0.1)
+      const headerFill = translucent ? null : rgb(headerMix.r, headerMix.g, headerMix.b)
+      drawTableRow(
+        headerLines,
+        cursorY,
+        rowHeight,
+        columns.map(() => headerFont),
+        columns.map(() => metaSize),
+        columns.map(() => accentColor),
+        headerFill,
+      )
+      cursorY -= rowHeight + rowGap
+    } else {
+      cursorY -= sectionGap
+    }
+
+    dataRows.forEach((cells, rowIndex) => {
+      const rowHeight = dataRowHeights[rowIndex]
+      const fill = !translucent && block.stripedRows && rowIndex % 2 === 1 ? stripeColor : null
+      drawTableRow(
+        cells,
+        cursorY,
+        rowHeight,
+        columns.map(() => textFont),
+        columns.map(() => bodySize),
+        columns.map(() => textColor),
+        fill,
+      )
+      cursorY -= rowHeight + rowGap
+    })
+
+    if (footerLines.length) {
+      cursorY -= sectionGap - metaSize * 0.1
+      drawWrapped(footerLines, textFont, metaSize, translucent ? mutedColor : textColor, innerX + padX)
+    }
+
+    y = bottom - lineHeight * 0.35
   }
 
   const embedImage = async (dataUrl: string): Promise<PDFImage | null> => {

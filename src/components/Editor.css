@@ -176,7 +176,8 @@
 }
 
 .editor-page-body .prose-editor {
-  min-height: 8em;
+  /* Grow with content only — never stretch empty space between blocks/caret. */
+  min-height: 0;
   max-height: inherit;
   overflow: hidden;
 }
@@ -346,7 +347,7 @@
 }
 
 .editor-content.space .prose-editor p {
-  margin-block: 0 0 1em;
+  margin-block: 0 1em;
 }
 
 .editor-content.justify .prose-editor {
@@ -498,6 +499,7 @@
   font-style: normal;
   text-align: left;
   overflow: hidden;
+  isolation: isolate;
 }
 
 .litrpg-block[data-width="compact"]:not([data-width-percent]) {
@@ -653,6 +655,114 @@
   font-style: italic;
 }
 
+.litrpg-freeform-canvas {
+  position: relative;
+  min-height: 160px;
+  color: var(--litrpg-text, #ecfeff);
+  background-color: transparent;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--litrpg-border, #2dd4bf) 22%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--litrpg-border, #2dd4bf) 22%, transparent) 1px, transparent 1px);
+  background-size: 16px 16px;
+  overflow: hidden;
+}
+
+.litrpg-snap-guide {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--litrpg-accent, #5eead4) 55%, transparent);
+}
+
+.litrpg-snap-guide.is-vertical {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+
+.litrpg-snap-guide.is-horizontal {
+  right: 0;
+  left: 0;
+  height: 1px;
+}
+
+.litrpg-freeform-item {
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  align-items: stretch;
+  border: 1px solid color-mix(in srgb, var(--litrpg-border, #2dd4bf) 78%, transparent);
+  border-radius: max(2px, calc(var(--litrpg-radius, 8px) * .45));
+  color: var(--litrpg-text, #ecfeff);
+  background: color-mix(in srgb, var(--litrpg-bg, #102a2d) 82%, #000);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--litrpg-border, #2dd4bf) 18%, transparent);
+  overflow: hidden;
+}
+
+.litrpg-freeform-item.is-title {
+  border-color: color-mix(in srgb, var(--litrpg-accent, #5eead4) 86%, transparent);
+  color: var(--litrpg-accent, #5eead4);
+  font-size: 1.05em;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.litrpg-freeform-item.is-subtitle,
+.litrpg-freeform-item.is-footer {
+  font-size: .78em;
+  font-style: italic;
+  opacity: .92;
+}
+
+.litrpg-freeform-item.is-column {
+  color: var(--litrpg-accent, #5eead4);
+  font-size: .76em;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.litrpg-freeform-item > textarea {
+  height: 100% !important;
+  min-height: 0 !important;
+  padding: var(--litrpg-cell-padding, 8px) 20px !important;
+  color: inherit !important;
+  background: transparent !important;
+  caret-color: var(--litrpg-accent, #5eead4);
+}
+
+.litrpg-freeform-move,
+.litrpg-freeform-resize {
+  position: absolute;
+  z-index: 2;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  color: var(--litrpg-accent);
+  background: color-mix(in srgb, var(--litrpg-bg) 86%, #000);
+  cursor: grab;
+  font: 10px/1 sans-serif;
+  opacity: .32;
+  touch-action: none;
+}
+
+.litrpg-freeform-move { top: 1px; left: 1px; }
+.litrpg-freeform-resize { right: 1px; bottom: 1px; cursor: nwse-resize; }
+
+.litrpg-freeform-item:hover > .litrpg-freeform-move,
+.litrpg-freeform-item:hover > .litrpg-freeform-resize,
+.litrpg-freeform-item:focus-within > .litrpg-freeform-move,
+.litrpg-freeform-item:focus-within > .litrpg-freeform-resize {
+  opacity: 1;
+}
+
+.litrpg-block:not(.litrpg-block-node-view) .litrpg-freeform-item {
+  display: block;
+  padding: var(--litrpg-cell-padding, 8px);
+}
+
 .prose-editor .litrpg-block.ProseMirror-selectednode {
   outline: 2px solid var(--workspace-focus);
   outline-offset: 3px;
@@ -661,6 +771,8 @@
 .litrpg-block-node-view {
   position: relative;
   padding-top: 30px;
+  background-color: var(--litrpg-bg-alpha, var(--litrpg-bg, #102a2d)) !important;
+  color: var(--litrpg-text, #ecfeff) !important;
 }
 
 .litrpg-block-node-view.is-selected {
@@ -686,6 +798,61 @@
   text-shadow: none;
 }
 
+.litrpg-inline-library-wrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.litrpg-inline-library-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 5;
+  display: grid;
+  gap: 8px;
+  min-width: 220px;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--litrpg-border) 55%, transparent);
+  border-radius: 8px;
+  color: var(--litrpg-text);
+  background: color-mix(in srgb, var(--litrpg-bg) 94%, #000);
+  box-shadow: 0 10px 28px color-mix(in srgb, #000 45%, transparent);
+}
+
+.litrpg-inline-library-menu strong {
+  font-size: 11px;
+  letter-spacing: .02em;
+}
+
+.litrpg-inline-library-menu label {
+  display: grid;
+  gap: 4px;
+  color: inherit;
+  font-size: 10px;
+  opacity: .9;
+}
+
+.litrpg-inline-library-menu input,
+.litrpg-inline-library-menu select {
+  width: 100%;
+  padding: 5px 7px;
+  border: 1px solid color-mix(in srgb, var(--litrpg-border) 65%, transparent);
+  border-radius: 5px;
+  color: inherit;
+  background: color-mix(in srgb, var(--litrpg-bg) 78%, #000);
+  font: inherit;
+}
+
+.litrpg-inline-library-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.litrpg-inline-library-actions button {
+  flex: 1 1 auto;
+}
+
 .litrpg-inline-tools span {
   flex: 1;
   opacity: .68;
@@ -701,6 +868,11 @@
 .litrpg-inline-alignment button.active {
   border-color: var(--litrpg-accent);
   background: color-mix(in srgb, var(--litrpg-accent) 32%, transparent);
+}
+
+.litrpg-inline-tools > button.active {
+  border-color: var(--litrpg-accent);
+  background: color-mix(in srgb, var(--litrpg-accent) 28%, transparent);
 }
 
 .litrpg-inline-tools button,
@@ -733,19 +905,27 @@
 }
 
 .litrpg-block-node-view input,
-.litrpg-block-node-view textarea {
+.litrpg-block-node-view textarea,
+.prose-editor .litrpg-block-node-view input,
+.prose-editor .litrpg-block-node-view textarea,
+.app-shell .litrpg-block-node-view input,
+.app-shell .litrpg-block-node-view textarea,
+.app-shell.dark .litrpg-block-node-view input,
+.app-shell.dark .litrpg-block-node-view textarea {
   width: 100%;
   box-sizing: border-box;
   padding: 2px 3px;
-  border: 1px solid transparent;
+  border: 1px solid transparent !important;
   border-radius: 3px;
-  color: inherit;
-  background: transparent;
+  color: inherit !important;
+  background: transparent !important;
+  background-color: transparent !important;
   font: inherit;
   line-height: inherit;
   text-align: inherit;
   text-shadow: inherit;
   resize: none;
+  box-shadow: none !important;
 }
 
 .litrpg-block-node-view input:hover,
@@ -1640,6 +1820,20 @@
 
 .editor-page-body .prose-editor {
   overflow: visible;
+  min-height: 0;
+}
+
+/* Draft page sheets clip body paint so tall atoms cannot bleed across the gap.
+   Sheet overflow stays visible for grammar-tool badges; trim size is locked
+   via inline height/maxHeight on the sheet and body. */
+.editor-pages-stack .editor-page-body {
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+.editor-pages-stack .editor-page-body .prose-editor {
+  min-height: 0 !important;
+  height: auto;
 }
 
 .editor-scroll,

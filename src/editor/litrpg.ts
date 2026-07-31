@@ -10,6 +10,14 @@ export type LitRpgAppearance = 'panel' | 'terminal' | 'minimal' | 'ornate'
 export type LitRpgDensity = 'compact' | 'comfortable'
 export type LitRpgWidth = 'compact' | 'full'
 export type LitRpgAlignment = 'left' | 'center' | 'right'
+export type LitRpgLayoutMode = 'table' | 'freeform'
+
+export interface LitRpgElementLayout {
+  x: number
+  y: number
+  width: number
+  height: number
+}
 
 export interface LitRpgRow {
   cells: string[]
@@ -28,6 +36,9 @@ export interface LitRpgBlockDraft {
   width: LitRpgWidth
   widthPercent: number
   alignment: LitRpgAlignment
+  layoutMode: LitRpgLayoutMode
+  canvasHeight: number
+  elementLayouts: Record<string, LitRpgElementLayout>
   borderRadius: number
   borderWidth: number
   backgroundOpacity: number
@@ -40,9 +51,33 @@ export interface LitRpgBlockDraft {
   stripedRows: boolean
 }
 
+/** Provenance metadata stored on TipTap attrs (not part of visual draft). */
+export interface LitRpgBlockProvenance {
+  sourceScreenId?: string
+  sourceTemplateId?: string
+  revision?: string
+}
+
+export function cloneLitRpgDraft(draft: LitRpgBlockDraft): LitRpgBlockDraft {
+  return normalizeLitRpgDraft(JSON.parse(JSON.stringify(draft)) as Partial<LitRpgBlockDraft>)
+}
+
+export function litRpgDraftFromStored(value: unknown): LitRpgBlockDraft {
+  if (!value || typeof value !== 'object') return litRpgPreset('stat-screen')
+  return normalizeLitRpgDraft(value as Partial<LitRpgBlockDraft>)
+}
+
 const COLOR_PATTERN = /^#[0-9a-f]{6}$/i
 const MAX_COLUMNS = 4
 const MAX_ROWS = 100
+
+export const litRpgElementKey = {
+  title: 'title',
+  subtitle: 'subtitle',
+  footer: 'footer',
+  column: (columnIndex: number) => `column:${columnIndex}`,
+  cell: (rowIndex: number, columnIndex: number) => `cell:${rowIndex}:${columnIndex}`,
+}
 
 function safeColor(value: string, fallback: string) {
   return COLOR_PATTERN.test(value) ? value : fallback
@@ -107,6 +142,237 @@ export function colorWithOpacity(color: string, opacity: number) {
   return `rgba(${red}, ${green}, ${blue}, ${numberWithin(opacity, 0, 100, 100) / 100})`
 }
 
+function defaultElementLayouts(columns: string[], rows: LitRpgRow[]) {
+  const layouts: Record<string, LitRpgElementLayout> = {
+    [litRpgElementKey.title]: { x: 4, y: 14, width: 58, height: 34 },
+    [litRpgElementKey.subtitle]: { x: 4, y: 52, width: 58, height: 28 },
+    [litRpgElementKey.footer]: {
+      x: 4,
+      y: 126 + rows.length * 46,
+      width: 92,
+      height: 32,
+    },
+  }
+  const columnWidth = 92 / Math.max(1, columns.length)
+  columns.forEach((_, columnIndex) => {
+    const x = 4 + columnIndex * columnWidth
+    layouts[litRpgElementKey.column(columnIndex)] = {
+      x,
+      y: 88,
+      width: columnWidth,
+      height: 32,
+    }
+    rows.forEach((__, rowIndex) => {
+      layouts[litRpgElementKey.cell(rowIndex, columnIndex)] = {
+        x,
+        y: 124 + rowIndex * 46,
+        width: columnWidth,
+        height: 42,
+      }
+    })
+  })
+  return layouts
+}
+
+export function normalizeLitRpgElementLayouts(
+  value: unknown,
+  columns: string[],
+  rows: LitRpgRow[],
+) {
+  const defaults = defaultElementLayouts(columns, rows)
+  const source = value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, Partial<LitRpgElementLayout>>
+    : {}
+  return Object.fromEntries(Object.entries(defaults).map(([key, fallback]) => {
+    const candidate = source[key] || {}
+    const width = numberWithin(candidate.width, 8, 100, fallback.width)
+    return [key, {
+      x: numberWithin(candidate.x, 0, 100 - Math.min(width, 100), fallback.x),
+      y: numberWithin(candidate.y, 0, 2000, fallback.y),
+      width,
+      height: numberWithin(candidate.height, 24, 500, fallback.height),
+    }]
+  }))
+}
+
+/** Matches `.litrpg-freeform-canvas` background-size. */
+export const LITRPG_FREEFORM_GRID_SIZE = 16
+/** Soft magnetic pull — only snap when within this many CSS pixels. */
+export const LITRPG_SNAP_THRESHOLD = 6
+export const LITRPG_SNAP_PREF_KEY = 'typesetly:litrpg-snap-to-grid'
+
+export interface LitRpgSnapGuides {
+  vertical: number[]
+  horizontal: number[]
+}
+
+export function readLitRpgSnapPref(): boolean {
+  try {
+    return localStorage.getItem(LITRPG_SNAP_PREF_KEY) !== '0'
+  } catch {
+    return true
+  }
+}
+
+export function writeLitRpgSnapPref(enabled: boolean) {
+  try {
+    localStorage.setItem(LITRPG_SNAP_PREF_KEY, enabled ? '1' : '0')
+  } catch {
+    /* ignore quota / private mode */
+  }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('typesetly:litrpg-snap-pref', { detail: enabled }))
+  }
+}
+
+function collectGridTargets(extent: number, gridSize: number) {
+  const targets: number[] = [0]
+  if (extent <= 0 || gridSize <= 0) return targets
+  const last = Math.ceil(extent / gridSize) * gridSize
+  for (let value = gridSize; value <= last; value += gridSize) targets.push(value)
+  return targets
+}
+
+function collectSiblingAxisTargets(
+  siblings: readonly LitRpgElementLayout[],
+  canvasWidth: number,
+  axis: 'x' | 'y',
+) {
+  const targets: number[] = []
+  for (const sibling of siblings) {
+    if (axis === 'x') {
+      const left = (sibling.x / 100) * canvasWidth
+      const width = (sibling.width / 100) * canvasWidth
+      targets.push(left, left + width / 2, left + width)
+    } else {
+      targets.push(sibling.y, sibling.y + sibling.height / 2, sibling.y + sibling.height)
+    }
+  }
+  return targets
+}
+
+function nearestSoftSnap(
+  points: readonly number[],
+  targets: readonly number[],
+  threshold: number,
+): { delta: number; guide: number } | null {
+  let best: { delta: number; guide: number; distance: number } | null = null
+  for (const point of points) {
+    for (const target of targets) {
+      const delta = target - point
+      const distance = Math.abs(delta)
+      if (distance > threshold) continue
+      if (!best || distance < best.distance) {
+        best = { delta, guide: target, distance }
+      }
+    }
+  }
+  return best ? { delta: best.delta, guide: best.guide } : null
+}
+
+/**
+ * Soft (threshold) snap for freeform fields: pulls edges/centers toward the
+ * 16px canvas grid and sibling edges/centers only when within the magnet range.
+ */
+export function softSnapLitRpgLayout(options: {
+  layout: LitRpgElementLayout
+  mode: 'move' | 'resize'
+  canvasWidth: number
+  canvasHeight: number
+  siblings?: readonly LitRpgElementLayout[]
+  gridSize?: number
+  threshold?: number
+}): { layout: LitRpgElementLayout; guides: LitRpgSnapGuides } {
+  const {
+    layout,
+    mode,
+    canvasWidth,
+    canvasHeight,
+    siblings = [],
+    gridSize = LITRPG_FREEFORM_GRID_SIZE,
+    threshold = LITRPG_SNAP_THRESHOLD,
+  } = options
+  const widthPx = Math.max(1, canvasWidth)
+  const left = (layout.x / 100) * widthPx
+  const width = (layout.width / 100) * widthPx
+  const right = left + width
+  const top = layout.y
+  const bottom = layout.y + layout.height
+  const verticalTargets = [
+    ...collectGridTargets(widthPx, gridSize),
+    ...collectSiblingAxisTargets(siblings, widthPx, 'x'),
+  ]
+  const horizontalTargets = [
+    ...collectGridTargets(Math.max(canvasHeight, bottom + gridSize), gridSize),
+    ...collectSiblingAxisTargets(siblings, widthPx, 'y'),
+  ]
+  const guides: LitRpgSnapGuides = { vertical: [], horizontal: [] }
+
+  if (mode === 'move') {
+    const xSnap = nearestSoftSnap(
+      [left, left + width / 2, right],
+      verticalTargets,
+      threshold,
+    )
+    const ySnap = nearestSoftSnap(
+      [top, top + layout.height / 2, bottom],
+      horizontalTargets,
+      threshold,
+    )
+    let nextX = layout.x
+    let nextY = layout.y
+    if (xSnap) {
+      nextX = ((left + xSnap.delta) / widthPx) * 100
+      guides.vertical.push(xSnap.guide)
+    }
+    if (ySnap) {
+      nextY = top + ySnap.delta
+      guides.horizontal.push(ySnap.guide)
+    }
+    const widthPct = layout.width
+    return {
+      layout: {
+        ...layout,
+        x: Math.min(100 - widthPct, Math.max(0, nextX)),
+        y: Math.max(0, nextY),
+      },
+      guides,
+    }
+  }
+
+  const rightSnap = nearestSoftSnap([right], verticalTargets, threshold)
+  const bottomSnap = nearestSoftSnap([bottom], horizontalTargets, threshold)
+  let nextWidth = layout.width
+  let nextHeight = layout.height
+  if (rightSnap) {
+    nextWidth = Math.max(8, ((width + rightSnap.delta) / widthPx) * 100)
+    guides.vertical.push(rightSnap.guide)
+  }
+  if (bottomSnap) {
+    nextHeight = Math.max(24, layout.height + bottomSnap.delta)
+    guides.horizontal.push(bottomSnap.guide)
+  }
+  return {
+    layout: {
+      ...layout,
+      width: Math.min(100 - layout.x, nextWidth),
+      height: nextHeight,
+    },
+    guides,
+  }
+}
+
+export function decodeLitRpgElementLayouts(value: unknown) {
+  try {
+    const parsed = typeof value === 'string' ? JSON.parse(value || '{}') : value
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? parsed as Record<string, LitRpgElementLayout>
+      : {}
+  } catch {
+    return {}
+  }
+}
+
 export const LITRPG_BLOCK_PRESETS: ReadonlyArray<{
   kind: LitRpgBlockKind
   label: string
@@ -135,6 +401,9 @@ export const LITRPG_BLOCK_PRESETS: ReadonlyArray<{
       width: 'full',
       widthPercent: 100,
       alignment: 'center',
+      layoutMode: 'freeform',
+      canvasHeight: 354,
+      elementLayouts: {},
       borderRadius: 8,
       borderWidth: 1,
       backgroundOpacity: 100,
@@ -164,6 +433,9 @@ export const LITRPG_BLOCK_PRESETS: ReadonlyArray<{
       width: 'compact',
       widthPercent: 74,
       alignment: 'center',
+      layoutMode: 'freeform',
+      canvasHeight: 220,
+      elementLayouts: {},
       borderRadius: 2,
       borderWidth: 1,
       backgroundOpacity: 92,
@@ -197,6 +469,9 @@ export const LITRPG_BLOCK_PRESETS: ReadonlyArray<{
       width: 'full',
       widthPercent: 100,
       alignment: 'center',
+      layoutMode: 'freeform',
+      canvasHeight: 350,
+      elementLayouts: {},
       borderRadius: 14,
       borderWidth: 3,
       backgroundOpacity: 96,
@@ -216,7 +491,7 @@ export const LITRPG_BLOCK_PRESETS: ReadonlyArray<{
     draft: {
       kind: 'item-info',
       title: 'Ironfang Blade',
-      subtitle: 'Rare • One-Handed Sword',
+      subtitle: 'Rare - One-Handed Sword',
       columns: ['Property', 'Details'],
       columnWidths: [36, 64],
       rows: [
@@ -224,12 +499,15 @@ export const LITRPG_BLOCK_PRESETS: ReadonlyArray<{
         { cells: ['Requirement', 'Strength 12'] },
         { cells: ['Effect', '+5% critical chance'] },
       ],
-      footer: '“It remembers every battle.”',
+      footer: '"It remembers every battle."',
       appearance: 'minimal',
       density: 'comfortable',
       width: 'compact',
       widthPercent: 78,
       alignment: 'center',
+      layoutMode: 'freeform',
+      canvasHeight: 310,
+      elementLayouts: {},
       borderRadius: 0,
       borderWidth: 4,
       backgroundOpacity: 88,
@@ -247,7 +525,9 @@ export const LITRPG_BLOCK_PRESETS: ReadonlyArray<{
 export function litRpgPreset(kind: LitRpgBlockKind): LitRpgBlockDraft {
   const preset = LITRPG_BLOCK_PRESETS.find((item) => item.kind === kind)
     || LITRPG_BLOCK_PRESETS[0]
-  return structuredClone(preset.draft)
+  const draft = structuredClone(preset.draft)
+  draft.elementLayouts = normalizeLitRpgElementLayouts({}, draft.columns, draft.rows)
+  return draft
 }
 
 export function normalizeLitRpgDraft(input: Partial<LitRpgBlockDraft>): LitRpgBlockDraft {
@@ -264,6 +544,11 @@ export function normalizeLitRpgDraft(input: Partial<LitRpgBlockDraft>): LitRpgBl
     cells: columns.map((_, index) => cleanText(row?.cells?.[index])),
   }))
   if (!rows.length) rows.push({ cells: columns.map(() => '') })
+  const elementLayouts = normalizeLitRpgElementLayouts(input.elementLayouts, columns, rows)
+  const minimumCanvasHeight = Math.max(
+    160,
+    ...Object.values(elementLayouts).map((layout) => layout.y + layout.height + 18),
+  )
   const widthFallback = input.widthPercent == null
     ? input.width === 'compact'
       ? 78
@@ -289,6 +574,12 @@ export function normalizeLitRpgDraft(input: Partial<LitRpgBlockDraft>): LitRpgBl
     alignment: ['left', 'center', 'right'].includes(input.alignment || '')
       ? input.alignment as LitRpgAlignment
       : fallback.alignment,
+    layoutMode: input.layoutMode === 'table' ? 'table' : 'freeform',
+    canvasHeight: Math.max(
+      minimumCanvasHeight,
+      numberWithin(input.canvasHeight, 160, 2000, fallback.canvasHeight),
+    ),
+    elementLayouts,
     borderRadius: numberWithin(input.borderRadius, 0, 40, fallback.borderRadius),
     borderWidth: numberWithin(input.borderWidth, 0, 8, fallback.borderWidth),
     backgroundOpacity: numberWithin(input.backgroundOpacity, 0, 100, fallback.backgroundOpacity),
@@ -352,6 +643,9 @@ export function litRpgDraftFromAttrs(attrs: Record<string, unknown>): LitRpgBloc
     width: attrs.width as LitRpgWidth,
     widthPercent: Number(attrs.widthPercent),
     alignment: attrs.alignment as LitRpgAlignment,
+    layoutMode: attrs.layoutMode as LitRpgLayoutMode,
+    canvasHeight: Number(attrs.canvasHeight),
+    elementLayouts: decodeLitRpgElementLayouts(attrs.elementLayouts),
     borderRadius: Number(attrs.borderRadius),
     borderWidth: Number(attrs.borderWidth),
     backgroundOpacity: Number(attrs.backgroundOpacity),
@@ -365,7 +659,9 @@ export function litRpgDraftFromAttrs(attrs: Record<string, unknown>): LitRpgBloc
   })
 }
 
-export function buildLitRpgBlockNode(input: Partial<LitRpgBlockDraft>) {
+export function buildLitRpgBlockNode(
+  input: Partial<LitRpgBlockDraft> & LitRpgBlockProvenance,
+) {
   const draft = normalizeLitRpgDraft(input)
   return {
     type: 'litrpgBlock',
@@ -374,6 +670,10 @@ export function buildLitRpgBlockNode(input: Partial<LitRpgBlockDraft>) {
       columns: encodeLitRpgTable(draft.columns),
       columnWidths: encodeLitRpgTable(draft.columnWidths),
       rows: encodeLitRpgTable(draft.rows),
+      elementLayouts: JSON.stringify(draft.elementLayouts),
+      sourceScreenId: String(input.sourceScreenId || ''),
+      sourceTemplateId: String(input.sourceTemplateId || ''),
+      revision: String(input.revision || ''),
     },
   }
 }

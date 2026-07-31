@@ -29,6 +29,11 @@ import {
 } from './library/store'
 import { imageRef, imageUrlFor } from './library/images'
 import {
+  normalizeLitRpgCharacterScreen,
+  normalizeLitRpgUserTemplate,
+  serializeLitRpgDraft,
+} from './editor/litrpgLibrary'
+import {
   convertPageType,
   nextChapterTitle,
   normalizeNamedMatterPage,
@@ -174,6 +179,12 @@ function normalizeBook(book: BookProject): BookProject {
     revisions: book.revisions || [],
     trackedChanges: book.trackedChanges || [],
     calloutPresets: book.calloutPresets || [],
+    litrpgTemplates: (book.litrpgTemplates || []).map((template) =>
+      normalizeLitRpgUserTemplate({ ...template, id: template.id || uuid() }),
+    ),
+    litrpgCharacterScreens: (book.litrpgCharacterScreens || []).map((screen) =>
+      normalizeLitRpgCharacterScreen({ ...screen, id: screen.id || uuid() }),
+    ),
     trashItems: book.trashItems || [],
     storyBible: {
       ...defaultStoryBible(),
@@ -1953,6 +1964,149 @@ export function BookProvider({ children }: { children: ReactNode }) {
       })),
     deleteCalloutPreset: (id: string) =>
       mutateOpen((book) => ({ ...book, calloutPresets: (book.calloutPresets || []).filter((preset) => preset.id !== id) })),
+    saveLitRpgTemplate: ({
+      id,
+      name,
+      draft,
+    }: {
+      id?: string
+      name: string
+      draft: import('./editor/litrpg').LitRpgBlockDraft
+    }) => {
+      const now = new Date().toISOString()
+      const nextDraft = serializeLitRpgDraft(draft)
+      let resultId = id || ''
+      mutateOpen((book) => {
+        const templates = [...(book.litrpgTemplates || [])]
+        const existingIndex = id ? templates.findIndex((template) => template.id === id) : -1
+        if (existingIndex >= 0) {
+          const existing = templates[existingIndex]
+          resultId = existing.id
+          templates[existingIndex] = normalizeLitRpgUserTemplate({
+            ...existing,
+            name: name.trim() || existing.name,
+            draft: nextDraft,
+            updatedAt: now,
+          })
+          return { ...book, litrpgTemplates: templates }
+        }
+        resultId = uuid()
+        templates.push(normalizeLitRpgUserTemplate({
+          id: resultId,
+          name: name.trim() || nextDraft.title || 'Untitled template',
+          draft: nextDraft,
+          createdAt: now,
+          updatedAt: now,
+        }))
+        return { ...book, litrpgTemplates: templates }
+      })
+      return resultId
+    },
+    deleteLitRpgTemplate: (id: string) =>
+      mutateOpen((book) => ({
+        ...book,
+        litrpgTemplates: (book.litrpgTemplates || []).filter((template) => template.id !== id),
+      })),
+    duplicateLitRpgTemplate: (id: string) => {
+      let resultId = ''
+      mutateOpen((book) => {
+        const source = (book.litrpgTemplates || []).find((template) => template.id === id)
+        if (!source) return book
+        resultId = uuid()
+        const now = new Date().toISOString()
+        return {
+          ...book,
+          litrpgTemplates: [
+            ...(book.litrpgTemplates || []),
+            normalizeLitRpgUserTemplate({
+              id: resultId,
+              name: `${source.name} copy`,
+              draft: serializeLitRpgDraft(source.draft),
+              createdAt: now,
+              updatedAt: now,
+            }),
+          ],
+        }
+      })
+      return resultId
+    },
+    saveLitRpgCharacterScreen: ({
+      id,
+      characterId,
+      name,
+      draft,
+    }: {
+      id?: string
+      characterId?: string
+      name: string
+      draft: import('./editor/litrpg').LitRpgBlockDraft
+    }) => {
+      const now = new Date().toISOString()
+      const nextDraft = serializeLitRpgDraft(draft)
+      let resultId = id || ''
+      let resultRevision = 1
+      mutateOpen((book) => {
+        const screens = [...(book.litrpgCharacterScreens || [])]
+        const existingIndex = id ? screens.findIndex((screen) => screen.id === id) : -1
+        if (existingIndex >= 0) {
+          const existing = screens[existingIndex]
+          resultId = existing.id
+          resultRevision = (existing.revision || 1) + 1
+          screens[existingIndex] = normalizeLitRpgCharacterScreen({
+            ...existing,
+            characterId: characterId === undefined ? existing.characterId : characterId || undefined,
+            name: name.trim() || existing.name,
+            draft: nextDraft,
+            revision: resultRevision,
+            updatedAt: now,
+          })
+          return { ...book, litrpgCharacterScreens: screens }
+        }
+        resultId = uuid()
+        resultRevision = 1
+        screens.push(normalizeLitRpgCharacterScreen({
+          id: resultId,
+          characterId: characterId || undefined,
+          name: name.trim() || nextDraft.title || 'Untitled screen',
+          draft: nextDraft,
+          revision: resultRevision,
+          createdAt: now,
+          updatedAt: now,
+        }))
+        return { ...book, litrpgCharacterScreens: screens }
+      })
+      return { id: resultId, revision: resultRevision }
+    },
+    deleteLitRpgCharacterScreen: (id: string) =>
+      mutateOpen((book) => ({
+        ...book,
+        litrpgCharacterScreens: (book.litrpgCharacterScreens || []).filter((screen) => screen.id !== id),
+      })),
+    duplicateLitRpgCharacterScreen: (id: string) => {
+      let resultId = ''
+      mutateOpen((book) => {
+        const source = (book.litrpgCharacterScreens || []).find((screen) => screen.id === id)
+        if (!source) return book
+        resultId = uuid()
+        const now = new Date().toISOString()
+        return {
+          ...book,
+          litrpgCharacterScreens: [
+            ...(book.litrpgCharacterScreens || []),
+            normalizeLitRpgCharacterScreen({
+              id: resultId,
+              characterId: source.characterId,
+              name: `${source.name} copy`,
+              draft: serializeLitRpgDraft(source.draft),
+              revision: 1,
+              createdAt: now,
+              updatedAt: now,
+            }),
+          ],
+        }
+      })
+      return resultId
+    },
     createNamedRevision: (name: string) => {
       if (!project || !hydratedRef.current.has(project.id)) return
       // Full chapter copies go straight to their own IndexedDB store; only a
