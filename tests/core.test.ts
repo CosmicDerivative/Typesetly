@@ -360,9 +360,11 @@ test('chapter pages split on breaks, pack by budget, and rejoin for storage', as
   const {
     draftBlockPackCost,
     draftOverflowMoveIndexKeepingSceneBreak,
+    draftOverflowMoveIndexPreferTrailingAfterLitRpg,
     draftContentExceedsPageClip,
     draftChromeOccupiedHeight,
     isSceneBreakBlock,
+    isLitRpgBlock,
   } = await import('../src/layout/chapterPages.ts')
 
   assert.equal(isSceneBreakBlock('<hr data-typesetly-node="scene-break">'), true)
@@ -395,6 +397,12 @@ test('chapter pages split on breaks, pack by budget, and rejoin for storage', as
     '<div data-typesetly-node="litrpg-block"><div class="litrpg-block-heading"><strong>Status</strong></div><table><tbody><tr><td>Strength</td><td>10</td></tr></tbody></table><div class="litrpg-block-footer">Points: 0</div></div>',
     '<p>After</p>',
   ])
+  assert.equal(isLitRpgBlock(splitTopLevelBlocks(nestedLitRpg)[1]!), true)
+  // LitRPG visual cost dominates tiny inner text (restart must not under-pack).
+  assert.ok(
+    draftBlockPackCost(splitTopLevelBlocks(nestedLitRpg)[1]!, 500)
+      > plainLengthForTest(splitTopLevelBlocks(nestedLitRpg)[1]!),
+  )
   const nestedPages = splitChapterIntoPages(nestedLitRpg, 20)
   assert.equal(joinChapterPages(nestedPages), nestedLitRpg)
 
@@ -404,11 +412,48 @@ test('chapter pages split on breaks, pack by budget, and rejoin for storage', as
   const freeformBlocks = splitTopLevelBlocks(freeformLitRpg)
   assert.equal(freeformBlocks.length, 3)
   assert.equal((freeformBlocks[1]!.match(/data-typesetly-node="litrpg-block"/g) || []).length, 1)
+  assert.ok(draftBlockPackCost(freeformBlocks[1]!, 500) >= Math.floor(500 * 0.5))
   const freeformPages = splitChapterIntoPages(freeformLitRpg, 30)
   const rejoined = joinChapterPages(freeformPages)
   assert.equal((rejoined.match(/data-typesetly-node="litrpg-block"/g) || []).length, 1)
   assert.equal(rejoined, freeformLitRpg)
   assert.equal(isEmptyPageHtml(freeformBlocks[1]!), false)
+
+  // Sandwiched LitRPG (prose before + after) with room: stay on one sheet —
+  // do not isolate the status block onto its own empty page.
+  const sandwichedLitRpg = [
+    '<p>Short lead.</p>',
+    '<div data-typesetly-node="litrpg-block" data-layout-mode="freeform" data-canvas-height="200"><div class="litrpg-freeform-canvas" style="height:200px">Status</div></div>',
+    '<p>Short tail continues the scene.</p>',
+  ].join('')
+  const sandwichedPages = splitChapterIntoPages(sandwichedLitRpg, 2_000)
+  assert.equal(sandwichedPages.length, 1)
+  assert.match(sandwichedPages[0]!, /Short lead/)
+  assert.match(sandwichedPages[0]!, /litrpg-block/)
+  assert.match(sandwichedPages[0]!, /Short tail/)
+
+  // End-of-run LitRPG after a nearly-full page late-shifts instead of clipping.
+  const endLitRpg = `${'<p>Filler paragraph with enough words to spend the page budget slowly.</p>'.repeat(6)}<div data-typesetly-node="litrpg-block" data-layout-mode="freeform" data-canvas-height="360"><div class="litrpg-freeform-canvas" style="height:360px">Solo Status</div></div>`
+  const endLitRpgPages = splitChapterIntoPages(endLitRpg, 220)
+  assert.ok(endLitRpgPages.length >= 2)
+  const litRpgPage = endLitRpgPages.find((page) => page.includes('litrpg-block'))
+  assert.ok(litRpgPage)
+  assert.match(litRpgPage!, /litrpg-block/)
+
+  // Overflow: sandwiched LitRPG sheds trailing prose first, not the block alone.
+  assert.equal(
+    draftOverflowMoveIndexPreferTrailingAfterLitRpg(
+      [false, false, false],
+      [false, true, false],
+      1,
+    ),
+    2,
+  )
+  // Solo / end LitRPG still moves as the overflowing atom.
+  assert.equal(
+    draftOverflowMoveIndexPreferTrailingAfterLitRpg([false, false], [false, true], null),
+    1,
+  )
 
   const long = Array.from({ length: 40 }, (_, index) => `<p>Block ${index} with enough words to consume budget.</p>`).join('')
   const pages = splitChapterIntoPages(long, 120)
@@ -416,6 +461,15 @@ test('chapter pages split on breaks, pack by budget, and rejoin for storage', as
   assert.equal(joinChapterPages(pages).includes('Block 0'), true)
   assert.equal(joinChapterPages(pages).includes('Block 39'), true)
 })
+
+function plainLengthForTest(html: string) {
+  return html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .length
+}
 
 test('message bubbles build as a stable callout node with normalized content', () => {
   const node = buildCalloutNode({

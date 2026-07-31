@@ -52,8 +52,7 @@ import {
   pruneEmptyDraftPages,
   draftChromeOccupiedHeight,
   draftContentExceedsPageClip,
-  draftOverflowMoveIndex,
-  draftOverflowMoveIndexKeepingSceneBreak,
+  draftOverflowMoveIndexPreferTrailingAfterLitRpg,
   splitChapterIntoPages,
 } from '../layout/chapterPages'
 import {
@@ -297,7 +296,15 @@ function measureProbeHeight(editor: Editor, doc: ProseMirrorNode) {
   // are not underestimated and pulled onto a page that then permanently overflows.
   for (const block of probe.querySelectorAll('.litrpg-block')) {
     const element = block as HTMLElement
+    element.classList.add('litrpg-block-node-view')
     if (!element.style.paddingTop) element.style.paddingTop = '30px'
+    const canvasHeight = Number(element.getAttribute('data-canvas-height') || 0)
+    if (canvasHeight > 0) {
+      const canvas = element.querySelector('.litrpg-freeform-canvas')
+      if (canvas instanceof HTMLElement && !canvas.style.height) {
+        canvas.style.height = `${canvasHeight}px`
+      }
+    }
   }
   probe.style.width = `${width}px`
   probe.style.maxHeight = 'none'
@@ -1191,10 +1198,12 @@ export function DraftPagedEditor({
             // real block and map the caret into already-authored next-page text.
             const childIsEmpty: boolean[] = []
             const childIsSceneBreak: boolean[] = []
+            const childIsLitRpg: boolean[] = []
             for (let childIndex = 0; childIndex < doc.childCount; childIndex += 1) {
               const child = doc.child(childIndex)
               childIsEmpty.push(isEmptyParagraphNode(child))
               childIsSceneBreak.push(child.type.name === 'sceneBreak')
+              childIsLitRpg.push(child.type.name === 'litrpgBlock')
             }
             let caretChildIndex: number | null = null
             if (selectionFrom !== undefined) {
@@ -1227,10 +1236,15 @@ export function DraftPagedEditor({
               }
             }
 
-            // Prefer splitting the overflowing paragraph first. If the whole
-            // trailing block must move, keep a preceding scene break with it so
-            // Scrivener scene shifts are not stranded in this page's clip zone.
-            let moveIndex = draftOverflowMoveIndex(childIsEmpty, caretChildIndex)
+            // Sandwiched LitRPG: shed trailing prose after the status block first
+            // so prose→LitRPG→prose stays contiguous. Solo/end LitRPG still moves
+            // as a whole. If the whole trailing block must move, keep a preceding
+            // scene break with it so Scrivener shifts are not stranded in the clip.
+            let moveIndex = draftOverflowMoveIndexPreferTrailingAfterLitRpg(
+              childIsEmpty,
+              childIsLitRpg,
+              caretChildIndex,
+            )
             let last = doc.child(moveIndex)
             let split = caretInTrailingEmpty || !last || isUnsplittablePageNode(last)
               ? null
@@ -1241,11 +1255,31 @@ export function DraftPagedEditor({
                 maxHeight,
               )
             if (!split) {
-              moveIndex = draftOverflowMoveIndexKeepingSceneBreak(
-                childIsEmpty,
-                childIsSceneBreak,
-                caretChildIndex,
-              )
+              // Same keep-with rule as draftOverflowMoveIndexKeepingSceneBreak,
+              // applied on top of the LitRPG trailing preference.
+              if (
+                moveIndex > 0
+                && childIsSceneBreak[moveIndex - 1]
+                && !childIsEmpty[moveIndex]
+                && !childIsSceneBreak[moveIndex]
+              ) {
+                let keepScene = true
+                const lastEmpty = childIsEmpty.length - 1
+                if (childIsEmpty[lastEmpty]) {
+                  let emptyRunStart = lastEmpty
+                  while (emptyRunStart > 0 && childIsEmpty[emptyRunStart - 1]) {
+                    emptyRunStart -= 1
+                  }
+                  if (
+                    caretChildIndex !== null
+                    && caretChildIndex !== undefined
+                    && caretChildIndex >= emptyRunStart
+                  ) {
+                    keepScene = false
+                  }
+                }
+                if (keepScene) moveIndex -= 1
+              }
               last = doc.child(moveIndex)
             }
             const from = positionAtChildIndex(doc, moveIndex)
@@ -1397,7 +1431,8 @@ export function DraftPagedEditor({
             // be rejected while the source deletion still succeeds.
             const first = cloneNodeForEditor(editor, sourceFirst)
             // Tall LitRPG atoms that already sit alone on the next sheet must
-            // stay there (clipped). Pulling them back restarts push/prune flash.
+            // stay there. Pulling them back under-counts node-view chrome on
+            // remount and restarts the clipped jump-back.
             if (
               isUnsplittablePageNode(first)
               && pageHasOnlyEmptyParagraphs(nextEditor.state.doc, sourceFirst)
@@ -1422,7 +1457,13 @@ export function DraftPagedEditor({
             }
             const currentDoc = editor.state.doc
             const combinedDoc = withPageNodeAppended(currentDoc, first)
-            if (!candidateFitsPage(editor, combinedDoc, maxHeight)) {
+            // LitRPG status blocks: probe height lags React node-view chrome on
+            // remount. Require extra slack so reload cannot yank a tall block
+            // onto a nearly-full sheet and clip it.
+            const pullFitHeight = first.type.name === 'litrpgBlock'
+              ? maxHeight - 48
+              : maxHeight
+            if (!candidateFitsPage(editor, combinedDoc, pullFitHeight)) {
               // Never mid-split atoms (LitRPG status blocks, images, …).
               if (isUnsplittablePageNode(first)) break
               const split = splitParagraphForCurrentPage(

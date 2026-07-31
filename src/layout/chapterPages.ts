@@ -196,16 +196,33 @@ export function splitChapterIntoPages(html: string, charsPerPage: number) {
 
     let current: string[] = []
     let used = 0
-    for (const block of blocks) {
+    for (let blockIndex = 0; blockIndex < blocks.length; blockIndex += 1) {
+      const block = blocks[blockIndex]!
       // Empty paragraphs are free in the char budget (height reflow places them).
       // Scene breaks need a real budget: Draft CSS gives them ~53px of margin
       // chrome, and Scrivener joins scenes with these HRs — costing "1" left the
       // shift parked in the previous page's overflow clip.
       const size = draftBlockPackCost(block, budget)
       const isSceneBreak = isSceneBreakBlock(block)
+      const isLitRpg = isLitRpgBlock(block)
       // Prefer a fresh sheet before a late-page scene shift so the HR + new scene
       // start are not packed into the last lines of an almost-full page.
       if (current.length && isSceneBreak && used > budget * 0.72) {
+        pages.push(current.join(''))
+        current = [block]
+        used = size
+        continue
+      }
+      // LitRPG at the end of a run (no author content after): late-shift off a
+      // nearly-full page so reload does not park a tall status screen in the
+      // overflow clip. Sandwiched LitRPG (prose after) stays with neighbors —
+      // only break when the block itself will not fit.
+      if (
+        current.length
+        && isLitRpg
+        && used > budget * 0.55
+        && !draftBlocksHaveAuthorContentAfter(blocks, blockIndex)
+      ) {
         pages.push(current.join(''))
         current = [block]
         used = size
@@ -292,22 +309,100 @@ export function isSceneBreakBlock(html: string) {
   return /data-typesetly-node=["']scene-break["']/i.test(html) || /^<hr\b/i.test(html.trim())
 }
 
+/** LitRPG status / system panel atom (`<div data-typesetly-node="litrpg-block">`). */
+export function isLitRpgBlock(html: string) {
+  return /data-typesetly-node=["']litrpg-block["']/i.test(html)
+}
+
+/** True when a top-level block has author-visible content (not an empty `<p>`). */
+export function draftBlockHasAuthorContent(html: string) {
+  if (isEmptyPageHtml(html)) return false
+  // isEmptyPageHtml treats a lone empty paragraph page as empty; a single
+  // empty `<p>` block is also non-content for sandwich checks.
+  const normalized = normalizePageHtml(html)
+  if (/^<p\b[^>]*>\s*(?:<br\b[^>]*>\s*)?<\/p>$/i.test(normalized)) return false
+  return true
+}
+
+/** True when any later top-level block still holds author-visible content. */
+export function draftBlocksHaveAuthorContentAfter(blocks: string[], index: number) {
+  for (let after = index + 1; after < blocks.length; after += 1) {
+    if (draftBlockHasAuthorContent(blocks[after] || '')) return true
+  }
+  return false
+}
+
 /**
  * Character-budget weight for one top-level block during the first pack pass.
  * Scene breaks are visually tall (~26px margins each side in Draft) despite
  * having no text — under-weighting them stranded Scrivener scene shifts in the
  * previous page's overflow:hidden clip.
+ *
+ * LitRPG blocks are worse: plain text inside a status screen is tiny, but the
+ * freeform canvas / table + Draft node-view toolbar dominate page height.
+ * Under-costing them on reload packed them into the previous sheet's
+ * overflow:hidden clip (restart jump-back).
  */
 export function draftBlockPackCost(block: string, charsPerPage: number) {
+  const budget = Math.max(200, charsPerPage)
+  if (isLitRpgBlock(block)) {
+    const text = plainLength(block)
+    const canvasMatch = block.match(/data-canvas-height=["'](\d+)["']/i)
+    const styleHeightMatch = block.match(
+      /litrpg-freeform-canvas[^>]*style=["'][^"']*height:\s*(\d+)px/i,
+    )
+    const canvasHeight = Number(canvasMatch?.[1] || styleHeightMatch?.[1] || 0)
+    const rowCount = (block.match(/<tr\b/gi) || []).length
+    // Map visual height → char budget. ~620px ≈ one Draft body; +toolbar chrome.
+    const chromePx = 36
+    let visualPx = chromePx + 160
+    if (canvasHeight > 0) {
+      visualPx = chromePx + canvasHeight + 24
+    } else if (rowCount > 0) {
+      visualPx = chromePx + 72 + rowCount * 36
+    }
+    const visualFraction = Math.min(0.98, Math.max(0.28, visualPx / 620))
+    return Math.max(text, Math.floor(budget * visualFraction))
+  }
   const text = plainLength(block)
   if (text > 0) return text
   if (isSceneBreakBlock(block)) {
-    return Math.max(72, Math.floor(Math.max(200, charsPerPage) * 0.12))
+    return Math.max(72, Math.floor(budget * 0.12))
   }
   if (/<img\b/i.test(block) || /data-typesetly-node=/i.test(block)) {
-    return Math.max(40, Math.floor(Math.max(200, charsPerPage) * 0.1))
+    return Math.max(40, Math.floor(budget * 0.1))
   }
   return 0
+}
+
+/**
+ * When a page overflows, prefer shedding trailing content after a LitRPG block
+ * so sandwiched prose→status→prose stays contiguous. Only move the LitRPG
+ * itself when nothing real follows it on this sheet.
+ */
+export function draftOverflowMoveIndexPreferTrailingAfterLitRpg(
+  childIsEmpty: boolean[],
+  childIsLitRpg: boolean[],
+  caretChildIndex: number | null | undefined,
+) {
+  const moveIndex = draftOverflowMoveIndex(childIsEmpty, caretChildIndex)
+  if (childIsEmpty[moveIndex] || !childIsLitRpg[moveIndex]) return moveIndex
+
+  // Moving a LitRPG while real non-LitRPG content still follows on this sheet:
+  // shed that trailing content first (keep the status block with prose above).
+  let firstTrailingReal = -1
+  for (let after = moveIndex + 1; after < childIsEmpty.length; after += 1) {
+    if (!childIsEmpty[after] && !childIsLitRpg[after]) {
+      firstTrailingReal = after
+      break
+    }
+  }
+  if (firstTrailingReal < 0) return moveIndex
+
+  // Treat the LitRPG (and anything before the trailing real run) as already
+  // settled so draftOverflowMoveIndex picks the trailing prose.
+  const masked = childIsEmpty.map((empty, index) => empty || index < firstTrailingReal)
+  return draftOverflowMoveIndex(masked, caretChildIndex)
 }
 
 /**
