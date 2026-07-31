@@ -50,7 +50,10 @@ import {
   lastContentPageIndex,
   normalizePageHtml,
   pruneEmptyDraftPages,
+  draftChromeOccupiedHeight,
+  draftContentExceedsPageClip,
   draftOverflowMoveIndex,
+  draftOverflowMoveIndexKeepingSceneBreak,
   splitChapterIntoPages,
 } from '../layout/chapterPages'
 import {
@@ -241,6 +244,31 @@ function firstTrailingEmptyParagraphIndex(doc: ProseMirrorNode) {
   return index
 }
 
+/**
+ * Drop a trailing empty-paragraph run in one transaction.
+ * Used when sheet-padding blanks still overflow after Enter moved the caret
+ * blank — must not delete one-by-one with a layout measure each time (that
+ * freezes Draft on mount when a page carries a long blank run).
+ */
+function shedTrailingEmptyPadding(editor: Editor) {
+  const doc = editor.state.doc
+  const trailingStart = firstTrailingEmptyParagraphIndex(doc)
+  if (trailingStart < 0) return false
+  if (trailingStart === 0) {
+    if (doc.childCount <= 1) return false
+    editor.commands.setContent('<p></p>', { emitUpdate: false })
+    return true
+  }
+  const deleteFrom = positionAtChildIndex(doc, trailingStart)
+  editor.view.dispatch(
+    editor.state.tr
+      .delete(deleteFrom, doc.content.size)
+      .setMeta(PAGE_REFLOW_META, true)
+      .setMeta('addToHistory', false),
+  )
+  return true
+}
+
 function positionAtChildIndex(doc: ProseMirrorNode, childIndex: number) {
   let position = 0
   for (let index = 0; index < childIndex; index += 1) {
@@ -306,6 +334,32 @@ const measurementCalibration = new WeakMap<
   { doc: ProseMirrorNode; signature: string; offset: number }
 >()
 
+/** Probe packing must leave a hair of slack so a “fits” candidate cannot sit on the clip edge. */
+const PAGE_FIT_SLACK_PX = 1
+
+/**
+ * True when live block boxes extend past the sheet body clip.
+ *
+ * Grammar tools force overflow:visible on the prose-editor, so scrollHeight is
+ * often clamped and a probe can under-count. Overflowed blocks then stay in the
+ * previous page’s doc and paint as a half-line “skimming” under overflow:hidden
+ * on `.editor-page-body` — looking like a hidden page bleeding into the prior sheet.
+ */
+function pageContentOverflowsBody(editor: Editor) {
+  const dom = editor.view.dom
+  const body = dom.closest('.editor-page-body')
+  if (!(body instanceof HTMLElement)) return false
+  const clipBottom = body.getBoundingClientRect().bottom
+  for (let index = 0; index < dom.children.length; index += 1) {
+    const child = dom.children[index]
+    if (!(child instanceof HTMLElement)) continue
+    if (draftContentExceedsPageClip(child.getBoundingClientRect().bottom, clipBottom)) {
+      return true
+    }
+  }
+  return false
+}
+
 function measureCandidateHeight(editor: Editor, doc: ProseMirrorNode) {
   const live = editor.view.dom
   const computed = window.getComputedStyle(live)
@@ -350,6 +404,10 @@ function measureCandidateHeight(editor: Editor, doc: ProseMirrorNode) {
     measurementCalibration.set(editor, calibration)
   }
   return measureProbeHeight(editor, doc) + calibration.offset
+}
+
+function candidateFitsPage(editor: Editor, doc: ProseMirrorNode, maxHeight: number) {
+  return measureCandidateHeight(editor, doc) <= maxHeight - PAGE_FIT_SLACK_PX
 }
 
 interface ParagraphSplitBoundary {
@@ -451,7 +509,7 @@ function splitParagraphForCurrentPage(
       node.content.cut(0, boundary.prefixEnd),
       node.marks,
     )
-    if (measureCandidateHeight(editor, buildCandidate(prefix)) <= maxHeight + 2) {
+    if (candidateFitsPage(editor, buildCandidate(prefix), maxHeight)) {
       fittingOffset = middle
       low = middle + 1
     } else {
@@ -498,11 +556,14 @@ function splitParagraphForCurrentPage(
 }
 
 function pageOverflows(editor: Editor, maxHeight: number) {
+  // Prefer the painted clip: probe height can under-count, leaving overflowed
+  // blocks hidden in the previous sheet (half-line peek at the body edge).
+  if (pageContentOverflowsBody(editor)) return true
   // Grammar-tool overlays need overflow:visible on the live prose-editor, which
   // clamps scrollHeight to the used/max height in Chromium — so a full page
   // never reports overflow and Enter blanks stretch the sheet instead of moving.
   // Measure unconstrained content height (same probe as pull-fit checks).
-  return measureCandidateHeight(editor, editor.state.doc) > maxHeight + 2
+  return !candidateFitsPage(editor, editor.state.doc, maxHeight)
 }
 
 const PAGE_REFLOW_META = 'typesetlyPageReflow'
@@ -737,6 +798,12 @@ export function DraftPagedEditor({
       ? (nextPages.length ? nextPages : ['<p></p>']).map(normalizePageHtml)
       : pruneEmptyDraftPages(nextPages, { preserveLastEmptyPage })
     pagesRef.current = normalized
+    if (editorsRef.current.length > normalized.length) {
+      editorsRef.current.length = normalized.length
+    }
+    if (chromeHeightsRef.current.length > normalized.length) {
+      chromeHeightsRef.current.length = normalized.length
+    }
     setPages((current) => {
       if (
         current.length === normalized.length
@@ -1123,8 +1190,11 @@ export function DraftPagedEditor({
             // next sheet. Skipping them (LitRPG safeguard) would push the previous
             // real block and map the caret into already-authored next-page text.
             const childIsEmpty: boolean[] = []
+            const childIsSceneBreak: boolean[] = []
             for (let childIndex = 0; childIndex < doc.childCount; childIndex += 1) {
-              childIsEmpty.push(isEmptyParagraphNode(doc.child(childIndex)))
+              const child = doc.child(childIndex)
+              childIsEmpty.push(isEmptyParagraphNode(child))
+              childIsSceneBreak.push(child.type.name === 'sceneBreak')
             }
             let caretChildIndex: number | null = null
             if (selectionFrom !== undefined) {
@@ -1138,18 +1208,48 @@ export function DraftPagedEditor({
                 childStart = childEnd
               }
             }
-            const moveIndex = draftOverflowMoveIndex(childIsEmpty, caretChildIndex)
-            const caretInTrailingEmpty = (() => {
-              const trailingStart = firstTrailingEmptyParagraphIndex(doc)
-              return (
-                trailingStart >= 0
-                && caretChildIndex !== null
-                && caretChildIndex >= trailingStart
+            const trailingStart = firstTrailingEmptyParagraphIndex(doc)
+            const caretInTrailingEmpty = (
+              trailingStart >= 0
+              && caretChildIndex !== null
+              && caretChildIndex >= trailingStart
+            )
+
+            // Leftover sheet-padding blanks (after Enter moved only the caret
+            // blank, or after reload of a padded page) must not push real
+            // content. Shed the whole trailing empty run in one transaction —
+            // never one-blank-per-layout-measure (that freezes Draft on mount
+            // when a page holds a long blank run from char-budget packing).
+            if (trailingStart >= 0 && !caretInTrailingEmpty) {
+              if (shedTrailingEmptyPadding(editor)) {
+                moved = true
+                continue
+              }
+            }
+
+            // Prefer splitting the overflowing paragraph first. If the whole
+            // trailing block must move, keep a preceding scene break with it so
+            // Scrivener scene shifts are not stranded in this page's clip zone.
+            let moveIndex = draftOverflowMoveIndex(childIsEmpty, caretChildIndex)
+            let last = doc.child(moveIndex)
+            let split = caretInTrailingEmpty || !last || isUnsplittablePageNode(last)
+              ? null
+              : splitParagraphForCurrentPage(
+                editor,
+                last,
+                (prefix) => withNodeAtIndex(doc, moveIndex, prefix),
+                maxHeight,
               )
-            })()
-            const last = doc.child(moveIndex)
+            if (!split) {
+              moveIndex = draftOverflowMoveIndexKeepingSceneBreak(
+                childIsEmpty,
+                childIsSceneBreak,
+                caretChildIndex,
+              )
+              last = doc.child(moveIndex)
+            }
             const from = positionAtChildIndex(doc, moveIndex)
-            if (from < 0) break
+            if (from < 0 || !last) break
 
             // LitRPG / other atoms are unsplittable. If nothing real remains
             // before this atom, pushing it only mints an empty sheet and the
@@ -1169,14 +1269,6 @@ export function DraftPagedEditor({
               if (onlyEmptiesBefore) break
             }
 
-            const split = caretInTrailingEmpty || isUnsplittablePageNode(last)
-              ? null
-              : splitParagraphForCurrentPage(
-                editor,
-                last,
-                (prefix) => withNodeAtIndex(doc, moveIndex, prefix),
-                maxHeight,
-              )
             // When not mid-splitting a paragraph, move the block plus any
             // trailing blank paragraphs so empties do not become their own page.
             const movedNode = split?.suffix || last
@@ -1190,10 +1282,7 @@ export function DraftPagedEditor({
                   ? selectionFrom >= movedPositionBase
                   : selectionFrom > movedPositionBase
               )
-            const mappedCaretPosition = caretFollowsBlock
-              ? Math.max(1, selectionFrom - movedPositionBase)
-              : undefined
-            const html = split
+            let html = split
               ? serializeNode(editor, movedNode)
               : (() => {
                 const wrapper = document.createElement('div')
@@ -1203,19 +1292,33 @@ export function DraftPagedEditor({
                 }
                 return wrapper.innerHTML
               })()
+            // Enter padding that filled empty sheet space must not reappear as a
+            // half-page blank stack on the next sheet — keep one line, caret at top.
+            if (caretInTrailingEmpty && isEmptyPageHtml(html)) {
+              html = '<p></p>'
+            }
+            const mappedCaretPosition = caretFollowsBlock
+              ? (caretInTrailingEmpty ? 1 : Math.max(1, selectionFrom - movedPositionBase))
+              : undefined
             const nextIndex = index + 1
             let nextEditor = editorsRef.current[nextIndex]
+            const pageEditor = editor
             const removeMovedContent = () => {
               const transaction = split
-                ? editor!.state.tr.replaceWith(from, from + last.nodeSize, split.prefix)
-                : editor!.state.tr.delete(from, editor!.state.doc.content.size)
-              editor!.view.dispatch(
+                ? pageEditor.state.tr.replaceWith(from, from + last.nodeSize, split.prefix)
+                : pageEditor.state.tr.delete(from, pageEditor.state.doc.content.size)
+              pageEditor.view.dispatch(
                 transaction
                   .setMeta(PAGE_REFLOW_META, true)
                   .setMeta('addToHistory', false),
               )
-              if (editor!.state.doc.childCount === 0) {
-                editor!.commands.setContent('<p></p>', { emitUpdate: false })
+              if (pageEditor.state.doc.childCount === 0) {
+                pageEditor.commands.setContent('<p></p>', { emitUpdate: false })
+              }
+              // Sparse Enter moved only the caret blank; sheet-padding empties
+              // left behind can still overflow — shed them in one shot.
+              if (caretInTrailingEmpty && pageOverflows(pageEditor, maxHeight)) {
+                shedTrailingEmptyPadding(pageEditor)
               }
             }
 
@@ -1301,9 +1404,25 @@ export function DraftPagedEditor({
             ) {
               break
             }
+            // Scrivener scene shift: do not pull a scene-break HR onto this page
+            // unless the following scene start also fits. Parking the break alone
+            // (or with a clipped opener) looked like a hidden page skimming into
+            // the previous sheet.
+            if (first.type.name === 'sceneBreak') {
+              const followingSource = nextEditor.state.doc.childCount > 1
+                ? nextEditor.state.doc.child(1)
+                : null
+              if (!followingSource || isEmptyParagraphNode(followingSource)) break
+              const following = cloneNodeForEditor(editor, followingSource)
+              const withBreakAndStart = withPageNodeAppended(
+                withPageNodeAppended(editor.state.doc, first),
+                following,
+              )
+              if (!candidateFitsPage(editor, withBreakAndStart, maxHeight)) break
+            }
             const currentDoc = editor.state.doc
             const combinedDoc = withPageNodeAppended(currentDoc, first)
-            if (measureCandidateHeight(editor, combinedDoc) > maxHeight + 2) {
+            if (!candidateFitsPage(editor, combinedDoc, maxHeight)) {
               // Never mid-split atoms (LitRPG status blocks, images, …).
               if (isUnsplittablePageNode(first)) break
               const split = splitParagraphForCurrentPage(
@@ -1327,6 +1446,35 @@ export function DraftPagedEditor({
                   .setMeta(PAGE_REFLOW_META, true)
                   .setMeta('addToHistory', false),
               )
+              // Probe can still under-count; if the prefix paints past the clip,
+              // undo and leave the block on the next sheet.
+              if (pageOverflows(editor, maxHeight)) {
+                const pulled = editor.state.doc.lastChild
+                if (pulled) {
+                  editor.view.dispatch(
+                    editor.state.tr
+                      .delete(
+                        editor.state.doc.content.size - pulled.nodeSize,
+                        editor.state.doc.content.size,
+                      )
+                      .setMeta(PAGE_REFLOW_META, true)
+                      .setMeta('addToHistory', false),
+                  )
+                  if (editor.state.doc.childCount === 0) {
+                    editor.commands.setContent('<p></p>', { emitUpdate: false })
+                  }
+                }
+                const nextFirst = nextEditor.state.doc.child(0)
+                if (nextFirst) {
+                  nextEditor.view.dispatch(
+                    nextEditor.state.tr
+                      .replaceWith(0, nextFirst.nodeSize, sourceFirst)
+                      .setMeta(PAGE_REFLOW_META, true)
+                      .setMeta('addToHistory', false),
+                  )
+                }
+                break
+              }
               moved = true
               break
             }
@@ -1975,7 +2123,12 @@ function DraftPageSheet({
       return
     }
     const measure = () => {
-      const height = node.getBoundingClientRect().height
+      const style = window.getComputedStyle(node)
+      const height = draftChromeOccupiedHeight(
+        node.getBoundingClientRect().height,
+        Number.parseFloat(style.marginTop) || 0,
+        Number.parseFloat(style.marginBottom) || 0,
+      )
       setChromeHeight(height)
       onChromeHeight(height)
     }

@@ -333,9 +333,12 @@ test('chapter pages split on breaks, pack by budget, and rejoin for storage', as
   assert.equal(countBlankParagraphs('<p></p><p></p>'), 2)
   assert.equal(isEmptyPageHtml('<p><br class="ProseMirror-trailingBreak"></p>'), true)
 
-  // Enter caret in trailing blank → move the blank, not the prior real block.
+  // Enter caret in trailing blank → move from the caret blank, not the prior real block.
   assert.equal(draftOverflowMoveIndex([false, false, true], 2), 2)
   assert.equal(draftOverflowMoveIndex([false, true, true], 1), 1)
+  // Sparse page padded with many blanks: only the caret’s blank overflows —
+  // not the whole padding run (that parked the caret halfway down the next page).
+  assert.equal(draftOverflowMoveIndex([false, true, true, true], 3), 3)
   // Caret still in real content → skip trailing empties (LitRPG-safe path).
   assert.equal(draftOverflowMoveIndex([false, false, true], 1), 1)
   assert.equal(draftOverflowMoveIndex([false, true], 0), 0)
@@ -353,6 +356,36 @@ test('chapter pages split on breaks, pack by budget, and rejoin for storage', as
   assert.equal(joinChapterPages(scenePages).includes('data-typesetly-node="scene-break"'), true)
   assert.equal(joinChapterPages(scenePages).includes('<p>A</p>'), true)
   assert.equal(joinChapterPages(scenePages).includes('<p>B</p>'), true)
+
+  const {
+    draftBlockPackCost,
+    draftOverflowMoveIndexKeepingSceneBreak,
+    draftContentExceedsPageClip,
+    draftChromeOccupiedHeight,
+    isSceneBreakBlock,
+  } = await import('../src/layout/chapterPages.ts')
+
+  assert.equal(isSceneBreakBlock('<hr data-typesetly-node="scene-break">'), true)
+  assert.ok(draftBlockPackCost('<hr data-typesetly-node="scene-break">', 500) >= 72)
+  // Late-page scene shifts start a new sheet instead of packing into the clip zone.
+  const sceneShiftHtml = `${'<p>Wordy scene one paragraph that spends budget.</p>'.repeat(8)}<hr data-typesetly-node="scene-break"><p>Scene two opens here with more words.</p>`
+  const sceneShiftPages = splitChapterIntoPages(sceneShiftHtml, 180)
+  assert.ok(sceneShiftPages.length >= 2)
+  const breakPageIndex = sceneShiftPages.findIndex((page) => page.includes('scene-break'))
+  assert.ok(breakPageIndex >= 0)
+  assert.match(sceneShiftPages[breakPageIndex]!, /scene-break/)
+  // Keep-with-next: overflowing the first block after a scene break moves the HR too.
+  assert.equal(
+    draftOverflowMoveIndexKeepingSceneBreak([false, false, false], [false, true, false], 2),
+    1,
+  )
+  assert.equal(
+    draftOverflowMoveIndexKeepingSceneBreak([false, false, true], [false, true, false], 2),
+    2,
+  )
+  assert.equal(draftContentExceedsPageClip(100.6, 100, 0.5), true)
+  assert.equal(draftContentExceedsPageClip(100.4, 100, 0.5), false)
+  assert.equal(draftChromeOccupiedHeight(20, 0, 12), 32)
 
   // Structured blocks contain nested div/table markup. They must remain one
   // atomic top-level block when a chapter is reopened and split into pages.

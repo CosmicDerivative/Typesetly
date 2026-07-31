@@ -55,9 +55,10 @@ export function countBlankParagraphs(html: string) {
  * Which top-level block should overflow-move first.
  *
  * When the caret is inside a trailing empty-paragraph run (Enter at end of a
- * full page), move that run so the blank lands on the next sheet. Otherwise
- * skip trailing empties and move the last real block (avoids minting empty
- * pages when a tall LitRPG is what actually overflows).
+ * full page), move from the caret’s blank onward — not the whole padding run.
+ * Dumping every blank that filled empty sheet space onto the next page parked
+ * the caret halfway down. Otherwise skip trailing empties and move the last
+ * real block (avoids minting empty pages when a tall LitRPG overflows).
  */
 export function draftOverflowMoveIndex(
   childIsEmpty: boolean[],
@@ -80,7 +81,7 @@ export function draftOverflowMoveIndex(
     && caretChildIndex !== undefined
     && caretChildIndex >= trailingStart
   ) {
-    return trailingStart
+    return caretChildIndex
   }
 
   let moveIndex = last
@@ -197,10 +198,19 @@ export function splitChapterIntoPages(html: string, charsPerPage: number) {
     let used = 0
     for (const block of blocks) {
       // Empty paragraphs are free in the char budget (height reflow places them).
-      // Structural voids (scene/page breaks, images) still consume a slot.
-      const size = plainLength(block) || (
-        /<(hr|img)\b/i.test(block) || /data-typesetly-node=/i.test(block) ? 1 : 0
-      )
+      // Scene breaks need a real budget: Draft CSS gives them ~53px of margin
+      // chrome, and Scrivener joins scenes with these HRs — costing "1" left the
+      // shift parked in the previous page's overflow clip.
+      const size = draftBlockPackCost(block, budget)
+      const isSceneBreak = isSceneBreakBlock(block)
+      // Prefer a fresh sheet before a late-page scene shift so the HR + new scene
+      // start are not packed into the last lines of an almost-full page.
+      if (current.length && isSceneBreak && used > budget * 0.72) {
+        pages.push(current.join(''))
+        current = [block]
+        used = size
+        continue
+      }
       if (current.length && size > 0 && used + size > budget) {
         pages.push(current.join(''))
         current = [block]
@@ -277,10 +287,90 @@ function plainLength(html: string) {
     .length
 }
 
+/** Scrivener / editor scene separator (`<hr data-typesetly-node="scene-break">`). */
+export function isSceneBreakBlock(html: string) {
+  return /data-typesetly-node=["']scene-break["']/i.test(html) || /^<hr\b/i.test(html.trim())
+}
+
+/**
+ * Character-budget weight for one top-level block during the first pack pass.
+ * Scene breaks are visually tall (~26px margins each side in Draft) despite
+ * having no text — under-weighting them stranded Scrivener scene shifts in the
+ * previous page's overflow:hidden clip.
+ */
+export function draftBlockPackCost(block: string, charsPerPage: number) {
+  const text = plainLength(block)
+  if (text > 0) return text
+  if (isSceneBreakBlock(block)) {
+    return Math.max(72, Math.floor(Math.max(200, charsPerPage) * 0.12))
+  }
+  if (/<img\b/i.test(block) || /data-typesetly-node=/i.test(block)) {
+    return Math.max(40, Math.floor(Math.max(200, charsPerPage) * 0.1))
+  }
+  return 0
+}
+
+/**
+ * When overflowing the first block after a scene break, move the break with it
+ * so the scene shift stays on one sheet (HR chrome + new scene start together).
+ */
+export function draftOverflowMoveIndexKeepingSceneBreak(
+  childIsEmpty: boolean[],
+  childIsSceneBreak: boolean[],
+  caretChildIndex: number | null | undefined,
+) {
+  let moveIndex = draftOverflowMoveIndex(childIsEmpty, caretChildIndex)
+  if (
+    moveIndex <= 0
+    || !childIsSceneBreak[moveIndex - 1]
+    || childIsEmpty[moveIndex]
+    || childIsSceneBreak[moveIndex]
+  ) {
+    return moveIndex
+  }
+  // Enter-at-end blanks after the scene must not drag the scene break forward.
+  const last = childIsEmpty.length - 1
+  if (childIsEmpty[last]) {
+    let trailingStart = last
+    while (trailingStart > 0 && childIsEmpty[trailingStart - 1]) trailingStart -= 1
+    if (
+      caretChildIndex !== null
+      && caretChildIndex !== undefined
+      && caretChildIndex >= trailingStart
+    ) {
+      return moveIndex
+    }
+  }
+  return moveIndex - 1
+}
+
 /** Content box height inside a Draft page sheet (excludes margins). */
 export function draftPageBodyHeight(metrics: DraftPageMetrics, chromePx = 0) {
   return Math.max(
     120,
     metrics.heightPx - metrics.marginTopPx - metrics.marginBottomPx - Math.max(0, chromePx),
   )
+}
+
+/**
+ * Vertical space occupied by first-page chrome, including margins that sit
+ * outside getBoundingClientRect but still shrink the body.
+ */
+export function draftChromeOccupiedHeight(
+  borderBoxHeightPx: number,
+  marginTopPx = 0,
+  marginBottomPx = 0,
+) {
+  return Math.max(0, borderBoxHeightPx)
+    + Math.max(0, marginTopPx)
+    + Math.max(0, marginBottomPx)
+}
+
+/** True when a laid-out block bottom paints past the page body clip edge. */
+export function draftContentExceedsPageClip(
+  contentBottomPx: number,
+  clipBottomPx: number,
+  epsilonPx = 0.5,
+) {
+  return contentBottomPx > clipBottomPx + epsilonPx
 }
