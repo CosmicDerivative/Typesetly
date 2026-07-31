@@ -265,7 +265,7 @@ const WIKI_SECTIONS: WikiSection[] = [
     entries: [
       {
         question: 'What can Typesetly import?',
-        answer: 'The library can import a DOCX, a complete Scrivener .scriv project folder, or a zipped Scrivener project backup as a new book. The Outline menu can import DOCX chapters into the current book. Scrivener Binder folders are mapped to Parts or chapters and their text documents become scenes. Imported structure and formatting are normalized, and the review screen explains content that could not be mapped exactly.',
+        answer: 'The library can import a DOCX, a complete Scrivener .scriv project folder, or a zipped Scrivener project backup as a new book. The Outline menu can import DOCX chapters into the current book. Structural Scrivener Binder folders such as Parts, Arcs, Acts, Books, Volumes, and Sections become Parts with their documents kept as separate chapters. Documents inside chapter folders become scenes. Imported structure and formatting are normalized, and the review screen explains content that could not be mapped exactly.',
         keywords: 'import docx word manuscript scrivener scriv scrivx binder zip',
       },
       {

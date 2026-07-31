@@ -85,6 +85,39 @@ test('native Scrivener import turns chapter folders and Binder documents into sc
   assert.equal(report.summary?.chapters, 1)
 })
 
+test('Scrivener import keeps direct chapters inside Parts and Arcs as chapters', () => {
+  const scrivx = `
+    <ScrivenerProject>
+      <Binder>
+        <BinderItem UUID="DRAFT" Type="DraftFolder">
+          <Title>Manuscript</Title>
+          <Children>
+            <BinderItem UUID="ARC" Type="Folder">
+              <Title>Arc One</Title>
+              <Children>
+                <BinderItem UUID="ONE" Type="Text"><Title>First Chapter</Title></BinderItem>
+                <BinderItem UUID="TWO" Type="Text"><Title>Second Chapter</Title></BinderItem>
+              </Children>
+            </BinderItem>
+          </Children>
+        </BinderItem>
+      </Binder>
+    </ScrivenerProject>
+  `
+  const report = importScrivenerSources([
+    { relativePath: 'Novel.scriv/Novel.scrivx', text: scrivx },
+    { relativePath: 'Novel.scriv/Files/Data/ONE/content.rtf', text: String.raw`{\rtf1\ansi First.}` },
+    { relativePath: 'Novel.scriv/Files/Data/TWO/content.rtf', text: String.raw`{\rtf1\ansi Second.}` },
+  ])
+
+  const part = report.book.chapters.find((item) => item.type === 'part')!
+  const chapters = report.book.chapters.filter((item) => item.partId === part.id)
+  assert.equal(part.title, 'Arc One')
+  assert.deepEqual(chapters.map((item) => item.title), ['First Chapter', 'Second Chapter'])
+  assert.deepEqual(chapters.map((item) => item.sceneTitles), [[], []])
+  assert.equal(report.summary?.chapters, 2)
+})
+
 test('Scrivener import classifies named opening and closing matter before numbering', () => {
   const scrivx = `
     <ScrivenerProject>

@@ -354,6 +354,35 @@ function importedChapter(
   })
 }
 
+const SCRIVENER_CONTAINER_TITLE = /^(?:(?:part|arc|act|book|volume|section|phase)(?:\s+|$)|(?:draft|manuscript)\s+\d+)/i
+
+function isStructuralContainer(item: BinderItem) {
+  if (!item.children.length) return false
+  if (SCRIVENER_CONTAINER_TITLE.test(item.title.trim())) return true
+  // A folder containing other folders represents a level above chapters in
+  // the Binder. The child folders remain chapters and their documents scenes.
+  return item.children.some((candidate) => candidate.children.length > 0)
+}
+
+function scenesForChapterFolder(
+  item: BinderItem,
+  files: Map<string, ScrivenerSourceFile>,
+  warnings: string[],
+) {
+  const ownContent = contentForItem(item, files)
+  const scenes = [
+    ...(ownContent ? [{ title: item.title, content: ownContent }] : []),
+    ...item.children.map((scene) => ({
+      title: scene.title,
+      content: contentForItem(scene, files),
+    })),
+  ]
+  if (item.children.some((scene) => scene.children.length)) {
+    warnings.push(`Nested Binder items under “${item.title}” were flattened into one chapter.`)
+  }
+  return scenes
+}
+
 function importDraftItems(
   items: BinderItem[],
   files: Map<string, ScrivenerSourceFile>,
@@ -367,8 +396,7 @@ function importDraftItems(
       continue
     }
 
-    const childFolders = item.children.filter((candidate) => candidate.children.length > 0)
-    if (childFolders.length > 0) {
+    if (isStructuralContainer(item)) {
       const part = makePage('part', item.title)
       chapters.push(part)
       for (const childItem of item.children) {
@@ -382,30 +410,13 @@ function importDraftItems(
           })
           continue
         }
-        const scenes = [
-          ...(contentForItem(childItem, files)
-            ? [{ title: childItem.title, content: contentForItem(childItem, files) }]
-            : []),
-          ...childItem.children.map((scene) => ({
-            title: scene.title,
-            content: contentForItem(scene, files),
-          })),
-        ]
+        const scenes = scenesForChapterFolder(childItem, files, warnings)
         chapters.push({ ...importedChapter(childItem.title, scenes, false), partId: part.id })
-        if (childItem.children.some((scene) => scene.children.length)) {
-          warnings.push(`Nested Binder items under “${childItem.title}” were flattened into one chapter.`)
-        }
       }
       continue
     }
 
-    const scenes = [
-      ...(ownContent ? [{ title: item.title, content: ownContent }] : []),
-      ...item.children.map((scene) => ({
-        title: scene.title,
-        content: contentForItem(scene, files),
-      })),
-    ]
+    const scenes = scenesForChapterFolder(item, files, warnings)
     chapters.push(importedChapter(item.title, scenes))
   }
   return chapters

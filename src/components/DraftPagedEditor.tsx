@@ -541,10 +541,16 @@ export function DraftPagedEditor({
   const editorsRef = useRef<Array<Editor | null>>([])
   const chromeHeightsRef = useRef<number[]>([])
   const lastEmittedRef = useRef(joinChapterPages(pages))
+  const pendingEmitRef = useRef<{
+    html: string
+    callback: (html: string) => void
+  } | null>(null)
+  const emitTimerRef = useRef(0)
   const reflowTimerRef = useRef(0)
   const busyRef = useRef(false)
   const focusedIndexRef = useRef(0)
   const contentEpochRef = useRef(0)
+  const renderedChapterIdRef = useRef(chapterId)
   const pagesRef = useRef(pages)
   pagesRef.current = pages
   const stackRef = useRef<HTMLDivElement>(null)
@@ -557,12 +563,26 @@ export function DraftPagedEditor({
     position?: number
   } | null>(null)
 
+  const flushChapter = useCallback(() => {
+    window.clearTimeout(emitTimerRef.current)
+    emitTimerRef.current = 0
+    const pending = pendingEmitRef.current
+    pendingEmitRef.current = null
+    if (!pending || pending.html === lastEmittedRef.current) return
+    lastEmittedRef.current = pending.html
+    pending.callback(pending.html)
+  }, [])
+
   const emitChapter = useCallback((nextPages: string[]) => {
     const html = joinChapterPages(nextPages)
-    if (html === lastEmittedRef.current) return
-    lastEmittedRef.current = html
-    onChapterHtmlChange(html)
-  }, [onChapterHtmlChange])
+    if (html === lastEmittedRef.current && !pendingEmitRef.current) return
+    pendingEmitRef.current = { html, callback: onChapterHtmlChange }
+    window.clearTimeout(emitTimerRef.current)
+    // Updating the whole book makes every outline and status consumer render.
+    // Keep typing page-local, then publish one coherent chapter snapshot once
+    // the writer pauses briefly.
+    emitTimerRef.current = window.setTimeout(flushChapter, 180)
+  }, [flushChapter, onChapterHtmlChange])
 
   const commitPages = useCallback((
     nextPages: string[],
@@ -590,7 +610,22 @@ export function DraftPagedEditor({
   }, [emitChapter])
 
   useEffect(() => {
-    if (chapterHtml === lastEmittedRef.current) return
+    if (chapterId !== renderedChapterIdRef.current) {
+      flushChapter()
+      renderedChapterIdRef.current = chapterId
+      contentEpochRef.current += 1
+      pendingCaretRef.current = null
+      const next = splitChapterIntoPages(chapterHtml, charsPerPage)
+      lastEmittedRef.current = chapterHtml
+      pagesRef.current = next
+      setPages(next)
+      return
+    }
+    if (
+      chapterHtml === lastEmittedRef.current
+      || chapterHtml === pendingEmitRef.current?.html
+      || pendingEmitRef.current
+    ) return
     // External chapter writes (addScene, restore, etc.) must win over an
     // in-flight height reflow that still holds stale per-page HTML.
     contentEpochRef.current += 1
@@ -599,7 +634,12 @@ export function DraftPagedEditor({
     lastEmittedRef.current = chapterHtml
     pagesRef.current = next
     setPages(next)
-  }, [chapterHtml, chapterId, charsPerPage])
+  }, [chapterHtml, chapterId, charsPerPage, flushChapter])
+
+  useEffect(() => () => {
+    flushChapter()
+    window.clearTimeout(emitTimerRef.current)
+  }, [flushChapter])
 
   useEffect(() => {
     onPageCountChange?.(pages.length)
@@ -1014,6 +1054,16 @@ export function DraftPagedEditor({
             }
             moved = true
           }
+
+          // Height checks force browser layout. Yield between small batches so
+          // importing or opening a long chapter never monopolizes the UI while
+          // all of its page sheets settle.
+          if (
+            index < total - 1
+            && (index - fromIndex + 1) % 3 === 0
+          ) {
+            await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()))
+          }
         }
 
         if (contentEpochRef.current !== epoch) return
@@ -1060,7 +1110,7 @@ export function DraftPagedEditor({
     window.clearTimeout(reflowTimerRef.current)
     reflowTimerRef.current = window.setTimeout(() => {
       void reflowFrom(fromIndex)
-    }, 50)
+    }, 140)
   }, [reflowFrom])
 
   const replaceCrossPageSelection = useCallback((replacement = '') => {
@@ -1311,7 +1361,7 @@ export function DraftPagedEditor({
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void reflowFrom(0)
-    }, 80)
+    }, 180)
     return () => window.clearTimeout(timer)
   }, [chapterId, charsPerPage, reflowFrom])
 
@@ -1384,12 +1434,6 @@ export function DraftPagedEditor({
             while (next.length <= index) next.push('<p></p>')
             next[index] = normalizePageHtml(html)
             pagesRef.current = next
-            setPages((current) => (
-              current.length === next.length
-              && current.every((page, pageIndex) => page === next[pageIndex])
-                ? current
-                : next
-            ))
             emitChapter(next)
             queueReflow(index)
           }}
@@ -1409,9 +1453,9 @@ export function DraftPagedEditor({
             if (index <= 0) return
             const current = editorsRef.current[index]
             const previous = editorsRef.current[index - 1]
-            if (!previous) return
+            if (!current || !previous) return
 
-            if (current && isEmptyPageHtml(current.getHTML())) {
+            if (isEmptyPageHtml(current.getHTML())) {
               setPages((currentPages) => {
                 const next = currentPages.filter((_, pageIndex) => pageIndex !== index)
                 const normalized = next.length ? next : ['<p></p>']
@@ -1422,13 +1466,86 @@ export function DraftPagedEditor({
               return
             }
 
-            focusPage(index - 1, 'end')
-            const size = previous.state.doc.content.size
-            const from = Math.max(1, size - 1)
-            if (from < size) {
-              previous.chain().setTextSelection(size).deleteRange({ from, to: size }).run()
+            const previousDoc = previous.state.doc
+            const currentDoc = current.state.doc
+            const previousLast = previousDoc.lastChild
+            const currentFirst = currentDoc.firstChild
+            if (!previousLast || !currentFirst) return
+
+            const firstForPrevious = cloneNodeForEditor(previous, currentFirst)
+            const canJoinTextBlocks = (
+              previousLast.isTextblock
+              && firstForPrevious.isTextblock
+              && previousLast.type === firstForPrevious.type
+            )
+
+            // A generated page seam is not a real editing boundary. Backspace
+            // there must operate on the adjacent manuscript blocks, not jump
+            // to the preceding page and delete an unrelated end position.
+            if (canJoinTextBlocks) {
+              const beforeLastSize = previousDoc.content.size - previousLast.nodeSize
+              const isContinuation = Boolean(firstForPrevious.attrs.pageContinuation)
+              const seam = isContinuation && firstForPrevious.attrs.pageContinuationSpace
+                ? Fragment.from(previous.schema.text(' '))
+                : Fragment.empty
+              const merged = previousLast.type.create(
+                previousLast.attrs,
+                previousLast.content.append(seam).append(firstForPrevious.content),
+                previousLast.marks,
+              )
+              const nextPreviousDoc = withLastNode(previousDoc, merged)
+              let caret = beforeLastSize + 1 + previousLast.content.size + seam.size
+
+              // When this is one paragraph split across generated pages,
+              // Backspace removes the actual character at the seam. For a
+              // normal paragraph boundary it removes only that boundary.
+              busyRef.current = true
+              try {
+                if (isContinuation && caret > beforeLastSize + 1) {
+                  const transaction = previous.state.tr
+                    .replaceWith(0, previousDoc.content.size, nextPreviousDoc.content)
+                  const deleteFrom = Math.max(beforeLastSize + 1, caret - 1)
+                  previous.view.dispatch(
+                    transaction
+                      .delete(deleteFrom, caret)
+                      .setMeta(PAGE_REFLOW_META, true),
+                  )
+                  caret = deleteFrom
+                } else {
+                  previous.view.dispatch(
+                    previous.state.tr
+                      .replaceWith(0, previousDoc.content.size, nextPreviousDoc.content)
+                      .setMeta(PAGE_REFLOW_META, true),
+                  )
+                }
+
+                current.view.dispatch(
+                  current.state.tr
+                    .delete(0, currentFirst.nodeSize)
+                    .setMeta(PAGE_REFLOW_META, true),
+                )
+                if (current.state.doc.childCount === 0) {
+                  current.commands.setContent('<p></p>', { emitUpdate: false })
+                }
+
+                pendingCaretRef.current = {
+                  pageIndex: index - 1,
+                  position: Math.max(1, caret),
+                }
+                commitPages(readLivePages(), { preserveLastEmptyPage: false })
+              } finally {
+                busyRef.current = false
+              }
+              queueReflow(index - 1)
+              window.requestAnimationFrame(() => {
+                focusPage(index - 1, 'end', Math.max(1, caret))
+              })
+              return
             }
-            queueReflow(Math.max(0, index - 1))
+
+            // Structural blocks cannot be merged safely. Move focus across the
+            // visual seam and leave their authored structure unchanged.
+            focusPage(index - 1, 'end')
           }}
         />
       ))}
