@@ -24,11 +24,14 @@ case "$enabled" in
 
     # -i reads the password from stdin so it is not exposed in the process list.
     printf '%s\n' "$password" | htpasswd -i -B -c "$password_file" "$username" >/dev/null
-    chmod 600 "$password_file"
+    # nginx workers run as the unprivileged `nginx` user and must be able to read this file.
+    chown root:nginx "$password_file" 2>/dev/null || chown root:www-data "$password_file" 2>/dev/null || true
+    chmod 640 "$password_file"
     cat > "$auth_config" <<EOF
 auth_basic "Typesetly";
 auth_basic_user_file $password_file;
 EOF
+    chmod 644 "$auth_config"
     ;;
   false|0|no|off|'')
     rm -f "$password_file"
