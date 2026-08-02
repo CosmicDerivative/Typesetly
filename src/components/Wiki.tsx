@@ -305,8 +305,8 @@ const WIKI_SECTIONS: WikiSection[] = [
       },
       {
         question: 'How does the desktop updater work?',
-        answer: 'The desktop application checks the official Typesetly GitHub repository for the newest stable release after startup. When a newer compatible build exists, Install version appears in the header. Choose it once: Typesetly downloads the correct package into its managed update cache, verifies the release metadata, closes the app, installs the update, and relaunches automatically.',
-        keywords: 'desktop update latest github installer download checksum version',
+        answer: 'The desktop application checks the official Typesetly GitHub repository for newer stable releases and same-version hotpatch revisions after startup. When one is available, Install version appears in the header. Choose it once: Typesetly downloads the correct package into its managed update cache, verifies the release metadata, closes the app, installs the update, and relaunches automatically.',
+        keywords: 'desktop update latest github installer download checksum version hotpatch revision',
       },
     ],
   },

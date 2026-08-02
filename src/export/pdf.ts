@@ -16,6 +16,8 @@ import {
 } from './litrpgExport'
 import { pdfSafeText } from './pdfText'
 import { preflightBook } from './preflight'
+import { addInternalPdfLink } from './pdfLinks'
+import { tableOfContentsEntries } from './toc'
 
 function fileName(title: string) {
   return `${title.replace(/[^\w\s-]/g, '').trim() || 'book'}.pdf`
@@ -128,9 +130,30 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
   let pageFootnotes: Array<{ number: number; text: string }> = []
   const blankPages = new Set<number>()
   const chapterOpeningPages = new Set<number>()
+  const chapterDestinations = new Map<string, { page: PDFPage; number: number }>()
+  const deferredContents: Array<{ pages: Array<{ page: PDFPage; number: number }>; entries: Chapter[] }> = []
+  const printChapters = exportableChapters(project, 'print')
+  const generatedNotesChapter = makeNotesChapter()
+  const hasGeneratedBookNotes =
+    theme.notes.printPlacement === 'book-end' &&
+    printChapters.some((chapter) => parseManuscript(chapter.content).notes.length > 0)
+  const tocEntries = [
+    ...tableOfContentsEntries(printChapters),
+    ...(hasGeneratedBookNotes ? [generatedNotesChapter] : []),
+  ]
 
   const margins = () => {
     const odd = pageNumber % 2 === 1
+    return {
+      left: (odd ? theme.print.marginInside : theme.print.marginOutside) * 72,
+      right: (odd ? theme.print.marginOutside : theme.print.marginInside) * 72,
+      top: theme.print.marginTop * 72,
+      bottom: theme.print.marginBottom * 72,
+    }
+  }
+
+  const marginsForPage = (number: number) => {
+    const odd = number % 2 === 1
     return {
       left: (odd ? theme.print.marginInside : theme.print.marginOutside) * 72,
       right: (odd ? theme.print.marginOutside : theme.print.marginInside) * 72,
@@ -808,9 +831,10 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
       }
     }
     chapterOpeningPages.add(pageNumber)
+    chapterDestinations.set(chapter.id, { page, number: pageNumber })
   }
 
-  for (const chapter of exportableChapters(project, 'print')) {
+  for (const chapter of printChapters) {
     startChapter(chapter)
     if (chapter.type === 'title-page') {
       y = pageHeight * 0.62
@@ -828,11 +852,16 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
       continue
     }
     if (chapter.type === 'contents') {
-      drawLine('Contents', { font: headingFont, size: 24, align: 'center' })
-      y -= lineHeight
-      for (const entry of project.chapters.filter((candidate) =>
-        (candidate.type === 'chapter' || candidate.type === 'part') && !candidate.options.hideInToc
-      )) drawParagraph(entry.title, true)
+      const availableHeight = pageHeight - margins().top - margins().bottom - 24 * 1.3 - lineHeight
+      const linesPerPage = Math.max(1, Math.floor(availableHeight / (fontSize * 1.55)))
+      const pageCount = Math.max(1, Math.ceil(tocEntries.length / linesPerPage))
+      const pages = [{ page, number: pageNumber }]
+      for (let index = 1; index < pageCount; index += 1) {
+        newPage()
+        chapterOpeningPages.add(pageNumber)
+        pages.push({ page, number: pageNumber })
+      }
+      deferredContents.push({ pages, entries: tocEntries })
       continue
     }
     const heading = headingParts(project, chapter, theme)
@@ -1004,11 +1033,92 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
 
   if (allBookNotes.length) {
     newPage()
-    activeChapter = makeNotesChapter()
+    activeChapter = generatedNotesChapter
     chapterOpeningPages.add(pageNumber)
+    chapterDestinations.set(generatedNotesChapter.id, { page, number: pageNumber })
     drawLine('Notes', { font: headingFont, size: Math.min(theme.chapterHeading.titleSize, 30), align: 'center' })
     y -= lineHeight
     for (const note of allBookNotes) drawParagraph(`${note.number}. ${note.text}`, true)
+  }
+
+  for (const contents of deferredContents) {
+    let entryIndex = 0
+    for (const [contentsPageIndex, contentsPage] of contents.pages.entries()) {
+      const margin = marginsForPage(contentsPage.number)
+      let contentsY = pageHeight - margin.top
+      const title = contentsPageIndex === 0 ? 'Contents' : 'Contents (continued)'
+      const printableTitle = safeText(title, headingFont)
+      contentsPage.page.drawText(printableTitle, {
+        x: (pageWidth - headingFont.widthOfTextAtSize(printableTitle, 24)) / 2,
+        y: contentsY,
+        size: 24,
+        font: headingFont,
+        color: rgb(0.1, 0.1, 0.1),
+      })
+      contentsY -= 24 * 1.3 + lineHeight
+      const nextPageBottom = margin.bottom + fontSize * 1.55
+      while (entryIndex < contents.entries.length && contentsY >= nextPageBottom) {
+        const entry = contents.entries[entryIndex]
+        const destination = chapterDestinations.get(entry.id)
+        if (!destination) {
+          entryIndex += 1
+          continue
+        }
+        const pageLabel = String(destination.number)
+        const labelWidth = bodyFont.widthOfTextAtSize(pageLabel, fontSize)
+        const rowWidth = pageWidth - margin.left - margin.right
+        const titleWidth = Math.max(24, rowWidth - labelWidth - 18)
+        const originalEntry = safeText(entry.title, bodyFont)
+        const suffix = '...'
+        let printableEntry = originalEntry
+        while (
+          printableEntry.length > 1 &&
+          bodyFont.widthOfTextAtSize(
+            printableEntry === originalEntry ? printableEntry : `${printableEntry.trimEnd()}${suffix}`,
+            fontSize,
+          ) > titleWidth
+        ) {
+          printableEntry = printableEntry.slice(0, -1)
+        }
+        if (printableEntry !== originalEntry) printableEntry = `${printableEntry.trimEnd()}${suffix}`
+        const pageX = pageWidth - margin.right - labelWidth
+        contentsPage.page.drawText(printableEntry, {
+          x: margin.left,
+          y: contentsY,
+          size: fontSize,
+          font: bodyFont,
+          color: rgb(0.1, 0.1, 0.1),
+        })
+        contentsPage.page.drawText(pageLabel, {
+          x: pageX,
+          y: contentsY,
+          size: fontSize,
+          font: bodyFont,
+          color: rgb(0.1, 0.1, 0.1),
+        })
+        const titleEnd = margin.left + bodyFont.widthOfTextAtSize(printableEntry, fontSize)
+        const dot = safeText('.', bodyFont)
+        const dotWidth = bodyFont.widthOfTextAtSize(dot, fontSize)
+        const dotCount = Math.max(0, Math.floor((pageX - titleEnd - 12) / Math.max(1, dotWidth * 1.7)))
+        if (dotCount) {
+          contentsPage.page.drawText(Array(dotCount).fill(dot).join(' '), {
+            x: titleEnd + 6,
+            y: contentsY,
+            size: fontSize,
+            font: bodyFont,
+            color: rgb(0.45, 0.45, 0.45),
+          })
+        }
+        addInternalPdfLink(
+          documentValue,
+          contentsPage.page,
+          destination.page,
+          [margin.left, contentsY - 2, pageWidth - margin.right, contentsY + fontSize + 2],
+        )
+        contentsY -= fontSize * 1.55
+        entryIndex += 1
+      }
+    }
   }
 
   if (pageNumber) drawHeaderFooter()

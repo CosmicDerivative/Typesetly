@@ -5,6 +5,7 @@ import { decorateFirstSentenceHtml, exportableChapters, headingParts } from '../
 import type { BookProject, BookTheme, Chapter, ExportResult } from '../types'
 import { litRpgFreeformExportMarkup, litRpgIsTranslucent, litRpgUsesBoxedFields } from './litrpgExport'
 import { preflightBook } from './preflight'
+import { tableOfContentsEntries } from './toc'
 
 function escapeXml(value: string) {
   return value
@@ -208,35 +209,42 @@ export async function exportProjectToEpub(project: BookProject, theme: BookTheme
   const navigation: string[] = []
   const bookEndNotes: Array<{ id: string; number: number; text: string; ref: string }> = []
   const noteCounter = { value: 0 }
-  let chapters = exportableChapters(project, 'ebook')
-  if (project.epubStartChapterId) {
-    const start = chapters.findIndex((chapter) => chapter.id === project.epubStartChapterId)
-    if (start > 0) chapters = [...chapters.slice(start), ...chapters.slice(0, start)]
-  }
+  const chapters = exportableChapters(project, 'ebook')
+  const startIndex = Math.max(
+    0,
+    chapters.findIndex((chapter) => chapter.id === project.epubStartChapterId),
+  )
+  const tocEntries = tableOfContentsEntries(chapters)
   const chapterLinks = new Map(chapters.map((chapter, index) => [`#chapter-${chapter.id}`, `chapter-${index + 1}.xhtml#chapter-${chapter.id}`]))
+  const preparedChapters = chapters.map((chapter) => ({
+    chapter,
+    parsed: chapterBody(chapter, theme, imageFiles, noteCounter),
+  }))
+  const preparedById = new Map(preparedChapters.map((entry) => [entry.chapter.id, entry]))
+  const hasBookEndNotes =
+    theme.notes.epubPlacement !== 'chapter-end' &&
+    preparedChapters.some((entry) => entry.parsed.chapterNotes.length > 0)
 
-  chapters.forEach((chapter, index) => {
+  preparedChapters.forEach(({ chapter, parsed }, index) => {
     const itemId = `chapter-${index + 1}`
     const href = `text/${itemId}.xhtml`
     const heading = headingParts(project, chapter, theme)
-    const parsed = chapterBody(chapter, theme, imageFiles, noteCounter)
     for (const [anchor, destination] of chapterLinks) {
       parsed.content = parsed.content.replaceAll(`href="${anchor}"`, `href="${destination}"`)
     }
-    if (chapter.type === ('contents')) {
-      parsed.content = `<nav epub:type="toc"><ol>${chapters
-          .filter(
-              (candidate) =>
-                  (candidate.type === 'chapter' || candidate.type === 'part') &&
-                  !candidate.options.hideInToc,
-          )
-          .map((candidate) => {
-            const targetHref = chapterLinks.get(`#chapter-${candidate.id}`)
-            if (!targetHref) return ''
-
-            return `<li><a href="${escapeXml(targetHref)}">${escapeXml(candidate.title)}</a></li>`
-          })
-          .join('')}</ol></nav>`
+    if (chapter.type === 'contents') {
+      parsed.content = `<nav epub:type="toc"><ol>${tocEntries
+        .map((candidate) => {
+          const targetHref = chapterLinks.get(`#chapter-${candidate.id}`)
+          if (!targetHref) return ''
+          const prepared = preparedById.get(candidate.id)
+          const targetDocumentHref = targetHref.split('#')[0]
+          const subnav = prepared?.parsed.subheadings.length
+            ? `<ol>${prepared.parsed.subheadings.map((subheading) => `<li><a href="${escapeXml(targetDocumentHref)}#${escapeXml(subheading.id)}">${escapeXml(subheading.text)}</a></li>`).join('')}</ol>`
+            : ''
+          return `<li><a href="${escapeXml(targetHref)}">${escapeXml(candidate.title)}</a>${subnav}</li>`
+        })
+        .join('')}${hasBookEndNotes ? '<li><a href="notes.xhtml">Notes</a></li>' : ''}</ol></nav>`
     }
     const chapterImage = chapter.imageDataUrl || theme.chapterHeading.sharedImageDataUrl
     let imageMarkup = ''
@@ -280,8 +288,8 @@ export async function exportProjectToEpub(project: BookProject, theme: BookTheme
     textFolder.file(`${itemId}.xhtml`, chapterXhtml)
     xhtmlFiles.set(`text/${itemId}.xhtml`, chapterXhtml)
     manifest.push(`<item id="${itemId}" href="${href}" media-type="application/xhtml+xml" />`)
-    spine.push(`<itemref idref="${itemId}" />`)
-    if (!chapter.options.hideInToc) {
+    spine.push(`<itemref idref="${itemId}"${index < startIndex ? ' linear="no"' : ''} />`)
+    if (preparedById.has(chapter.id) && tocEntries.some((entry) => entry.id === chapter.id)) {
       const subnav = parsed.subheadings.length
         ? `<ol>${parsed.subheadings.map((subheading) => `<li><a href="${href}#${subheading.id}">${escapeXml(subheading.text)}</a></li>`).join('')}</ol>`
         : ''

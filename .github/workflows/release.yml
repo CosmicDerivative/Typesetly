@@ -20,6 +20,16 @@ on:
         required: false
         default: false
         type: boolean
+      hotpatch:
+        description: Replace assets on this version tag with a same-version hotpatch
+        required: false
+        default: false
+        type: boolean
+      hotpatch_revision:
+        description: Increasing hotpatch revision (for example, 1)
+        required: false
+        default: "0"
+        type: string
 
 permissions:
   contents: read
@@ -37,6 +47,8 @@ jobs:
       version: ${{ steps.release.outputs.version }}
       draft: ${{ steps.release.outputs.draft }}
       prerelease: ${{ steps.release.outputs.prerelease }}
+      hotpatch: ${{ steps.release.outputs.hotpatch }}
+      hotpatch_revision: ${{ steps.release.outputs.hotpatch_revision }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -49,17 +61,28 @@ jobs:
           INPUT_TAG: ${{ inputs.tag }}
           INPUT_DRAFT: ${{ inputs.draft }}
           INPUT_PRERELEASE: ${{ inputs.prerelease }}
+          INPUT_HOTPATCH: ${{ inputs.hotpatch }}
+          INPUT_HOTPATCH_REVISION: ${{ inputs.hotpatch_revision }}
           REF_NAME: ${{ github.ref_name }}
         run: |
           version="$(node -p "require('./package.json').version")"
+          packaged_revision="$(node -p "require('./package.json').hotpatchRevision || 0")"
 
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             tag="$INPUT_TAG"
             draft="$INPUT_DRAFT"
             prerelease="$INPUT_PRERELEASE"
+            hotpatch="$INPUT_HOTPATCH"
+            if [[ "$hotpatch" == "true" ]]; then
+              hotpatch_revision="$INPUT_HOTPATCH_REVISION"
+            else
+              hotpatch_revision="$packaged_revision"
+            fi
           else
             tag="$REF_NAME"
             draft="false"
+            hotpatch="false"
+            hotpatch_revision="$packaged_revision"
             if [[ "$tag" == *-* ]]; then
               prerelease="true"
             else
@@ -72,10 +95,21 @@ jobs:
             exit 1
           fi
 
+          if [[ ! "$hotpatch_revision" =~ ^[0-9]+$ ]]; then
+            echo "::error::Hotpatch revision '$hotpatch_revision' must be a non-negative integer."
+            exit 1
+          fi
+          if [[ "$hotpatch" == "true" && "$hotpatch_revision" -lt 1 ]]; then
+            echo "::error::A hotpatch release requires a revision of at least 1."
+            exit 1
+          fi
+
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "draft=$draft" >> "$GITHUB_OUTPUT"
           echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+          echo "hotpatch=$hotpatch" >> "$GITHUB_OUTPUT"
+          echo "hotpatch_revision=$hotpatch_revision" >> "$GITHUB_OUTPUT"
 
       - name: Set up Node
         uses: actions/setup-node@v6
@@ -136,6 +170,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Stamp hotpatch revision into package
+        run: node .github/stamp-hotpatch.cjs package ${{ needs.verify.outputs.hotpatch_revision }}
+
       - name: Configure Windows certificate signing
         if: matrix.platform == 'windows'
         shell: bash
@@ -166,6 +203,9 @@ jobs:
 
       - name: Build native packages
         run: npm run ${{ matrix.script }} -- --publish never
+
+      - name: Stamp hotpatch revision into updater metadata
+        run: node .github/stamp-hotpatch.cjs metadata ${{ needs.verify.outputs.hotpatch_revision }} release/latest.yml release/latest-mac.yml release/latest-linux.yml
 
       - name: Upload native packages
         uses: actions/upload-artifact@v7
@@ -213,12 +253,18 @@ jobs:
           RELEASE_VERSION: ${{ needs.verify.outputs.version }}
           RELEASE_DRAFT: ${{ needs.verify.outputs.draft }}
           RELEASE_PRERELEASE: ${{ needs.verify.outputs.prerelease }}
+          RELEASE_HOTPATCH: ${{ needs.verify.outputs.hotpatch }}
         run: |
           if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$RELEASE_TAG" release-assets/* \
               --repo "$GITHUB_REPOSITORY" \
               --clobber
             exit 0
+          fi
+
+          if [[ "$RELEASE_HOTPATCH" == "true" ]]; then
+            echo "::error::Hotpatches can only replace assets on an existing release."
+            exit 1
           fi
 
           release_flags=(

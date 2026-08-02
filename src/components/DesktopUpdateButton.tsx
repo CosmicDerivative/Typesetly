@@ -4,8 +4,18 @@ import './DesktopUpdateButton.css'
 
 interface DesktopUpdateInfo {
   currentVersion: string
+  currentHotpatchRevision?: number
   latestVersion?: string
+  latestHotpatchRevision?: number
+  hotpatchAvailable?: boolean
   updateAvailable?: boolean
+}
+
+function updateLabel(version?: string, hotpatchRevision?: number, hotpatch = false) {
+  if (!version) return 'update'
+  return hotpatch && hotpatchRevision
+    ? `${version} hotpatch ${hotpatchRevision}`
+    : version
 }
 
 interface DesktopUpdateButtonProps {
@@ -36,8 +46,8 @@ export function DesktopUpdateButton({ placement }: DesktopUpdateButtonProps) {
       if (reportResult) {
         announce(
           result.updateAvailable
-            ? `Typesetly ${result.latestVersion} is ready to download.`
-            : `Typesetly ${result.currentVersion} is up to date.`,
+            ? `Typesetly ${updateLabel(result.latestVersion, result.latestHotpatchRevision, result.hotpatchAvailable)} is ready to download.`
+            : `Typesetly ${updateLabel(result.currentVersion, result.currentHotpatchRevision, Boolean(result.currentHotpatchRevision))} is up to date.`,
         )
       }
     } catch {
@@ -58,7 +68,7 @@ export function DesktopUpdateButton({ placement }: DesktopUpdateButtonProps) {
     try {
       const result = await bridge.installLatestUpdate()
       if (result.ok) {
-        announce(`Typesetly ${result.version} is verified and ready. Restarting to install…`)
+        announce(`Typesetly ${updateLabel(result.version, result.hotpatchRevision, Boolean(result.hotpatchRevision))} is verified and ready. Restarting to install…`)
       } else {
         announce(result.error || 'The installer could not be downloaded.')
       }
@@ -86,15 +96,25 @@ export function DesktopUpdateButton({ placement }: DesktopUpdateButtonProps) {
   if (!bridge?.checkForUpdates) return null
 
   const available = Boolean(updateInfo?.updateAvailable)
+  const availableLabel = updateLabel(
+    updateInfo?.latestVersion,
+    updateInfo?.latestHotpatchRevision,
+    Boolean(updateInfo?.hotpatchAvailable),
+  )
+  const currentLabel = updateLabel(
+    updateInfo?.currentVersion,
+    updateInfo?.currentHotpatchRevision,
+    Boolean(updateInfo?.currentHotpatchRevision),
+  )
   const busy = checking || downloading
   const label = downloading
     ? `${downloadPercent}%`
     : available
-      ? `Install ${updateInfo?.latestVersion}`
+      ? `Install ${availableLabel}`
       : checking
         ? 'Checking…'
         : updateInfo
-          ? `Version ${updateInfo.currentVersion}`
+          ? `Version ${currentLabel}`
           : 'Check updates'
 
   return (
@@ -105,16 +125,16 @@ export function DesktopUpdateButton({ placement }: DesktopUpdateButtonProps) {
       ].filter(Boolean).join(' ')}
       title={
         downloading
-          ? `Downloading Typesetly ${updateInfo?.latestVersion} (${downloadPercent}%)`
+          ? `Downloading Typesetly ${availableLabel} (${downloadPercent}%)`
           : available
-            ? `Download, verify, and install Typesetly ${updateInfo?.latestVersion}`
+            ? `Download, verify, and install Typesetly ${availableLabel}`
             : checking
               ? 'Checking for Typesetly updates'
-              : `Check for updates${updateInfo ? ` — current version ${updateInfo.currentVersion}` : ''}`
+              : `Check for updates${updateInfo ? ` — current version ${currentLabel}` : ''}`
       }
       aria-label={
         available
-          ? `Install Typesetly ${updateInfo?.latestVersion}`
+          ? `Install Typesetly ${availableLabel}`
           : 'Check for Typesetly updates'
       }
       type="button"
