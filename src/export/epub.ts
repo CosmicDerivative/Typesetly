@@ -223,11 +223,20 @@ export async function exportProjectToEpub(project: BookProject, theme: BookTheme
     for (const [anchor, destination] of chapterLinks) {
       parsed.content = parsed.content.replaceAll(`href="${anchor}"`, `href="${destination}"`)
     }
-    if (chapter.type === 'contents') {
-      parsed.content = `<nav epub:type="toc"><ol>${project.chapters
-        .filter((candidate) => (candidate.type === 'chapter' || candidate.type === 'part') && !candidate.options.hideInToc)
-        .map((candidate) => `<li>${escapeXml(candidate.title)}</li>`)
-        .join('')}</ol></nav>`
+    if (chapter.type === ('contents')) {
+      parsed.content = `<nav epub:type="toc"><ol>${chapters
+          .filter(
+              (candidate) =>
+                  (candidate.type === 'chapter' || candidate.type === 'part') &&
+                  !candidate.options.hideInToc,
+          )
+          .map((candidate) => {
+            const targetHref = chapterLinks.get(`#chapter-${candidate.id}`)
+            if (!targetHref) return ''
+
+            return `<li><a href="${escapeXml(targetHref)}">${escapeXml(candidate.title)}</a></li>`
+          })
+          .join('')}</ol></nav>`
     }
     const chapterImage = chapter.imageDataUrl || theme.chapterHeading.sharedImageDataUrl
     let imageMarkup = ''
