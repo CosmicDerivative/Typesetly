@@ -10,7 +10,7 @@ import { processImageFile } from '../images/process'
 import { dataUrlToBlob, imageRef } from '../library/images'
 import { storeNewImage } from '../library/store'
 import { useResolvedImageSrc } from '../library/useResolvedImageSrc'
-import { chapterDecorations } from '../themes/chapterDecorations'
+import { chapterDecorations, chapterOverlayInsets } from '../themes/chapterDecorations'
 import { ChapterDecorations } from './ChapterDecorations'
 import './ChapterDecorations.css'
 
@@ -49,6 +49,7 @@ function ThemeSample({ theme, className = '' }: { theme: BookTheme; className?: 
   const chapterNumber = previewChapterNumber(theme)
   const decorations = chapterDecorations(theme.chapterHeading)
   const hasOverlay = decorations.some((decoration) => decoration.placement === 'header-overlay')
+  const overlayInsets = chapterOverlayInsets(decorations)
   const dropCap = theme.paragraph.dropCaps
   const leadInSmallCaps = theme.paragraph.leadInSmallCaps
   const bodySize = Math.max(1, theme.typography.bodySize)
@@ -67,7 +68,13 @@ function ThemeSample({ theme, className = '' }: { theme: BookTheme; className?: 
       }}
     >
       <ChapterDecorations decorations={decorations} placement="above-heading" />
-      <div className={`theme-heading-composition${hasOverlay ? ' has-overlay' : ''}`}>
+      <div
+        className={`theme-heading-composition${hasOverlay ? ' has-overlay' : ''}`}
+        style={{
+          '--heading-left-inset': `${overlayInsets.left}%`,
+          '--heading-right-inset': `${overlayInsets.right}%`,
+        } as CSSProperties}
+      >
         <ChapterDecorations decorations={decorations} placement="header-overlay" />
         <div className="theme-heading-content">
           {theme.chapterHeading.imageEnabled && theme.chapterHeading.sharedImageDataUrl && (
@@ -86,7 +93,9 @@ function ThemeSample({ theme, className = '' }: { theme: BookTheme; className?: 
               className="ts-kicker"
               style={{
                 fontFamily: fontStack(theme.chapterHeading.numberFont),
-                fontSize: `${theme.chapterHeading.numberSize / bodySize}em`,
+                fontSize: hasOverlay
+                  ? `min(${theme.chapterHeading.numberSize / bodySize}em, 6cqi)`
+                  : `${theme.chapterHeading.numberSize / bodySize}em`,
                 textAlign: theme.chapterHeading.titleAlign,
               }}
             >
@@ -98,7 +107,9 @@ function ThemeSample({ theme, className = '' }: { theme: BookTheme; className?: 
               className="ts-title"
               style={{
                 fontFamily: fontStack(theme.chapterHeading.titleFont),
-                fontSize: `${theme.chapterHeading.titleSize / bodySize}em`,
+                fontSize: hasOverlay
+                  ? `min(${theme.chapterHeading.titleSize / bodySize}em, 10cqi)`
+                  : `${theme.chapterHeading.titleSize / bodySize}em`,
                 fontWeight: theme.chapterHeading.titleWeight === 'bold' ? 700 : 400,
                 textAlign: theme.chapterHeading.titleAlign,
               }}
@@ -111,7 +122,9 @@ function ThemeSample({ theme, className = '' }: { theme: BookTheme; className?: 
               className="ts-subtitle"
               style={{
                 fontFamily: fontStack(theme.chapterHeading.subtitleFont),
-                fontSize: `${theme.chapterHeading.subtitleSize / bodySize}em`,
+                fontSize: hasOverlay
+                  ? `min(${theme.chapterHeading.subtitleSize / bodySize}em, 6cqi)`
+                  : `${theme.chapterHeading.subtitleSize / bodySize}em`,
                 textAlign: theme.chapterHeading.titleAlign,
               }}
             >

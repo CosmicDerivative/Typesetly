@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { chapterDecorations, normalizeChapterDecoration } from '../src/themes/chapterDecorations.ts'
+import { chapterDecorations, chapterOverlayInsets, normalizeChapterDecoration } from '../src/themes/chapterDecorations.ts'
 import { PRESET_THEMES } from '../src/themes/presets.ts'
 
 test('chapter decoration layers normalize safely and retain every supported anchor', () => {
@@ -35,6 +35,24 @@ test('chapter decoration layers remain dormant when chapter imagery is disabled'
     decorations: [normalizeChapterDecoration({ imageDataUrl: 'data:image/png;base64,AA==' })],
   }
   assert.deepEqual(chapterDecorations(heading), [])
+})
+
+test('side overlay artwork reserves heading room while centered art stays behind the heading', () => {
+  const layers = [
+    normalizeChapterDecoration({ imageDataUrl: 'left', placement: 'header-overlay', align: 'left', width: 42 }),
+    normalizeChapterDecoration({ imageDataUrl: 'smaller-left', placement: 'header-overlay', align: 'left', width: 20 }),
+    normalizeChapterDecoration({ imageDataUrl: 'center', placement: 'header-overlay', align: 'center', width: 80 }),
+    normalizeChapterDecoration({ imageDataUrl: 'right', placement: 'header-overlay', align: 'right', width: 24 }),
+  ]
+  assert.deepEqual(chapterOverlayInsets(layers), { left: 42, right: 24 })
+})
+
+test('heading room remains usable when artwork is oversized on both sides', () => {
+  const layers = [
+    normalizeChapterDecoration({ imageDataUrl: 'left', placement: 'header-overlay', align: 'left', width: 100 }),
+    normalizeChapterDecoration({ imageDataUrl: 'right', placement: 'header-overlay', align: 'right', width: 100 }),
+  ]
+  assert.deepEqual(chapterOverlayInsets(layers), { left: 38, right: 38 })
 })
 
 test('custom chapter decoration layers survive a saved-theme JSON round trip', () => {

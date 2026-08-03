@@ -163,6 +163,9 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #777;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
 }
 
 .preview-para.indent {
@@ -216,6 +219,7 @@
 .preview-heading-composition {
   position: relative;
   isolation: isolate;
+  container-type: inline-size;
 }
 
 .preview-heading-composition.has-overlay {
@@ -228,7 +232,7 @@
   box-sizing: border-box;
   display: flex;
   min-height: 12em;
-  padding-block: 2em;
+  padding: 2em var(--heading-right-inset, 0%) 2em var(--heading-left-inset, 0%);
   flex-direction: column;
   justify-content: center;
 }
@@ -946,6 +950,9 @@
   font-weight: 700;
   line-height: 1.25;
   color: #1a1a1a;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
 }
 
 .preview-subtitle {
@@ -954,6 +961,9 @@
   font-size: .86em;
   color: #777;
   font-style: italic;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
 }
 
 .preview-body {

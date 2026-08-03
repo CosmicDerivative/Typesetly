@@ -12,7 +12,7 @@ import { DrawerControls } from './DrawerControls'
 import { useResolvedImageSrc } from '../library/useResolvedImageSrc'
 import { colorWithOpacity, litRpgElementKey } from '../editor/litrpg'
 import { litRpgIsTranslucent } from '../export/litrpgExport'
-import { chapterDecorations } from '../themes/chapterDecorations'
+import { chapterDecorations, chapterOverlayInsets } from '../themes/chapterDecorations'
 import { ChapterDecorations } from './ChapterDecorations'
 import './ChapterDecorations.css'
 
@@ -136,6 +136,7 @@ export function Previewer() {
   const theme = activeTheme
   const decorations = chapterDecorations(theme.chapterHeading)
   const hasHeadingOverlay = decorations.some((item) => item.placement === 'header-overlay')
+  const headingOverlayInsets = chapterOverlayInsets(decorations)
   const deviceClass = `device ${profile.family} ${profile.color ? 'color-screen' : 'eink-screen'}`
   const goToScreen = (page: number) => {
     setScreenPage(Math.max(1, Math.min(screenPages, page)))
@@ -351,7 +352,13 @@ export function Previewer() {
               {activeChapter.type === 'chapter' && (
                 <ChapterDecorations decorations={decorations} placement="above-heading" />
               )}
-              <div className={`preview-heading-composition${hasHeadingOverlay && activeChapter.type === 'chapter' ? ' has-overlay' : ''}`}>
+              <div
+                className={`preview-heading-composition${hasHeadingOverlay && activeChapter.type === 'chapter' ? ' has-overlay' : ''}`}
+                style={activeChapter.type === 'chapter' ? {
+                  '--heading-left-inset': `${headingOverlayInsets.left}%`,
+                  '--heading-right-inset': `${headingOverlayInsets.right}%`,
+                } as CSSProperties : undefined}
+              >
                 {activeChapter.type === 'chapter' && (
                   <ChapterDecorations decorations={decorations} placement="header-overlay" />
                 )}
@@ -376,7 +383,9 @@ export function Previewer() {
                       fontFamily: readerFontMode === 'book' || previewDevice === 'Print'
                         ? theme.chapterHeading.numberFont
                         : profile.readerFont,
-                      fontSize: `${theme.chapterHeading.numberSize * (previewDevice === 'Print' ? 1 : readerFontScale)}pt`,
+                      fontSize: hasHeadingOverlay
+                        ? `min(${theme.chapterHeading.numberSize * (previewDevice === 'Print' ? 1 : readerFontScale)}pt, 6cqi)`
+                        : `${theme.chapterHeading.numberSize * (previewDevice === 'Print' ? 1 : readerFontScale)}pt`,
                     }}
                   >
                     Chapter {heading.number}
@@ -389,7 +398,9 @@ export function Previewer() {
                     fontFamily: readerFontMode === 'book' || previewDevice === 'Print'
                       ? theme.chapterHeading.titleFont
                       : profile.readerFont,
-                    fontSize: `${(activeChapter.options.useSmallerChapterTitle ? theme.chapterHeading.titleSize * .75 : theme.chapterHeading.titleSize) * (previewDevice === 'Print' ? 1 : readerFontScale)}pt`,
+                    fontSize: hasHeadingOverlay
+                      ? `min(${(activeChapter.options.useSmallerChapterTitle ? theme.chapterHeading.titleSize * .75 : theme.chapterHeading.titleSize) * (previewDevice === 'Print' ? 1 : readerFontScale)}pt, 10cqi)`
+                      : `${(activeChapter.options.useSmallerChapterTitle ? theme.chapterHeading.titleSize * .75 : theme.chapterHeading.titleSize) * (previewDevice === 'Print' ? 1 : readerFontScale)}pt`,
                     fontWeight: theme.chapterHeading.titleWeight,
                   }}
                 >
@@ -403,7 +414,9 @@ export function Previewer() {
                       fontFamily: readerFontMode === 'book' || previewDevice === 'Print'
                         ? theme.chapterHeading.subtitleFont
                         : profile.readerFont,
-                      fontSize: `${theme.chapterHeading.subtitleSize * (previewDevice === 'Print' ? 1 : readerFontScale)}pt`,
+                      fontSize: hasHeadingOverlay
+                        ? `min(${theme.chapterHeading.subtitleSize * (previewDevice === 'Print' ? 1 : readerFontScale)}pt, 6cqi)`
+                        : `${theme.chapterHeading.subtitleSize * (previewDevice === 'Print' ? 1 : readerFontScale)}pt`,
                     }}
                   >{heading.subtitle}</p>
                 ) : null}

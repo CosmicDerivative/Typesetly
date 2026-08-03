@@ -34,3 +34,32 @@ export function chapterDecorations(heading: ThemeChapterHeading) {
     .map(normalizeChapterDecoration)
     .filter((item) => item.imageDataUrl)
 }
+
+/**
+ * Reserve horizontal room for artwork anchored beside a chapter heading.
+ * Centered layers remain true overlays, while left/right layers push heading
+ * copy into the open middle of the composition. Multiple layers on the same
+ * side share the largest footprint instead of stacking their widths.
+ */
+export function chapterOverlayInsets(decorations: ThemeChapterDecoration[]) {
+  let left = 0
+  let right = 0
+
+  for (const decoration of decorations) {
+    if (decoration.placement !== 'header-overlay' || !decoration.imageDataUrl) continue
+    const offsetShare = decoration.width * decoration.offsetX / 100
+    if (decoration.align === 'left') left = Math.max(left, decoration.width + offsetShare)
+    if (decoration.align === 'right') right = Math.max(right, decoration.width - offsetShare)
+  }
+
+  left = clamp(left, 0, 60)
+  right = clamp(right, 0, 60)
+  const combined = left + right
+  if (combined > 76) {
+    const scale = 76 / combined
+    left *= scale
+    right *= scale
+  }
+
+  return { left, right }
+}

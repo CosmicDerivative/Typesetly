@@ -159,6 +159,7 @@
 .theme-heading-composition {
   position: relative;
   isolation: isolate;
+  container-type: inline-size;
 }
 
 .theme-heading-composition.has-overlay {
@@ -177,7 +178,7 @@
   min-height: 12em;
   flex-direction: column;
   justify-content: center;
-  padding-block: 2em;
+  padding: 2em var(--heading-right-inset, 0%) 2em var(--heading-left-inset, 0%);
 }
 
 .theme-sample .chapter-decorations {
@@ -191,6 +192,9 @@
   margin-bottom: 5px;
   font-weight: 700;
   letter-spacing: .08em;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
 }
 
 .ts-kicker-image {
@@ -204,12 +208,18 @@
 .ts-title {
   margin-bottom: 10px;
   line-height: 1.15;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
 }
 
 .ts-subtitle {
   margin-top: -5px;
   margin-bottom: 10px;
   line-height: 1.25;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
 }
 
 .booklab-live-preview {
