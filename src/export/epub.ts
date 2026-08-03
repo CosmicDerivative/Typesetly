@@ -379,6 +379,12 @@ export async function exportProjectToEpub(project: BookProject, theme: BookTheme
     }
   }
 
+  const chapterImageMargin = theme.chapterHeading.imageAlign === 'left'
+    ? '0 auto 1em 0'
+    : theme.chapterHeading.imageAlign === 'right'
+      ? '0 0 1em auto'
+      : '0 auto 1em'
+
   oebps.folder('styles')!.file(
     'stylesheet.css',
     `${embeddedFontCss}@page { margin: 1em; }
@@ -394,7 +400,7 @@ body { margin: 0; font-family: ${theme.typography.bodyFont}, serif; font-size: $
 .chapter-heading h1 { margin: 0; font-family: ${theme.chapterHeading.titleFont}, serif; font-size: ${theme.chapterHeading.titleSize}pt; font-weight: ${theme.chapterHeading.titleWeight}; }
 .chapter-number { margin: 0 0 .75em; font-family: ${theme.chapterHeading.numberFont}, serif; font-size: ${theme.chapterHeading.numberSize}pt; }
 .chapter-subtitle { font-family: ${theme.chapterHeading.subtitleFont}, serif; font-size: ${theme.chapterHeading.subtitleSize}pt; }
-.chapter-image { display: block; max-width: ${theme.chapterHeading.imageSize}%; margin: 0 auto 1em; }
+.chapter-image { display: block; max-width: ${theme.chapterHeading.imageSize}%; margin: ${chapterImageMargin}; }
 .chapter-image-wrap, figure { margin: 1em auto; text-align: center; }
 .image-wide img, img.image-wide { width: 100% !important; max-width: 100%; }
 .image-full-page, .image-two-page { break-before: page; break-after: page; margin: 0; }

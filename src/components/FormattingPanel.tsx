@@ -45,6 +45,105 @@ function previewChapterNumber(theme: BookTheme) {
   return 'CHAPTER 1'
 }
 
+function ThemeSample({ theme, className = '' }: { theme: BookTheme; className?: string }) {
+  const chapterNumber = previewChapterNumber(theme)
+  const decorations = chapterDecorations(theme.chapterHeading)
+  const hasOverlay = decorations.some((decoration) => decoration.placement === 'header-overlay')
+  const dropCap = theme.paragraph.dropCaps
+  const leadInSmallCaps = theme.paragraph.leadInSmallCaps
+  const bodySize = Math.max(1, theme.typography.bodySize)
+  const imageMargin = theme.chapterHeading.imageAlign === 'center'
+    ? '0 auto .5em'
+    : theme.chapterHeading.imageAlign === 'right'
+      ? '0 0 .5em auto'
+      : '0 auto .5em 0'
+
+  return (
+    <div
+      className={`theme-sample ${className}`.trim()}
+      style={{
+        fontFamily: fontStack(theme.typography.bodyFont),
+        fontSize: `${Math.max(9.5, Math.min(13, bodySize * .96))}px`,
+      }}
+    >
+      <ChapterDecorations decorations={decorations} placement="above-heading" />
+      <div className={`theme-heading-composition${hasOverlay ? ' has-overlay' : ''}`}>
+        <ChapterDecorations decorations={decorations} placement="header-overlay" />
+        <div className="theme-heading-content">
+          {theme.chapterHeading.imageEnabled && theme.chapterHeading.sharedImageDataUrl && (
+            <ResolvedImg
+              className="ts-kicker-image"
+              src={theme.chapterHeading.sharedImageDataUrl}
+              alt=""
+              style={{
+                width: `${theme.chapterHeading.imageSize}%`,
+                margin: imageMargin,
+              }}
+            />
+          )}
+          {chapterNumber && (
+            <div
+              className="ts-kicker"
+              style={{
+                fontFamily: fontStack(theme.chapterHeading.numberFont),
+                fontSize: `${theme.chapterHeading.numberSize / bodySize}em`,
+                textAlign: theme.chapterHeading.titleAlign,
+              }}
+            >
+              {chapterNumber}
+            </div>
+          )}
+          {theme.chapterHeading.showTitle && (
+            <div
+              className="ts-title"
+              style={{
+                fontFamily: fontStack(theme.chapterHeading.titleFont),
+                fontSize: `${theme.chapterHeading.titleSize / bodySize}em`,
+                fontWeight: theme.chapterHeading.titleWeight === 'bold' ? 700 : 400,
+                textAlign: theme.chapterHeading.titleAlign,
+              }}
+            >
+              Chapter Title
+            </div>
+          )}
+          {theme.chapterHeading.showSubtitle && (
+            <div
+              className="ts-subtitle"
+              style={{
+                fontFamily: fontStack(theme.chapterHeading.subtitleFont),
+                fontSize: `${theme.chapterHeading.subtitleSize / bodySize}em`,
+                textAlign: theme.chapterHeading.titleAlign,
+              }}
+            >
+              A chapter subtitle
+            </div>
+          )}
+        </div>
+      </div>
+      <ChapterDecorations decorations={decorations} placement="below-heading" />
+      <ChapterDecorations decorations={decorations} placement="before-opening" />
+      <p
+        className={dropCap ? 'ts-drop' : ''}
+        style={{
+          lineHeight: Math.max(1.25, Math.min(1.7, theme.typography.lineSpacing)),
+          textAlign: theme.paragraph.bodyAlign,
+        }}
+      >
+        {dropCap && <span className="ts-dropcap">W</span>}
+        {leadInSmallCaps ? (
+          <>
+            <span className="ts-small-caps">{dropCap ? 'hen' : 'When'} the story begins,</span>
+            {' the theme shapes every page.'}
+          </>
+        ) : (
+          <>{dropCap ? 'hen' : 'When'} the story begins, the theme shapes every page.</>
+        )}
+      </p>
+      <ChapterDecorations decorations={decorations} placement="chapter-footer" />
+    </div>
+  )
+}
+
 function fontOptions(current: string) {
   return (
     <>
@@ -118,6 +217,14 @@ export function FormattingPanel() {
           </div>
         </div>
 
+        <section className="booklab-live-preview" aria-label="Live chapter proof">
+          <div className="booklab-live-preview-copy">
+            <span>Live chapter proof</span>
+            <p>Images, heading type, alignment, and decorative layers update here as you edit.</p>
+          </div>
+          <ThemeSample theme={t} className="booklab-theme-sample" />
+        </section>
+
         <div className="fv-grid">
           <section className="fv-card fv-card--chapter-heading">
             <h3>Chapter Heading</h3>
@@ -183,6 +290,52 @@ export function FormattingPanel() {
                   }}
                 />
               </label>
+              {t.chapterHeading.sharedImageDataUrl && (
+                <div className="shared-chapter-image-controls">
+                  <div className="compact-grid">
+                    <label>
+                      Shared image width ({t.chapterHeading.imageSize}%)
+                      <input
+                        type="range"
+                        min={10}
+                        max={100}
+                        value={t.chapterHeading.imageSize}
+                        onChange={(event) => updateEditingTheme({
+                          chapterHeading: {
+                            ...t.chapterHeading,
+                            imageSize: Number(event.target.value),
+                          },
+                        })}
+                      />
+                    </label>
+                    <label>
+                      Shared image alignment
+                      <select
+                        value={t.chapterHeading.imageAlign}
+                        onChange={(event) => updateEditingTheme({
+                          chapterHeading: {
+                            ...t.chapterHeading,
+                            imageAlign: event.target.value as typeof t.chapterHeading.imageAlign,
+                          },
+                        })}
+                      >
+                        <option value="left">Left</option>
+                        <option value="center">Center</option>
+                        <option value="right">Right</option>
+                      </select>
+                    </label>
+                  </div>
+                  <button
+                    type="button"
+                    className="remove-shared-chapter-image"
+                    onClick={() => updateEditingTheme({
+                      chapterHeading: { ...t.chapterHeading, sharedImageDataUrl: undefined },
+                    })}
+                  >
+                    <Trash2 size={13} /> Remove shared chapter image
+                  </button>
+                </div>
+              )}
               <label>
                 Add decorative image layer
                 <input
@@ -1081,86 +1234,10 @@ export function FormattingPanel() {
       <div className="theme-grid">
         {sorted.map((theme) => {
           const active = project.themeId === theme.id
-          const chapterNumber = previewChapterNumber(theme)
-          const dropCap = theme.paragraph.dropCaps
-          const leadInSmallCaps = theme.paragraph.leadInSmallCaps
-          const decorations = chapterDecorations(theme.chapterHeading)
           return (
             <article key={theme.id} className={active ? 'theme-card active' : 'theme-card'}>
               <button type="button" className="theme-preview" onClick={() => applyTheme(theme.id)}>
-                <div
-                  className="theme-sample"
-                  style={{
-                    fontFamily: fontStack(theme.typography.bodyFont),
-                    fontSize: `${Math.max(9.5, Math.min(13, theme.typography.bodySize * .96))}px`,
-                  }}
-                >
-                  <ChapterDecorations decorations={decorations} placement="above-heading" />
-                  <div className="theme-heading-composition">
-                  <ChapterDecorations decorations={decorations} placement="header-overlay" />
-                  <div className="theme-heading-content">
-                  {theme.chapterHeading.sharedImageDataUrl && (
-                    <ResolvedImg
-                      className="ts-kicker-image"
-                      src={theme.chapterHeading.sharedImageDataUrl}
-                      alt=""
-                      style={{
-                        marginInline:
-                          theme.chapterHeading.imageAlign === 'center'
-                            ? 'auto'
-                            : theme.chapterHeading.imageAlign === 'right'
-                              ? 'auto 0'
-                              : '0 auto',
-                      }}
-                    />
-                  )}
-                  {chapterNumber && (
-                    <div
-                      className="ts-kicker"
-                      style={{
-                        fontFamily: fontStack(theme.chapterHeading.numberFont),
-                        textAlign: theme.chapterHeading.titleAlign,
-                      }}
-                    >
-                      {chapterNumber}
-                    </div>
-                  )}
-                  {theme.chapterHeading.showTitle && (
-                    <div
-                      className="ts-title"
-                      style={{
-                        fontFamily: fontStack(theme.chapterHeading.titleFont),
-                        fontSize: `${Math.max(13, Math.min(18, theme.chapterHeading.titleSize * .55))}px`,
-                        fontWeight: theme.chapterHeading.titleWeight === 'bold' ? 700 : 400,
-                        textAlign: theme.chapterHeading.titleAlign,
-                      }}
-                    >
-                      Chapter Title
-                    </div>
-                  )}
-                  </div>
-                  </div>
-                  <ChapterDecorations decorations={decorations} placement="below-heading" />
-                  <ChapterDecorations decorations={decorations} placement="before-opening" />
-                  <p
-                    className={dropCap ? 'ts-drop' : ''}
-                    style={{
-                      lineHeight: Math.max(1.25, Math.min(1.7, theme.typography.lineSpacing)),
-                      textAlign: theme.paragraph.bodyAlign,
-                    }}
-                  >
-                    {dropCap && <span className="ts-dropcap">W</span>}
-                    {leadInSmallCaps ? (
-                      <>
-                        <span className="ts-small-caps">{dropCap ? 'hen' : 'When'} the story begins,</span>
-                        {' the theme shapes every page.'}
-                      </>
-                    ) : (
-                      <>{dropCap ? 'hen' : 'When'} the story begins, the theme shapes every page.</>
-                    )}
-                  </p>
-                  <ChapterDecorations decorations={decorations} placement="chapter-footer" />
-                </div>
+                <ThemeSample theme={theme} />
               </button>
               <div className="theme-meta">
                 <strong>{theme.name}</strong>

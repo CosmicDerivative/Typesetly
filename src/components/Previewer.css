@@ -216,7 +216,21 @@
 .preview-heading-composition {
   position: relative;
   isolation: isolate;
-  min-height: 70px;
+}
+
+.preview-heading-composition.has-overlay {
+  box-sizing: border-box;
+  min-height: 12em;
+  overflow: hidden;
+}
+
+.preview-heading-composition.has-overlay .preview-heading-content {
+  box-sizing: border-box;
+  display: flex;
+  min-height: 12em;
+  padding-block: 2em;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .preview-heading-content {
@@ -568,8 +582,9 @@
 }
 
 .preview-ornament img {
-  width: 70px;
-  height: 70px;
+  display: block;
+  width: min(var(--chapter-image-width, 56%), 100%);
+  max-height: 12em;
   object-fit: contain;
 }
 
@@ -884,9 +899,44 @@
 }
 
 .preview-ornament {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 8px;
+  display: block;
+  margin: 0 auto 1em;
+  text-align: center;
+}
+
+.preview-ornament.align-left img {
+  margin-right: auto;
+}
+
+.preview-ornament.align-center img {
+  margin-inline: auto;
+}
+
+.preview-ornament.align-right img {
+  margin-left: auto;
+}
+
+.preview-ornament.image-wide img,
+.preview-ornament.image-full-page img,
+.preview-ornament.image-two-page img {
+  width: 100%;
+}
+
+.preview-ornament.image-full-page,
+.preview-ornament.image-two-page {
+  min-height: 70%;
+  break-after: column;
+}
+
+.preview-ornament.image-full-page img,
+.preview-ornament.image-two-page img {
+  max-height: 70vh;
+}
+
+.preview-ornament figcaption {
+  margin-top: .4em;
+  font-size: .85em;
+  font-style: italic;
 }
 
 .preview-title {

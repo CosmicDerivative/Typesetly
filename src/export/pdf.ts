@@ -804,19 +804,29 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
       : documentValue.embedJpg(parsed.bytes)
   }
 
-  const drawImage = async (dataUrl: string, maxHeight = pageHeight * 0.35) => {
+  const drawImage = async (
+    dataUrl: string,
+    maxHeight = pageHeight * 0.35,
+    options: { maxWidthPercent?: number; align?: 'left' | 'center' | 'right' } = {},
+  ) => {
     const image = await embedImage(dataUrl)
     if (!image) {
       warnings.push('A WebP or GIF image could not be included in the print PDF. Use PNG or JPEG for print.')
       return
     }
     const margin = margins()
-    const maxWidth = pageWidth - margin.left - margin.right
+    const contentWidth = pageWidth - margin.left - margin.right
+    const maxWidth = contentWidth * Math.max(0.1, Math.min(1, (options.maxWidthPercent ?? 100) / 100))
     const scale = Math.min(maxWidth / image.width, maxHeight / image.height, 1)
     const width = image.width * scale
     const height = image.height * scale
     ensureSpace(height + lineHeight)
-    page.drawImage(image, { x: (pageWidth - width) / 2, y: y - height, width, height })
+    const x = options.align === 'left'
+      ? margin.left
+      : options.align === 'right'
+        ? pageWidth - margin.right - width
+        : (pageWidth - width) / 2
+    page.drawImage(image, { x, y: y - height, width, height })
     y -= height + lineHeight
   }
 
@@ -927,7 +937,14 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
         }
         newPage()
       } else {
-        await drawImage(chapterImage, layout === 'wide' ? pageHeight * 0.35 : pageHeight * 0.2)
+        await drawImage(
+          chapterImage,
+          layout === 'wide' ? pageHeight * 0.35 : pageHeight * 0.2,
+          {
+            maxWidthPercent: layout === 'wide' ? 100 : theme.chapterHeading.imageSize,
+            align: theme.chapterHeading.imageAlign,
+          },
+        )
         if (chapter.imageCaption) drawLine(chapter.imageCaption, { size: Math.max(8, fontSize - 2), align: 'center' })
       }
     }
