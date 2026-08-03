@@ -52,6 +52,7 @@ import {
   pruneEmptyDraftPages,
   draftChromeOccupiedHeight,
   draftContentExceedsPageClip,
+  draftSafeClipBottom,
   draftOverflowMoveIndexPreferTrailingAfterLitRpg,
   splitChapterIntoPages,
 } from '../layout/chapterPages'
@@ -342,7 +343,7 @@ const measurementCalibration = new WeakMap<
 >()
 
 /** Probe packing must leave a hair of slack so a “fits” candidate cannot sit on the clip edge. */
-const PAGE_FIT_SLACK_PX = 1
+const PAGE_FIT_SLACK_PX = 8
 
 /**
  * True when live block boxes extend past the sheet body clip.
@@ -356,7 +357,7 @@ function pageContentOverflowsBody(editor: Editor) {
   const dom = editor.view.dom
   const body = dom.closest('.editor-page-body')
   if (!(body instanceof HTMLElement)) return false
-  const clipBottom = body.getBoundingClientRect().bottom
+  const clipBottom = draftSafeClipBottom(body.getBoundingClientRect().bottom, PAGE_FIT_SLACK_PX)
   for (let index = 0; index < dom.children.length; index += 1) {
     const child = dom.children[index]
     if (!(child instanceof HTMLElement)) continue
@@ -707,6 +708,8 @@ export function DraftPagedEditor({
   const emitTimerRef = useRef(0)
   const reflowTimerRef = useRef(0)
   const busyRef = useRef(false)
+  const paginationPausedRef = useRef(false)
+  const pausedReflowIndexRef = useRef(0)
   const focusedIndexRef = useRef(0)
   const contentEpochRef = useRef(0)
   const renderedChapterIdRef = useRef(chapterId)
@@ -1111,6 +1114,10 @@ export function DraftPagedEditor({
   }, [])
 
   const reflowFrom = useCallback(async (fromIndex: number) => {
+    if (paginationPausedRef.current) {
+      pausedReflowIndexRef.current = Math.min(pausedReflowIndexRef.current, fromIndex)
+      return
+    }
     if (busyRef.current) return
     busyRef.current = true
     const epoch = contentEpochRef.current
@@ -1133,11 +1140,19 @@ export function DraftPagedEditor({
       }
 
       for (let pass = 0; pass < 24; pass += 1) {
+        if (paginationPausedRef.current) {
+          pausedReflowIndexRef.current = Math.min(pausedReflowIndexRef.current, fromIndex)
+          return
+        }
         if (contentEpochRef.current !== epoch) return
         let moved = false
         const total = Math.max(editorsRef.current.length, pagesRef.current.length)
 
         for (let index = fromIndex; index < total; index += 1) {
+          if (paginationPausedRef.current) {
+            pausedReflowIndexRef.current = Math.min(pausedReflowIndexRef.current, index)
+            return
+          }
           if (contentEpochRef.current !== epoch) return
           let editor = editorsRef.current[index]
           if (!editor) continue
@@ -1425,6 +1440,13 @@ export function DraftPagedEditor({
 
             const sourceFirst = nextEditor.state.doc.child(0)
             if (!sourceFirst || isEmptyParagraphNode(sourceFirst)) break
+            // A manual page break is a hard boundary. Keep its marker on the
+            // preceding page (or at the start of this one if it was pushed)
+            // and never pull prose across it during height reflow.
+            if (
+              editor.state.doc.lastChild?.type.name === 'pageBreak'
+              || sourceFirst.type.name === 'pageBreak'
+            ) break
             // Each page editor owns its own ProseMirror schema instance.
             // Clone the source node into the destination schema before
             // measuring or inserting it; foreign-schema nodes can otherwise
@@ -1614,10 +1636,31 @@ export function DraftPagedEditor({
 
   const queueReflow = useCallback((fromIndex: number) => {
     window.clearTimeout(reflowTimerRef.current)
+    if (paginationPausedRef.current) {
+      pausedReflowIndexRef.current = Math.min(pausedReflowIndexRef.current, fromIndex)
+      return
+    }
     reflowTimerRef.current = window.setTimeout(() => {
       void reflowFrom(fromIndex)
     }, 140)
   }, [reflowFrom])
+
+  useEffect(() => {
+    const togglePagination = (event: Event) => {
+      const paused = Boolean((event as CustomEvent<{ paused?: boolean }>).detail?.paused)
+      paginationPausedRef.current = paused
+      if (paused) {
+        window.clearTimeout(reflowTimerRef.current)
+        pausedReflowIndexRef.current = focusedIndexRef.current
+        return
+      }
+      const resumeFrom = Math.max(0, pausedReflowIndexRef.current)
+      pausedReflowIndexRef.current = 0
+      queueReflow(resumeFrom)
+    }
+    window.addEventListener('typesetly:draft-pagination-pause', togglePagination)
+    return () => window.removeEventListener('typesetly:draft-pagination-pause', togglePagination)
+  }, [queueReflow])
 
   const replaceCrossPageSelection = useCallback((replacement = '') => {
     const selection = crossPageSelectionRef.current

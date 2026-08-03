@@ -1,0 +1,38 @@
+.chapter-decorations {
+  position: relative;
+  width: 100%;
+  min-height: 1px;
+  pointer-events: none;
+}
+
+.chapter-decorations.above-heading,
+.chapter-decorations.below-heading,
+.chapter-decorations.before-opening,
+.chapter-decorations.chapter-footer {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+}
+
+.chapter-decoration-image {
+  display: block;
+  width: var(--decoration-width, 28%);
+  max-height: 140px;
+  object-fit: contain;
+  opacity: var(--decoration-opacity, 1);
+  transform: translate(var(--decoration-x, 0%), var(--decoration-y, 0)) rotate(var(--decoration-rotation, 0deg));
+  transform-origin: center;
+}
+
+.chapter-decorations.header-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.chapter-decorations.header-overlay .chapter-decoration-image {
+  position: absolute;
+  left: var(--decoration-anchor, 50%);
+  top: 50%;
+  transform: var(--decoration-anchor-transform, translateX(-50%)) translate(var(--decoration-x, 0%), calc(-50% + var(--decoration-y, 0px))) rotate(var(--decoration-rotation, 0deg));
+}

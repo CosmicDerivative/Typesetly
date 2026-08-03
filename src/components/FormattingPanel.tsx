@@ -3,13 +3,16 @@ import { useState, type CSSProperties } from 'react'
 import { useApp } from '../BookContext'
 import { TRIM_SIZES } from '../themes/presets'
 import { FONT_FAMILIES, FONT_FAMILY_GROUPS, fontStack } from '../themes/fonts'
-import type { BookTheme } from '../types'
+import type { BookTheme, ThemeChapterDecoration } from '../types'
 import './FormattingPanel.css'
 import { Dialog } from './Dialog'
 import { processImageFile } from '../images/process'
 import { dataUrlToBlob, imageRef } from '../library/images'
 import { storeNewImage } from '../library/store'
 import { useResolvedImageSrc } from '../library/useResolvedImageSrc'
+import { chapterDecorations } from '../themes/chapterDecorations'
+import { ChapterDecorations } from './ChapterDecorations'
+import './ChapterDecorations.css'
 
 function ResolvedImg({
   src,
@@ -83,6 +86,13 @@ export function FormattingPanel() {
 
   if (editingTheme) {
     const t = editingTheme
+    const decorationList = t.chapterHeading.decorations || []
+    const setDecorations = (decorations: ThemeChapterDecoration[]) => updateEditingTheme({
+      chapterHeading: { ...t.chapterHeading, decorations },
+    })
+    const updateDecoration = (id: string, patch: Partial<ThemeChapterDecoration>) => {
+      setDecorations(decorationList.map((item) => item.id === id ? { ...item, ...patch } : item))
+    }
     return (
       <>
       <div className="formatting-view">
@@ -148,6 +158,7 @@ export function FormattingPanel() {
               Chapter image / ornament
             </label>
             {t.chapterHeading.imageEnabled && (
+              <>
               <label>
                 Shared chapter image
                 <input
@@ -172,6 +183,93 @@ export function FormattingPanel() {
                   }}
                 />
               </label>
+              <label>
+                Add decorative image layer
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={async (event) => {
+                    const file = event.target.files?.[0]
+                    if (!file) return
+                    try {
+                      const ref = await storeThemeImage(file)
+                      setDecorations([...decorationList, {
+                        id: crypto.randomUUID(),
+                        name: file.name.replace(/\.[^.]+$/, '') || `Decoration ${decorationList.length + 1}`,
+                        imageDataUrl: ref,
+                        placement: 'header-overlay',
+                        align: decorationList.length % 2 ? 'right' : 'left',
+                        width: 28,
+                        offsetX: 0,
+                        offsetY: 0,
+                        opacity: 100,
+                        rotation: 0,
+                      }])
+                      event.target.value = ''
+                    } catch (error) {
+                      window.dispatchEvent(new CustomEvent('typesetly:notice', {
+                        detail: error instanceof Error ? error.message : 'The decorative image could not be imported.',
+                      }))
+                    }
+                  }}
+                />
+              </label>
+              {decorationList.map((decoration, index) => (
+                <div className="decoration-layer-editor" key={decoration.id}>
+                  <div className="decoration-layer-head">
+                    <input
+                      aria-label="Layer name"
+                      value={decoration.name}
+                      onChange={(event) => updateDecoration(decoration.id, { name: event.target.value })}
+                    />
+                    <button type="button" disabled={index === 0} onClick={() => {
+                      const next = [...decorationList]
+                      ;[next[index - 1], next[index]] = [next[index]!, next[index - 1]!]
+                      setDecorations(next)
+                    }}>↑</button>
+                    <button type="button" disabled={index === decorationList.length - 1} onClick={() => {
+                      const next = [...decorationList]
+                      ;[next[index], next[index + 1]] = [next[index + 1]!, next[index]!]
+                      setDecorations(next)
+                    }}>↓</button>
+                    <button type="button" title="Remove layer" onClick={() => setDecorations(decorationList.filter((item) => item.id !== decoration.id))}>
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                  <div className="compact-grid">
+                    <label>Position
+                      <select value={decoration.placement} onChange={(event) => updateDecoration(decoration.id, { placement: event.target.value as ThemeChapterDecoration['placement'] })}>
+                        <option value="above-heading">Above heading</option>
+                        <option value="header-overlay">Around / behind heading</option>
+                        <option value="below-heading">Below heading</option>
+                        <option value="before-opening">Before opening text</option>
+                        <option value="chapter-footer">Chapter footer</option>
+                      </select>
+                    </label>
+                    <label>Align
+                      <select value={decoration.align} onChange={(event) => updateDecoration(decoration.id, { align: event.target.value as ThemeChapterDecoration['align'] })}>
+                        <option value="left">Left</option><option value="center">Center</option><option value="right">Right</option>
+                      </select>
+                    </label>
+                    <label>Width ({decoration.width}%)
+                      <input type="range" min={5} max={100} value={decoration.width} onChange={(event) => updateDecoration(decoration.id, { width: Number(event.target.value) })} />
+                    </label>
+                    <label>Opacity ({decoration.opacity}%)
+                      <input type="range" min={5} max={100} value={decoration.opacity} onChange={(event) => updateDecoration(decoration.id, { opacity: Number(event.target.value) })} />
+                    </label>
+                    <label>Horizontal offset
+                      <input type="number" min={-50} max={50} value={decoration.offsetX} onChange={(event) => updateDecoration(decoration.id, { offsetX: Number(event.target.value) })} />
+                    </label>
+                    <label>Vertical offset
+                      <input type="number" min={-240} max={240} value={decoration.offsetY} onChange={(event) => updateDecoration(decoration.id, { offsetY: Number(event.target.value) })} />
+                    </label>
+                    <label>Rotation
+                      <input type="number" min={-180} max={180} value={decoration.rotation} onChange={(event) => updateDecoration(decoration.id, { rotation: Number(event.target.value) })} />
+                    </label>
+                  </div>
+                </div>
+              ))}
+              </>
             )}
             <label>
               Title align
@@ -984,6 +1082,7 @@ export function FormattingPanel() {
           const chapterNumber = previewChapterNumber(theme)
           const dropCap = theme.paragraph.dropCaps
           const leadInSmallCaps = theme.paragraph.leadInSmallCaps
+          const decorations = chapterDecorations(theme.chapterHeading)
           return (
             <article key={theme.id} className={active ? 'theme-card active' : 'theme-card'}>
               <button type="button" className="theme-preview" onClick={() => applyTheme(theme.id)}>
@@ -994,6 +1093,10 @@ export function FormattingPanel() {
                     fontSize: `${Math.max(9.5, Math.min(13, theme.typography.bodySize * .96))}px`,
                   }}
                 >
+                  <ChapterDecorations decorations={decorations} placement="above-heading" />
+                  <div className="theme-heading-composition">
+                  <ChapterDecorations decorations={decorations} placement="header-overlay" />
+                  <div className="theme-heading-content">
                   {theme.chapterHeading.sharedImageDataUrl && (
                     <ResolvedImg
                       className="ts-kicker-image"
@@ -1033,6 +1136,10 @@ export function FormattingPanel() {
                       Chapter Title
                     </div>
                   )}
+                  </div>
+                  </div>
+                  <ChapterDecorations decorations={decorations} placement="below-heading" />
+                  <ChapterDecorations decorations={decorations} placement="before-opening" />
                   <p
                     className={dropCap ? 'ts-drop' : ''}
                     style={{
@@ -1050,6 +1157,7 @@ export function FormattingPanel() {
                       <>{dropCap ? 'hen' : 'When'} the story begins, the theme shapes every page.</>
                     )}
                   </p>
+                  <ChapterDecorations decorations={decorations} placement="chapter-footer" />
                 </div>
               </button>
               <div className="theme-meta">

@@ -209,6 +209,19 @@
   border-radius: 4px;
   text-align: left;
   font-size: 0.95em;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.preview-heading-composition {
+  position: relative;
+  isolation: isolate;
+  min-height: 70px;
+}
+
+.preview-heading-content {
+  position: relative;
+  z-index: 1;
 }
 
 .preview-callout.text-message {

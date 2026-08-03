@@ -1,5 +1,5 @@
 import { saveAs } from 'file-saver'
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage } from 'pdf-lib'
+import { PDFDocument, StandardFonts, degrees, rgb, type PDFFont, type PDFImage, type PDFPage } from 'pdf-lib'
 import { exportableChapters, headingParts, parseManuscript } from '../layout/manuscript'
 import { layoutShowsPageNumber, runningHeaderText } from '../layout/runningHeaders'
 import type { BookProject, BookTheme, Chapter, ExportResult } from '../types'
@@ -17,36 +17,12 @@ import {
 import { pdfSafeText } from './pdfText'
 import { preflightBook } from './preflight'
 import { addInternalPdfLink } from './pdfLinks'
+import { wrapPdfParagraph } from './pdfLayout'
 import { tableOfContentsEntries } from './toc'
+import { chapterDecorations } from '../themes/chapterDecorations'
 
 function fileName(title: string) {
   return `${title.replace(/[^\w\s-]/g, '').trim() || 'book'}.pdf`
-}
-
-function wrapText(text: string, font: PDFFont, size: number, width: number, hyphenate: boolean) {
-  const words = text.split(/\s+/).filter(Boolean).flatMap((original) => {
-    if (!hyphenate || font.widthOfTextAtSize(original, size) <= width) return [original]
-    const approximate = Math.max(4, Math.floor((original.length * width) / font.widthOfTextAtSize(original, size)) - 1)
-    const pieces: string[] = []
-    let remaining = original
-    while (remaining.length > approximate) {
-      pieces.push(`${remaining.slice(0, approximate)}-`)
-      remaining = remaining.slice(approximate)
-    }
-    if (remaining) pieces.push(remaining)
-    return pieces
-  })
-  const lines: string[] = []
-  let line = ''
-  for (const word of words) {
-    const candidate = line ? `${line} ${word}` : word
-    if (line && font.widthOfTextAtSize(candidate, size) > width) {
-      lines.push(line)
-      line = word
-    } else line = candidate
-  }
-  if (line) lines.push(line)
-  return lines
 }
 
 function dataUrlBytes(dataUrl: string) {
@@ -109,7 +85,7 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
     return safe.text
   }
   const wrapForPdf = (text: string, font: PDFFont, size: number, width: number, hyphenate: boolean) =>
-    wrapText(safeText(text, font), font, size, width, hyphenate)
+    wrapPdfParagraph(safeText(text, font), font, size, width, hyphenate)
   const pageWidth = theme.print.trimWidthIn * 72
   const pageHeight = theme.print.trimHeightIn * 72
   const fontSize = theme.print.largePrint ? Math.max(14, theme.typography.bodySize) : theme.typography.bodySize
@@ -278,8 +254,15 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
     const margin = margins()
     const indent =
       theme.paragraph.paragraphStyle === 'indent' && !first ? fontSize * 1.2 : 0
-    const width = pageWidth - margin.left - margin.right - indent
-    const lines = wrapForPdf(text, bodyFont, fontSize, width, theme.print.hyphens)
+    const width = pageWidth - margin.left - margin.right
+    const lines = wrapPdfParagraph(
+      safeText(text, bodyFont),
+      bodyFont,
+      fontSize,
+      width,
+      theme.print.hyphens,
+      width - indent,
+    )
     if (theme.print.layoutPriority !== 'balanced' && lines.length > 1) {
       const availableLines = Math.floor((y - margin.bottom) / lineHeight)
       const leavesSingleLineOnNextPage = availableLines > 1 && lines.length - availableLines === 1
@@ -305,6 +288,27 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
       y -= lineHeight
     })
     if (theme.paragraph.paragraphStyle === 'space') y -= lineHeight * 0.35
+  }
+
+  const hardBreakHeight = (text: string) => {
+    const margin = margins()
+    const width = pageWidth - margin.left - margin.right
+    return text.split(/\r?\n/).reduce((height, authoredLine) => (
+      height + Math.max(
+        1,
+        wrapForPdf(authoredLine, bodyFont, fontSize, width, theme.print.hyphens).length,
+      ) * lineHeight
+    ), 0)
+  }
+
+  const drawTextWithHardBreaks = (text: string) => {
+    for (const authoredLine of text.split(/\r?\n/)) {
+      if (authoredLine) drawParagraph(authoredLine, true)
+      else {
+        ensureSpace(lineHeight)
+        y -= lineHeight
+      }
+    }
   }
 
   const drawMessageBubble = (
@@ -816,6 +820,37 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
     y -= height + lineHeight
   }
 
+  const drawChapterDecorations = async (
+    placement: ReturnType<typeof chapterDecorations>[number]['placement'],
+    flow = true,
+  ) => {
+    for (const decoration of chapterDecorations(theme.chapterHeading).filter((item) => item.placement === placement)) {
+      const image = await embedImage(decoration.imageDataUrl)
+      if (!image) continue
+      const margin = margins()
+      const contentWidth = pageWidth - margin.left - margin.right
+      const maxWidth = contentWidth * decoration.width / 100
+      const scale = Math.min(maxWidth / image.width, pageHeight * .22 / image.height, 1)
+      const width = image.width * scale
+      const height = image.height * scale
+      if (flow) ensureSpace(height + lineHeight * .5)
+      const anchorX = decoration.align === 'left'
+        ? margin.left
+        : decoration.align === 'right'
+          ? pageWidth - margin.right - width
+          : (pageWidth - width) / 2
+      page.drawImage(image, {
+        x: anchorX + contentWidth * decoration.offsetX / 100,
+        y: y - height - decoration.offsetY,
+        width,
+        height,
+        opacity: decoration.opacity / 100,
+        rotate: degrees(decoration.rotation),
+      })
+      if (flow) y -= height + lineHeight * .5
+    }
+  }
+
   const startChapter = (chapter: Chapter) => {
     chapterNoteNumber = 0
     newPage()
@@ -865,6 +900,7 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
       continue
     }
     const heading = headingParts(project, chapter, theme)
+    await drawChapterDecorations('above-heading')
     const chapterImage = chapter.imageDataUrl || theme.chapterHeading.sharedImageDataUrl
     if (chapterImage && theme.chapterHeading.imageEnabled && !chapter.options.hideChapterImage) {
       const layout = chapter.imageLayout || 'inline'
@@ -897,6 +933,7 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
     }
     if (!chapter.options.hideChapterHeading) {
       y -= lineHeight
+      await drawChapterDecorations('header-overlay', false)
       if (heading.number) drawLine(`Chapter ${heading.number}`, {
         font: numberFont,
         align: theme.chapterHeading.titleAlign,
@@ -921,6 +958,8 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
       })
       y -= lineHeight
     }
+    await drawChapterDecorations('below-heading')
+    await drawChapterDecorations('before-opening')
 
     const parsed = parseManuscript(chapter.content)
     const noteByNumber = new Map(parsed.notes.map((note) => [note.number, note]))
@@ -965,10 +1004,10 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
         if (block.variant === 'message') {
           drawMessageBubble(block.text, block.sender, block.direction, block.theme)
         } else {
-          ensureSpace(lineHeight * 3)
+          ensureSpace(hardBreakHeight(block.text) + 10)
           const margin = margins()
           const top = y + 4
-          drawParagraph(block.text, true)
+          drawTextWithHardBreaks(block.text)
           page.drawRectangle({
             x: margin.left - 6,
             y: y - 2,
@@ -990,7 +1029,8 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
       } else if (block.type === 'styled-block') {
         const text = block.attribution ? `${block.text} — ${block.attribution}` : block.text
         registerPageFootnotes(text)
-        drawParagraph(text, block.variant !== 'hangingIndent')
+        if (text.includes('\n')) drawTextWithHardBreaks(text)
+        else drawParagraph(text, block.variant !== 'hangingIndent')
       } else if (block.type === 'image') {
         if (block.layout === 'two-page') {
           const halves = await splitImageSpread(block.src)
@@ -1119,6 +1159,7 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
         entryIndex += 1
       }
     }
+    await drawChapterDecorations('chapter-footer')
   }
 
   if (pageNumber) drawHeaderFooter()

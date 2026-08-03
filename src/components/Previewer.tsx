@@ -12,6 +12,9 @@ import { DrawerControls } from './DrawerControls'
 import { useResolvedImageSrc } from '../library/useResolvedImageSrc'
 import { colorWithOpacity, litRpgElementKey } from '../editor/litrpg'
 import { litRpgIsTranslucent } from '../export/litrpgExport'
+import { chapterDecorations } from '../themes/chapterDecorations'
+import { ChapterDecorations } from './ChapterDecorations'
+import './ChapterDecorations.css'
 
 export function Previewer() {
   const {
@@ -131,6 +134,7 @@ export function Previewer() {
   const canPrev = chapterIndex > 0
   const canNext = chapterIndex >= 0 && chapterIndex < bodyChapters.length - 1
   const theme = activeTheme
+  const decorations = chapterDecorations(theme.chapterHeading)
   const deviceClass = `device ${profile.family} ${profile.color ? 'color-screen' : 'eink-screen'}`
   const goToScreen = (page: number) => {
     setScreenPage(Math.max(1, Math.min(screenPages, page)))
@@ -329,6 +333,9 @@ export function Previewer() {
                   )}
                 </>
               )}
+            {activeChapter?.type === 'chapter' && (
+              <ChapterDecorations decorations={decorations} placement="above-heading" />
+            )}
             {activeChapter?.type === 'chapter' &&
               theme.chapterHeading.imageEnabled &&
               !activeChapter.options.hideChapterImage &&
@@ -351,7 +358,9 @@ export function Previewer() {
                 <strong>{project.details.author || 'Author'}</strong>
               </div>
             ) : activeChapter && !activeChapter.options.hideChapterHeading && (
-              <>
+              <div className="preview-heading-composition">
+                <ChapterDecorations decorations={decorations} placement="header-overlay" />
+                <div className="preview-heading-content">
                 {heading?.number && (
                   <p className="preview-number" style={{ textAlign: theme.chapterHeading.titleAlign }}>
                     Chapter {heading.number}
@@ -375,7 +384,15 @@ export function Previewer() {
                 {heading?.subtitle ? (
                   <p className="preview-subtitle">{heading.subtitle}</p>
                 ) : null}
-              </>
+                </div>
+              </div>
+            )}
+
+            {activeChapter?.type === 'chapter' && (
+              <ChapterDecorations decorations={decorations} placement="below-heading" />
+            )}
+            {activeChapter?.type === 'chapter' && (
+              <ChapterDecorations decorations={decorations} placement="before-opening" />
             )}
 
             <div className="preview-body">
@@ -571,6 +588,9 @@ export function Previewer() {
                     <p key={note.id}><sup>{note.number}</sup> {note.text}</p>
                   ))}
                 </section>
+              )}
+              {activeChapter?.type === 'chapter' && (
+                <ChapterDecorations decorations={decorations} placement="chapter-footer" />
               )}
             </div>
             </div>

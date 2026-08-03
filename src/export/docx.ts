@@ -118,6 +118,10 @@ function runsFromElement(element: HTMLElement): Array<TextRun | ExternalHyperlin
     }
     const child = node as HTMLElement
     const tag = child.tagName?.toLowerCase()
+    if (tag === 'br') {
+      output.push(new TextRun({ break: 1 }))
+      return
+    }
     if (tag === 'a' && child.getAttribute('href')) {
       output.push(
         new ExternalHyperlink({
@@ -513,6 +517,14 @@ async function chapterParagraphs(chapter: Chapter): Promise<Array<Paragraph | Ta
       })))
     } else if (nodeType === 'scene-break' || tag === 'hr') {
       paragraphs.push(new Paragraph({ text: '* * *', alignment: AlignmentType.CENTER, spacing: { before: 220, after: 220 } }))
+    } else if (nodeType === 'callout') {
+      const authoredLines = Array.from(element.children) as HTMLElement[]
+      for (const line of authoredLines.length ? authoredLines : [element]) {
+        paragraphs.push(new Paragraph({
+          children: runsFromElement(line),
+          spacing: { after: 0 },
+        }))
+      }
     } else if (nodeType === 'verse' || nodeType === 'hangingIndent' || nodeType === 'attributedQuote') {
       paragraphs.push(new Paragraph({
         children: runsFromElement(element),

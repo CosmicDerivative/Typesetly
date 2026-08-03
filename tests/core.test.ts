@@ -245,7 +245,10 @@ test('chapter pages split on breaks, pack by budget, and rejoin for storage', as
 
   const withBreak =
     '<p>One</p><div data-typesetly-node="page-break"></div><p>Two</p>'
-  assert.deepEqual(splitChapterIntoPages(withBreak, 10_000), ['<p>One</p>', '<p>Two</p>'])
+  assert.deepEqual(splitChapterIntoPages(withBreak, 10_000), [
+    '<p>One</p><div data-typesetly-node="page-break"></div>',
+    '<p>Two</p>',
+  ])
   assert.equal(joinChapterPages(['<p>One</p>', '<p>Two</p>']), '<p>One</p><p>Two</p>')
   assert.equal(
     joinChapterPages([
@@ -357,12 +360,20 @@ test('chapter pages split on breaks, pack by budget, and rejoin for storage', as
   assert.equal(joinChapterPages(scenePages).includes('<p>A</p>'), true)
   assert.equal(joinChapterPages(scenePages).includes('<p>B</p>'), true)
 
+  const manualBreak = '<p>Before forced break.</p><div data-typesetly-node="page-break"></div><p>After forced break.</p>'
+  const manualBreakPages = splitChapterIntoPages(manualBreak, 10_000)
+  assert.equal(manualBreakPages.length, 2)
+  assert.match(manualBreakPages[0]!, /data-typesetly-node="page-break"/)
+  assert.equal(joinChapterPages(manualBreakPages), manualBreak)
+
   const {
     draftBlockPackCost,
     draftOverflowMoveIndexKeepingSceneBreak,
     draftOverflowMoveIndexPreferTrailingAfterLitRpg,
     draftContentExceedsPageClip,
     draftChromeOccupiedHeight,
+    draftSafeClipBottom,
+    estimateCharsPerPage,
     isSceneBreakBlock,
     isLitRpgBlock,
   } = await import('../src/layout/chapterPages.ts')
@@ -387,7 +398,46 @@ test('chapter pages split on breaks, pack by budget, and rejoin for storage', as
   )
   assert.equal(draftContentExceedsPageClip(100.6, 100, 0.5), true)
   assert.equal(draftContentExceedsPageClip(100.4, 100, 0.5), false)
+  assert.equal(draftSafeClipBottom(100), 92)
+  assert.equal(draftSafeClipBottom(100, 12), 88)
   assert.equal(draftChromeOccupiedHeight(20, 0, 12), 32)
+  assert.equal(estimateCharsPerPage({
+    widthPx: 720,
+    heightPx: 960,
+    marginTopPx: 80,
+    marginRightPx: 80,
+    marginBottomPx: 80,
+    marginLeftPx: 80,
+    gapPx: 28,
+    scale: 1,
+  }, 16, 1.75), 1624)
+
+  // A long mixed manuscript exercises every Draft formatting/insert family.
+  // Paging must retain its authored HTML and structural node markers exactly.
+  const allEditorToolsHtml = [
+    '<h2>Heading 2</h2><h3>Heading 3</h3><h4>Heading 4</h4><h5>Heading 5</h5><h6>Heading 6</h6>',
+    '<p><strong>Bold</strong> <em>italic</em> <u>underline</u> <s>strike</s> <code>code</code> <a href="https://example.com">link</a> H<sub>2</sub>O x<sup>2</sup>.</p>',
+    '<blockquote><p>Standard quotation</p></blockquote>',
+    '<ul><li>Bullet one</li><li>Bullet two</li></ul><ol><li>Number one</li><li>Number two</li></ol>',
+    '<hr data-typesetly-node="scene-break">',
+    '<div data-typesetly-node="page-break"></div>',
+    '<p>Footnote reference <span data-typesetly-node="footnote" data-note-id="n1" data-note-text="Footnote text">1</span>.</p>',
+    '<img data-typesetly-node="manuscript-image" src="data:image/png;base64,AA==" alt="Test image">',
+    '<blockquote data-typesetly-node="callout" data-variant="callout"><p>Callout content</p></blockquote>',
+    '<blockquote data-typesetly-node="callout" data-variant="message" data-direction="incoming"><p>Message content</p></blockquote>',
+    '<div data-typesetly-node="verse">Verse line one\nVerse line two</div>',
+    '<div data-typesetly-node="hangingIndent">Hanging indent content</div>',
+    '<blockquote data-typesetly-node="attributedQuote" data-attribution="Author">Attributed quotation</blockquote>',
+    '<div data-typesetly-node="litrpg-block" data-layout-mode="table"><table><tbody><tr><td>Strength</td><td>10</td></tr></tbody></table></div>',
+    ...Array.from({ length: 80 }, (_, index) => `<p>Long-form page boundary paragraph ${index + 1} keeps every editor tool surrounded by enough prose to exercise multi-page packing and reload.</p>`),
+  ].join('')
+  const allEditorToolPages = splitChapterIntoPages(allEditorToolsHtml, 500)
+  assert.ok(allEditorToolPages.length >= 10)
+  const allEditorToolsRejoined = joinChapterPages(allEditorToolPages)
+  assert.equal(allEditorToolsRejoined, allEditorToolsHtml)
+  for (const marker of ['scene-break', 'page-break', 'footnote', 'manuscript-image', 'callout', 'verse', 'hangingIndent', 'attributedQuote', 'litrpg-block']) {
+    assert.match(allEditorToolsRejoined, new RegExp(`data-typesetly-node="${marker}"`))
+  }
 
   // Structured blocks contain nested div/table markup. They must remain one
   // atomic top-level block when a chapter is reopened and split into pages.

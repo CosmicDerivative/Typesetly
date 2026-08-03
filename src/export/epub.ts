@@ -6,6 +6,12 @@ import type { BookProject, BookTheme, Chapter, ExportResult } from '../types'
 import { litRpgFreeformExportMarkup, litRpgIsTranslucent, litRpgUsesBoxedFields } from './litrpgExport'
 import { preflightBook } from './preflight'
 import { tableOfContentsEntries } from './toc'
+import { chapterDecorations } from '../themes/chapterDecorations'
+import {
+  epubImageDataUrlParts,
+  epubImageHrefMatchesMediaType,
+  pageUsesChapterThemeArtwork,
+} from './epubImages'
 
 function escapeXml(value: string) {
   return value
@@ -18,19 +24,6 @@ function escapeXml(value: string) {
 
 function slug(value: string) {
   return value.replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-').toLowerCase() || 'book'
-}
-
-function dataUrlParts(dataUrl: string) {
-  const match = /^data:([^;,]+);base64,(.+)$/i.exec(dataUrl)
-  if (!match) return null
-  const extension = match[1].includes('png')
-    ? 'png'
-    : match[1].includes('webp')
-      ? 'webp'
-      : match[1].includes('gif')
-        ? 'gif'
-        : 'jpg'
-  return { mediaType: match[1], base64: match[2], extension }
 }
 
 function fontDataParts(dataUrl: string) {
@@ -59,7 +52,7 @@ function chapterBody(
 
   for (const element of Array.from(documentValue.querySelectorAll('img'))) {
     const image = element as HTMLImageElement
-    const parsed = dataUrlParts(image.src)
+    const parsed = epubImageDataUrlParts(image.src)
     if (!parsed) continue
     const id = `image-${imageFiles.length + 1}`
     const href = `images/${id}.${parsed.extension}`
@@ -122,7 +115,7 @@ function chapterBody(
   ))) {
     let ornament = escapeXml(theme.sceneBreak.ornament || '* * *')
     if (theme.sceneBreak.style === 'ornament' && theme.sceneBreak.customImageDataUrl) {
-      const image = dataUrlParts(theme.sceneBreak.customImageDataUrl)
+      const image = epubImageDataUrlParts(theme.sceneBreak.customImageDataUrl)
       if (image) {
         const id = `image-${imageFiles.length + 1}`
         const href = `images/${id}.${image.extension}`
@@ -160,6 +153,21 @@ function chapterBody(
         theme.paragraph.leadInSmallCaps,
       )
     }
+  }
+
+  // Imported documents can carry paragraph margins/padding that override the
+  // selected book design and make a first-line indent look like a shifted
+  // paragraph block. Keep inline text formatting, but let the EPUB theme own
+  // paragraph geometry consistently.
+  for (const paragraph of Array.from(documentValue.body.querySelectorAll('p'))) {
+    const element = paragraph as HTMLElement
+    for (const property of [
+      'margin', 'margin-left', 'margin-right', 'margin-inline',
+      'margin-inline-start', 'margin-inline-end',
+      'padding', 'padding-left', 'padding-right', 'padding-inline',
+      'padding-inline-start', 'padding-inline-end', 'text-indent',
+    ]) element.style.removeProperty(property)
+    if (!element.getAttribute('style')?.trim()) element.removeAttribute('style')
   }
 
   let content = documentValue.body.innerHTML
@@ -246,10 +254,40 @@ export async function exportProjectToEpub(project: BookProject, theme: BookTheme
         })
         .join('')}${hasBookEndNotes ? '<li><a href="notes.xhtml">Notes</a></li>' : ''}</ol></nav>`
     }
-    const chapterImage = chapter.imageDataUrl || theme.chapterHeading.sharedImageDataUrl
+    const usesChapterArtwork = pageUsesChapterThemeArtwork(chapter.type)
+    const chapterImage = chapter.imageDataUrl
+      || (usesChapterArtwork ? theme.chapterHeading.sharedImageDataUrl : undefined)
+    const decorationMarkup = new Map<string, string[]>()
+    for (const decoration of usesChapterArtwork ? chapterDecorations(theme.chapterHeading) : []) {
+      const image = epubImageDataUrlParts(decoration.imageDataUrl)
+      if (!image) continue
+      const imageId = `image-${imageFiles.length + 1}`
+      const imageHref = `images/${imageId}.${image.extension}`
+      imageFiles.push({ id: imageId, href: imageHref, mediaType: image.mediaType, base64: image.base64 })
+      const flowAlignment = decoration.align === 'center'
+        ? 'margin-left:auto;margin-right:auto;'
+        : decoration.align === 'right'
+          ? 'margin-left:auto;'
+          : 'margin-right:auto;'
+      const overlayPosition = decoration.placement === 'header-overlay'
+        ? decoration.align === 'center'
+          ? `position:absolute;top:0;left:50%;transform:translate(calc(-50% + ${decoration.offsetX}%),${decoration.offsetY}px) rotate(${decoration.rotation}deg);`
+          : decoration.align === 'right'
+            ? `position:absolute;top:0;right:0;transform:translate(${decoration.offsetX}%,${decoration.offsetY}px) rotate(${decoration.rotation}deg);`
+            : `position:absolute;top:0;left:0;transform:translate(${decoration.offsetX}%,${decoration.offsetY}px) rotate(${decoration.rotation}deg);`
+        : `transform:translate(${decoration.offsetX}%,${decoration.offsetY}px) rotate(${decoration.rotation}deg);${flowAlignment}`
+      const style = `width:${decoration.width}%;opacity:${decoration.opacity / 100};${overlayPosition}`
+      const values = decorationMarkup.get(decoration.placement) || []
+      values.push(`<img class="chapter-decoration" src="../${imageHref}" alt="" style="${style}" />`)
+      decorationMarkup.set(decoration.placement, values)
+    }
+    const decorationsAt = (placement: string) => {
+      const values = decorationMarkup.get(placement)
+      return values?.length ? `<div class="chapter-decorations ${placement}">${values.join('')}</div>` : ''
+    }
     let imageMarkup = ''
     if (chapterImage && theme.chapterHeading.imageEnabled && !chapter.options.hideChapterImage) {
-      const image = dataUrlParts(chapterImage)
+      const image = epubImageDataUrlParts(chapterImage)
       if (image) {
         const imageId = `image-${imageFiles.length + 1}`
         const imageHref = `images/${imageId}.${image.extension}`
@@ -260,14 +298,15 @@ export async function exportProjectToEpub(project: BookProject, theme: BookTheme
       }
     }
 
+    const hasHeadingOverlay = Boolean(decorationMarkup.get('header-overlay')?.length)
     const headingMarkup = chapter.options.hideChapterHeading
       ? ''
-      : `<header class="chapter-heading">
+      : `<div class="chapter-heading-composition${hasHeadingOverlay ? ' has-overlay' : ''}">${decorationsAt('above-heading')}${decorationsAt('header-overlay')}<header class="chapter-heading">
           ${imageMarkup}
           ${heading.number ? `<p class="chapter-number">${escapeXml(heading.number)}</p>` : ''}
           ${heading.title ? `<h1>${escapeXml(heading.title)}</h1>` : ''}
           ${heading.subtitle ? `<p class="chapter-subtitle">${escapeXml(heading.subtitle)}</p>` : ''}
-        </header>`
+        </header></div>${decorationsAt('below-heading')}${decorationsAt('before-opening')}`
 
     let notesMarkup = ''
     if (theme.notes.epubPlacement === 'chapter-end' && parsed.chapterNotes.length) {
@@ -282,7 +321,7 @@ export async function exportProjectToEpub(project: BookProject, theme: BookTheme
 
     const chapterXhtml = xhtml(
         chapter.title,
-        `<section id="chapter-${chapter.id}" class="chapter" epub:type="${chapter.type === 'chapter' ? 'chapter' : chapter.type}">${headingMarkup}${parsed.content}${notesMarkup}</section>`,
+        `<section id="chapter-${chapter.id}" class="chapter" epub:type="${chapter.type === 'chapter' ? 'chapter' : chapter.type}">${headingMarkup}${parsed.content}${notesMarkup}${decorationsAt('chapter-footer')}</section>`,
         project.details.language || 'en',
       )
     textFolder.file(`${itemId}.xhtml`, chapterXhtml)
@@ -314,7 +353,7 @@ export async function exportProjectToEpub(project: BookProject, theme: BookTheme
 
   let coverMetadata = ''
   if (project.details.coverDataUrl) {
-    const cover = dataUrlParts(project.details.coverDataUrl)
+    const cover = epubImageDataUrlParts(project.details.coverDataUrl)
     if (cover) {
       const href = `images/cover.${cover.extension}`
       imageFiles.push({ id: 'cover-image', href, mediaType: cover.mediaType, base64: cover.base64 })
@@ -343,8 +382,15 @@ export async function exportProjectToEpub(project: BookProject, theme: BookTheme
   oebps.folder('styles')!.file(
     'stylesheet.css',
     `${embeddedFontCss}@page { margin: 1em; }
-body { margin: 0; font-family: ${theme.typography.bodyFont}, serif; font-size: ${theme.typography.bodySize}pt; line-height: ${theme.typography.lineSpacing}; text-align: ${theme.paragraph.bodyAlign}; }
-.chapter-heading { text-align: ${theme.chapterHeading.titleAlign}; break-before: page; margin: 3em 0 2em; }
+body { margin: 0; font-family: ${theme.typography.bodyFont}, serif; font-size: ${theme.typography.bodySize}pt; line-height: ${theme.typography.lineSpacing}; text-align: ${theme.paragraph.bodyAlign}; hyphens: ${theme.print.hyphens ? 'auto' : 'none'}; -webkit-hyphens: ${theme.print.hyphens ? 'auto' : 'none'}; overflow-wrap: break-word; }
+.chapter-heading { text-align: ${theme.chapterHeading.titleAlign}; margin: 3em 0 2em; }
+.chapter-heading-composition { position: relative; break-before: page; }
+.chapter-heading-composition > .chapter-heading { position: relative; z-index: 1; }
+.chapter-heading-composition.has-overlay { box-sizing: border-box; min-height: 12em; overflow: hidden; }
+.chapter-heading-composition.has-overlay > .chapter-heading { box-sizing: border-box; display: flex; min-height: 12em; margin: 0 0 2em; padding: 3em 0 2em; flex-direction: column; justify-content: center; }
+.chapter-decorations { position: relative; width: 100%; min-height: 1em; }
+.chapter-decorations.header-overlay { position: absolute; inset: 0; height: 12em; overflow: hidden; z-index: 0; }
+.chapter-decoration { display: block; max-height: 12em; object-fit: contain; }
 .chapter-heading h1 { margin: 0; font-family: ${theme.chapterHeading.titleFont}, serif; font-size: ${theme.chapterHeading.titleSize}pt; font-weight: ${theme.chapterHeading.titleWeight}; }
 .chapter-number { margin: 0 0 .75em; font-family: ${theme.chapterHeading.numberFont}, serif; font-size: ${theme.chapterHeading.numberSize}pt; }
 .chapter-subtitle { font-family: ${theme.chapterHeading.subtitleFont}, serif; font-size: ${theme.chapterHeading.subtitleSize}pt; }
@@ -354,9 +400,9 @@ body { margin: 0; font-family: ${theme.typography.bodyFont}, serif; font-size: $
 .image-full-page, .image-two-page { break-before: page; break-after: page; margin: 0; }
 .image-full-page img, .image-two-page img, img.image-full-page, img.image-two-page { width: 100% !important; max-height: 95vh; object-fit: contain; }
 figcaption { margin-top: .4em; font-size: .85em; font-style: italic; }
-p { margin: ${theme.paragraph.paragraphStyle === 'indent' ? '0' : '0 0 .8em'}; ${theme.paragraph.paragraphStyle === 'indent' ? 'text-indent: 1.2em;' : ''} }
+p { margin: ${theme.paragraph.paragraphStyle === 'indent' ? '0' : '0 0 .8em'}; ${theme.paragraph.paragraphStyle === 'indent' ? 'text-indent: 1.2em;' : ''} widows: 2; orphans: 2; word-spacing: normal; }
 p:first-of-type { text-indent: 0; }
-.dropcap { float: left; font-size: 3.2em; line-height: .78; padding: .08em .08em 0 0; }
+.dropcap { float: left; font-size: 2.8em; line-height: .86; padding: .06em .09em 0 0; }
 .lead-in { font-variant: small-caps; letter-spacing: .04em; }
 .scene { text-align: center; margin: 1.5em 0; }
 .scene-image { max-width: 35%; max-height: 2.5em; }
@@ -364,6 +410,8 @@ p:first-of-type { text-indent: 0; }
 .scene-none { display: none; }
 .page-break { break-after: page; }
 .callout { border: 1px solid #999; padding: .8em; margin: 1em 0; }
+.callout > p { margin: 0; text-indent: 0; }
+.callout > p + p { margin-top: .35em; }
 .text-message { width: fit-content; max-width: 78%; margin-left: auto; border: 0; border-radius: 1em 1em .25em 1em; color: #fff; background: #1677d2; }
 .text-message[data-direction="incoming"] { margin-right: auto; margin-left: 0; color: #222; background: #e9edf2; }
 .text-message[data-theme="android"] { border: 1px solid #c7d7c5; border-radius: .45em; color: #243423; background: #dff0dc; }
@@ -460,6 +508,16 @@ h2,h3,h4,h5,h6 { font-family: ${theme.subheading.font}, serif; text-align: ${the
     if (new Set(ids).size !== ids.length) validationWarnings.push(`Error: ${path} contains duplicate element identifiers.`)
     for (const image of Array.from(parsed.querySelectorAll('img'))) {
       if (!image.hasAttribute('alt')) validationWarnings.push(`Error: ${path} contains an image without an alt attribute.`)
+      const sourceHref = image.getAttribute('src') || ''
+      const packagedHref = sourceHref.replace(/^\.\.\//, '')
+      if (!imageFiles.some((candidate) => candidate.href === packagedHref)) {
+        validationWarnings.push(`Error: ${path} references an image that is not packaged: ${sourceHref || '(empty source)'}.`)
+      }
+    }
+  }
+  for (const image of imageFiles) {
+    if (!epubImageHrefMatchesMediaType(image.href, image.mediaType)) {
+      validationWarnings.push(`Error: ${image.href} does not match its declared media type ${image.mediaType}.`)
     }
   }
   if (validationWarnings.some((warning) => warning.startsWith('Error:'))) {

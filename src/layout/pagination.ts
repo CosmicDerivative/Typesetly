@@ -40,7 +40,11 @@ export function estimateChapterPages(chapter: Chapter, theme: BookTheme, profile
     else if (block.type === 'image') {
       lines += block.layout === 'full-page' ? linesPerPage : block.layout === 'two-page' ? linesPerPage * 2 : Math.ceil(linesPerPage * Math.max(.18, block.width / 130))
     } else if (block.type === 'callout' || block.type === 'styled-block') {
-      lines += 2 + Math.ceil(block.text.length / Math.max(12, charactersPerLine - 6))
+      const blockWidth = Math.max(12, charactersPerLine - 6)
+      lines += 2 + block.text.split(/\r?\n/).reduce(
+        (total, authoredLine) => total + Math.max(1, Math.ceil(authoredLine.length / blockWidth)),
+        0,
+      )
     } else if (block.type === 'litrpg-block') {
       const textLength = block.draft.rows.reduce(
         (total, row) => total + row.cells.join(' ').length,

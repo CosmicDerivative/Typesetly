@@ -44,6 +44,25 @@
   cursor: pointer;
 }
 
+.decoration-layer-editor {
+  grid-column: 1 / -1;
+  padding: 10px;
+  border: 1px solid #d8e0e8;
+  border-radius: 7px;
+  background: #f8fafc;
+}
+
+.decoration-layer-head {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 5px;
+  margin-bottom: 8px;
+}
+
+.decoration-layer-head button {
+  min-width: 28px;
+}
+
 .fv-actions .primary {
   border: none;
   background: #2f80ed;
@@ -104,6 +123,22 @@
   padding: 18px 16px;
   min-height: 152px;
   background: linear-gradient(180deg, #fafafa, #fff);
+}
+
+.theme-heading-composition {
+  position: relative;
+  isolation: isolate;
+}
+
+.theme-heading-content {
+  position: relative;
+  z-index: 1;
+}
+
+.theme-sample .chapter-decorations {
+  transform: scale(.7);
+  transform-origin: center;
+  max-height: 34px;
 }
 
 .ts-kicker {

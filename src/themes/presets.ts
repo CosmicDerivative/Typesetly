@@ -23,6 +23,7 @@ const defaults: Omit<BookTheme, 'id' | 'name'> = {
     useIndividualImages: false,
     backgroundOpacity: 0.35,
     lightText: false,
+    decorations: [],
   },
   paragraph: {
     dropCaps: true,

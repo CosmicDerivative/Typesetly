@@ -209,11 +209,23 @@
 }
 
 .chapter-meta {
+  position: relative;
   display: grid;
   grid-template-columns: auto 1fr auto;
   gap: 14px;
   align-items: start;
   margin-bottom: 22px;
+}
+
+.chapter-meta > .chapter-decorations:not(.header-overlay) {
+  grid-column: 1 / -1;
+}
+
+.chapter-meta > .chapter-titles,
+.chapter-meta > .chapter-settings,
+.chapter-meta > .chapter-ornament {
+  position: relative;
+  z-index: 1;
 }
 
 .chapter-ornament {
