@@ -119,7 +119,7 @@ export function FormattingPanel() {
         </div>
 
         <div className="fv-grid">
-          <section className="fv-card">
+          <section className="fv-card fv-card--chapter-heading">
             <h3>Chapter Heading</h3>
             <label className="check">
               <input
@@ -398,6 +398,7 @@ export function FormattingPanel() {
             </div>
           </section>
 
+          <div className="fv-settings-grid">
           <section className="fv-card">
             <h3>Paragraph</h3>
             <label className="check">
@@ -1030,6 +1031,7 @@ export function FormattingPanel() {
               </select>
             </label>
           </section>
+          </div>
         </div>
       </div>
       {nameDialog && (

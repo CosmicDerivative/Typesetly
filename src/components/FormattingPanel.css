@@ -46,6 +46,7 @@
 
 .decoration-layer-editor {
   grid-column: 1 / -1;
+  min-width: 0;
   padding: 10px;
   border: 1px solid #d8e0e8;
   border-radius: 7px;
@@ -54,13 +55,15 @@
 
 .decoration-layer-head {
   display: grid;
-  grid-template-columns: 1fr auto auto auto;
+  grid-template-columns: minmax(0, 1fr) repeat(3, 32px);
   gap: 5px;
   margin-bottom: 8px;
 }
 
 .decoration-layer-head button {
-  min-width: 28px;
+  width: 32px;
+  min-width: 32px;
+  padding: 0;
 }
 
 .fv-actions .primary {
@@ -235,11 +238,21 @@
 
 .fv-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 14px;
+  grid-template-columns: minmax(400px, .92fr) minmax(0, 1.6fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.fv-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  align-items: start;
 }
 
 .fv-card {
+  min-width: 0;
+  align-self: start;
   background: #fff;
   border: 1px solid #d7dde8;
   border-radius: 10px;
@@ -248,7 +261,7 @@
 
 .compact-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -267,6 +280,7 @@
 
 .fv-card label {
   display: flex;
+  min-width: 0;
   flex-direction: column;
   gap: 4px;
   font-size: 12px;
@@ -282,10 +296,34 @@
 
 .fv-card input,
 .fv-card select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
   border: 1px solid #d5d5d5;
   border-radius: 6px;
   padding: 7px 8px;
   font-size: 12px;
+}
+
+.fv-card input[type="checkbox"] {
+  width: auto;
+}
+
+.fv-card input[type="range"] {
+  padding-inline: 0;
+}
+
+@media (max-width: 1180px) {
+  .formatting-view .fv-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .formatting-view .fv-settings-grid,
+  .formatting-view .compact-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .scene-image-setting {
