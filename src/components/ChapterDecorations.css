@@ -17,6 +17,7 @@
 .chapter-decoration-image {
   display: block;
   width: var(--decoration-width, 28%);
+  height: auto;
   max-height: var(--chapter-decoration-max-height, 12em);
   object-fit: contain;
   opacity: var(--decoration-opacity, 1);
@@ -34,5 +35,6 @@
   position: absolute;
   left: var(--decoration-anchor, 50%);
   top: 50%;
+  max-height: none;
   transform: var(--decoration-anchor-transform, translateX(-50%)) translate(var(--decoration-x, 0%), calc(-50% + var(--decoration-y, 0px))) rotate(var(--decoration-rotation, 0deg));
 }

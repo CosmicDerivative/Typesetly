@@ -36,10 +36,9 @@ export function chapterDecorations(heading: ThemeChapterHeading) {
 }
 
 /**
- * Reserve horizontal room for artwork anchored beside a chapter heading.
- * Centered layers remain true overlays, while left/right layers push heading
- * copy into the open middle of the composition. Multiple layers on the same
- * side share the largest footprint instead of stacking their widths.
+ * Reserve limited horizontal room for small artwork anchored beside a chapter
+ * heading. Wide artwork is treated as a banner/background and stays behind
+ * the full-width heading instead of forcing the title into a narrow column.
  */
 export function chapterOverlayInsets(decorations: ThemeChapterDecoration[]) {
   let left = 0
@@ -47,16 +46,17 @@ export function chapterOverlayInsets(decorations: ThemeChapterDecoration[]) {
 
   for (const decoration of decorations) {
     if (decoration.placement !== 'header-overlay' || !decoration.imageDataUrl) continue
+    if (decoration.width > 40) continue
     const offsetShare = decoration.width * decoration.offsetX / 100
     if (decoration.align === 'left') left = Math.max(left, decoration.width + offsetShare)
     if (decoration.align === 'right') right = Math.max(right, decoration.width - offsetShare)
   }
 
-  left = clamp(left, 0, 60)
-  right = clamp(right, 0, 60)
+  left = clamp(left, 0, 32)
+  right = clamp(right, 0, 32)
   const combined = left + right
-  if (combined > 76) {
-    const scale = 76 / combined
+  if (combined > 56) {
+    const scale = 56 / combined
     left *= scale
     right *= scale
   }

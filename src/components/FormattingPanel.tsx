@@ -418,10 +418,10 @@ export function FormattingPanel() {
                       </select>
                     </label>
                     <label>Width ({decoration.width}%)
-                      <input type="range" min={5} max={100} value={decoration.width} onChange={(event) => updateDecoration(decoration.id, { width: Number(event.target.value) })} />
+                      <input type="range" min={5} max={100} value={decoration.width} onInput={(event) => updateDecoration(decoration.id, { width: Number(event.currentTarget.value) })} />
                     </label>
                     <label>Opacity ({decoration.opacity}%)
-                      <input type="range" min={5} max={100} value={decoration.opacity} onChange={(event) => updateDecoration(decoration.id, { opacity: Number(event.target.value) })} />
+                      <input type="range" min={5} max={100} value={decoration.opacity} onInput={(event) => updateDecoration(decoration.id, { opacity: Number(event.currentTarget.value) })} />
                     </label>
                     <label>Horizontal offset
                       <input type="number" min={-50} max={50} value={decoration.offsetX} onChange={(event) => updateDecoration(decoration.id, { offsetX: Number(event.target.value) })} />

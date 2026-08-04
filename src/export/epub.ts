@@ -396,6 +396,7 @@ body { margin: 0; font-family: ${theme.typography.bodyFont}, serif; font-size: $
 .chapter-heading-composition.has-overlay > .chapter-heading { box-sizing: border-box; display: flex; min-height: 12em; margin: 0 0 2em; padding: 3em 0 2em; flex-direction: column; justify-content: center; }
 .chapter-decorations { position: relative; width: 100%; min-height: 1em; }
 .chapter-decorations.header-overlay { position: absolute; inset: 0; height: 12em; overflow: hidden; z-index: 0; }
+.chapter-decorations.header-overlay .chapter-decoration { max-height: none; }
 .chapter-decoration { display: block; max-height: 12em; object-fit: contain; }
 .chapter-heading h1 { margin: 0; font-family: ${theme.chapterHeading.titleFont}, serif; font-size: ${theme.chapterHeading.titleSize}pt; font-weight: ${theme.chapterHeading.titleWeight}; }
 .chapter-number { margin: 0 0 .75em; font-family: ${theme.chapterHeading.numberFont}, serif; font-size: ${theme.chapterHeading.numberSize}pt; }
