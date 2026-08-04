@@ -2,7 +2,7 @@
   "name": "typesetly",
   "private": true,
   "version": "1.2.3",
-  "hotpatchRevision": 0,
+  "hotpatchRevision": 6,
   "description": "A local-first desktop studio for writing, formatting, previewing, and exporting books",
   "author": {
     "name": "Typesetly Contributors",
@@ -74,7 +74,7 @@
   "build": {
     "buildVersion": "1.2.3.0",
     "extraMetadata": {
-      "hotpatchRevision": 0
+      "hotpatchRevision": 6
     },
     "appId": "io.github.jorda.typesetly",
     "productName": "Typesetly",
