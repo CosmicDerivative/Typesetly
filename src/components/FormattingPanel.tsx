@@ -10,7 +10,7 @@ import { processImageFile } from '../images/process'
 import { dataUrlToBlob, imageRef } from '../library/images'
 import { storeNewImage } from '../library/store'
 import { useResolvedImageSrc } from '../library/useResolvedImageSrc'
-import { chapterDecorations, chapterOverlayInsets } from '../themes/chapterDecorations'
+import { chapterDecorations } from '../themes/chapterDecorations'
 import { ChapterDecorations } from './ChapterDecorations'
 import './ChapterDecorations.css'
 
@@ -49,7 +49,6 @@ function ThemeSample({ theme, className = '' }: { theme: BookTheme; className?: 
   const chapterNumber = previewChapterNumber(theme)
   const decorations = chapterDecorations(theme.chapterHeading)
   const hasOverlay = decorations.some((decoration) => decoration.placement === 'header-overlay')
-  const overlayInsets = chapterOverlayInsets(decorations)
   const dropCap = theme.paragraph.dropCaps
   const leadInSmallCaps = theme.paragraph.leadInSmallCaps
   const bodySize = Math.max(1, theme.typography.bodySize)
@@ -68,13 +67,7 @@ function ThemeSample({ theme, className = '' }: { theme: BookTheme; className?: 
       }}
     >
       <ChapterDecorations decorations={decorations} placement="above-heading" />
-      <div
-        className={`theme-heading-composition${hasOverlay ? ' has-overlay' : ''}`}
-        style={{
-          '--heading-left-inset': `${overlayInsets.left}%`,
-          '--heading-right-inset': `${overlayInsets.right}%`,
-        } as CSSProperties}
-      >
+      <div className={`theme-heading-composition${hasOverlay ? ' has-overlay' : ''}`}>
         <ChapterDecorations decorations={decorations} placement="header-overlay" />
         <div className="theme-heading-content">
           {theme.chapterHeading.imageEnabled && theme.chapterHeading.sharedImageDataUrl && (

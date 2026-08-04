@@ -6,8 +6,11 @@ import type { BookProject, BookTheme, Chapter, ExportResult } from '../types'
 import { litRpgFreeformExportMarkup, litRpgIsTranslucent, litRpgUsesBoxedFields } from './litrpgExport'
 import { preflightBook } from './preflight'
 import { tableOfContentsEntries } from './toc'
+import { epubTitlePageMarkup, epubTypeForPage, stripEpubAuthoringAttributes } from './epubMatter'
 import { chapterDecorations } from '../themes/chapterDecorations'
 import {
+  createEpubImageRegistry,
+  epubChapterDecorationStyle,
   epubImageDataUrlParts,
   epubImageHrefMatchesMediaType,
   pageUsesChapterThemeArtwork,
@@ -43,7 +46,7 @@ function fontDataParts(dataUrl: string) {
 function chapterBody(
   chapter: Chapter,
   theme: BookTheme,
-  imageFiles: Array<{ id: string; href: string; mediaType: string; base64: string }>,
+  addImage: ReturnType<typeof createEpubImageRegistry>['add'],
   noteCounter: { value: number },
 ) {
   const documentValue = new DOMParser().parseFromString(chapter.content, 'text/html')
@@ -54,10 +57,8 @@ function chapterBody(
     const image = element as HTMLImageElement
     const parsed = epubImageDataUrlParts(image.src)
     if (!parsed) continue
-    const id = `image-${imageFiles.length + 1}`
-    const href = `images/${id}.${parsed.extension}`
-    imageFiles.push({ id, href, mediaType: parsed.mediaType, base64: parsed.base64 })
-    image.setAttribute('src', `../${href}`)
+    const packaged = addImage(parsed)
+    image.setAttribute('src', `../${packaged.href}`)
     const decorative = image.dataset.decorative === 'true'
     image.setAttribute('alt', decorative ? '' : image.getAttribute('alt') || '')
     image.setAttribute('class', `content-image image-${image.dataset.layout || 'inline'}`)
@@ -117,10 +118,8 @@ function chapterBody(
     if (theme.sceneBreak.style === 'ornament' && theme.sceneBreak.customImageDataUrl) {
       const image = epubImageDataUrlParts(theme.sceneBreak.customImageDataUrl)
       if (image) {
-        const id = `image-${imageFiles.length + 1}`
-        const href = `images/${id}.${image.extension}`
-        imageFiles.push({ id, href, mediaType: image.mediaType, base64: image.base64 })
-        ornament = `<img class="scene-image" src="../${href}" alt="" />`
+        const packaged = addImage(image)
+        ornament = `<img class="scene-image" src="../${packaged.href}" alt="" />`
       }
     }
     sceneBreak.outerHTML =
@@ -170,6 +169,8 @@ function chapterBody(
     if (!element.getAttribute('style')?.trim()) element.removeAttribute('style')
   }
 
+  stripEpubAuthoringAttributes(documentValue.body)
+
   let content = documentValue.body.innerHTML
     .replace(/<img([^>]*?)(?<!\/)>/gi, '<img$1 />')
     .replace(/<br([^>]*?)(?<!\/)>/gi, '<br$1 />')
@@ -208,7 +209,8 @@ export async function exportProjectToEpub(project: BookProject, theme: BookTheme
 
   const oebps = zip.folder('OEBPS')!
   const textFolder = oebps.folder('text')!
-  const imageFiles: Array<{ id: string; href: string; mediaType: string; base64: string }> = []
+  const imageRegistry = createEpubImageRegistry()
+  const imageFiles = imageRegistry.files
   const manifest: string[] = [
     '<item id="css" href="styles/stylesheet.css" media-type="text/css" />',
     '<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav" />',
@@ -226,7 +228,7 @@ export async function exportProjectToEpub(project: BookProject, theme: BookTheme
   const chapterLinks = new Map(chapters.map((chapter, index) => [`#chapter-${chapter.id}`, `chapter-${index + 1}.xhtml#chapter-${chapter.id}`]))
   const preparedChapters = chapters.map((chapter) => ({
     chapter,
-    parsed: chapterBody(chapter, theme, imageFiles, noteCounter),
+    parsed: chapterBody(chapter, theme, imageRegistry.add, noteCounter),
   }))
   const preparedById = new Map(preparedChapters.map((entry) => [entry.chapter.id, entry]))
   const hasBookEndNotes =
@@ -261,24 +263,10 @@ export async function exportProjectToEpub(project: BookProject, theme: BookTheme
     for (const decoration of usesChapterArtwork ? chapterDecorations(theme.chapterHeading) : []) {
       const image = epubImageDataUrlParts(decoration.imageDataUrl)
       if (!image) continue
-      const imageId = `image-${imageFiles.length + 1}`
-      const imageHref = `images/${imageId}.${image.extension}`
-      imageFiles.push({ id: imageId, href: imageHref, mediaType: image.mediaType, base64: image.base64 })
-      const flowAlignment = decoration.align === 'center'
-        ? 'margin-left:auto;margin-right:auto;'
-        : decoration.align === 'right'
-          ? 'margin-left:auto;'
-          : 'margin-right:auto;'
-      const overlayPosition = decoration.placement === 'header-overlay'
-        ? decoration.align === 'center'
-          ? `position:absolute;top:0;left:50%;transform:translate(calc(-50% + ${decoration.offsetX}%),${decoration.offsetY}px) rotate(${decoration.rotation}deg);`
-          : decoration.align === 'right'
-            ? `position:absolute;top:0;right:0;transform:translate(${decoration.offsetX}%,${decoration.offsetY}px) rotate(${decoration.rotation}deg);`
-            : `position:absolute;top:0;left:0;transform:translate(${decoration.offsetX}%,${decoration.offsetY}px) rotate(${decoration.rotation}deg);`
-        : `transform:translate(${decoration.offsetX}%,${decoration.offsetY}px) rotate(${decoration.rotation}deg);${flowAlignment}`
-      const style = `width:${decoration.width}%;opacity:${decoration.opacity / 100};${overlayPosition}`
+      const packaged = imageRegistry.add(image)
+      const style = epubChapterDecorationStyle(decoration)
       const values = decorationMarkup.get(decoration.placement) || []
-      values.push(`<img class="chapter-decoration" src="../${imageHref}" alt="" style="${style}" />`)
+      values.push(`<img class="chapter-decoration" src="../${packaged.href}" alt="" style="${style}" />`)
       decorationMarkup.set(decoration.placement, values)
     }
     const decorationsAt = (placement: string) => {
@@ -289,19 +277,19 @@ export async function exportProjectToEpub(project: BookProject, theme: BookTheme
     if (chapterImage && theme.chapterHeading.imageEnabled && !chapter.options.hideChapterImage) {
       const image = epubImageDataUrlParts(chapterImage)
       if (image) {
-        const imageId = `image-${imageFiles.length + 1}`
-        const imageHref = `images/${imageId}.${image.extension}`
-        imageFiles.push({ id: imageId, href: imageHref, mediaType: image.mediaType, base64: image.base64 })
+        const packaged = imageRegistry.add(image)
         const alt = chapter.imageAlt || ''
         const layout = chapter.imageLayout || 'inline'
-        imageMarkup = `<figure class="chapter-image-wrap image-${layout}"><img class="chapter-image" src="../${imageHref}" alt="${escapeXml(alt)}" />${chapter.imageCaption ? `<figcaption>${escapeXml(chapter.imageCaption)}</figcaption>` : ''}</figure>`
+        imageMarkup = `<figure class="chapter-image-wrap image-${layout}"><img class="chapter-image" src="../${packaged.href}" alt="${escapeXml(alt)}" />${chapter.imageCaption ? `<figcaption>${escapeXml(chapter.imageCaption)}</figcaption>` : ''}</figure>`
       }
     }
 
     const hasHeadingOverlay = Boolean(decorationMarkup.get('header-overlay')?.length)
-    const headingMarkup = chapter.options.hideChapterHeading
-      ? ''
-      : `<div class="chapter-heading-composition${hasHeadingOverlay ? ' has-overlay' : ''}">${decorationsAt('above-heading')}${decorationsAt('header-overlay')}<header class="chapter-heading">
+    const headingMarkup = chapter.type === 'title-page'
+      ? epubTitlePageMarkup(project.details)
+      : chapter.options.hideChapterHeading
+        ? ''
+        : `<div class="chapter-heading-composition${hasHeadingOverlay ? ' has-overlay' : ''}">${decorationsAt('above-heading')}${decorationsAt('header-overlay')}<header class="chapter-heading">
           ${imageMarkup}
           ${heading.number ? `<p class="chapter-number">${escapeXml(heading.number)}</p>` : ''}
           ${heading.title ? `<h1>${escapeXml(heading.title)}</h1>` : ''}
@@ -321,7 +309,7 @@ export async function exportProjectToEpub(project: BookProject, theme: BookTheme
 
     const chapterXhtml = xhtml(
         chapter.title,
-        `<section id="chapter-${chapter.id}" class="chapter" epub:type="${chapter.type === 'chapter' ? 'chapter' : chapter.type}">${headingMarkup}${parsed.content}${notesMarkup}${decorationsAt('chapter-footer')}</section>`,
+        `<section id="chapter-${chapter.id}" class="chapter page-${chapter.type}" epub:type="${epubTypeForPage(chapter.type)}">${headingMarkup}${parsed.content}${notesMarkup}${decorationsAt('chapter-footer')}</section>`,
         project.details.language || 'en',
       )
     textFolder.file(`${itemId}.xhtml`, chapterXhtml)
@@ -356,7 +344,7 @@ export async function exportProjectToEpub(project: BookProject, theme: BookTheme
     const cover = epubImageDataUrlParts(project.details.coverDataUrl)
     if (cover) {
       const href = `images/cover.${cover.extension}`
-      imageFiles.push({ id: 'cover-image', href, mediaType: cover.mediaType, base64: cover.base64 })
+      imageRegistry.addNamed(cover, 'cover-image', href)
       coverMetadata = '<meta name="cover" content="cover-image" />'
     }
   }
@@ -389,6 +377,10 @@ export async function exportProjectToEpub(project: BookProject, theme: BookTheme
     'stylesheet.css',
     `${embeddedFontCss}@page { margin: 1em; }
 body { margin: 0; font-family: ${theme.typography.bodyFont}, serif; font-size: ${theme.typography.bodySize}pt; line-height: ${theme.typography.lineSpacing}; text-align: ${theme.paragraph.bodyAlign}; hyphens: ${theme.print.hyphens ? 'auto' : 'none'}; -webkit-hyphens: ${theme.print.hyphens ? 'auto' : 'none'}; overflow-wrap: break-word; }
+.title-page { min-height: 80vh; display: flex; box-sizing: border-box; padding: 18vh 1em 2em; flex-direction: column; align-items: center; text-align: center; }
+.title-page h1 { margin: 0; font-family: ${theme.chapterHeading.titleFont}, serif; font-size: ${Math.max(theme.chapterHeading.titleSize, 24)}pt; }
+.title-page .book-subtitle, .title-page .book-series, .title-page .book-author { margin: 0.75em 0 0; }
+.title-page .book-author { margin-top: 2em; }
 .chapter-heading { text-align: ${theme.chapterHeading.titleAlign}; margin: 3em 0 2em; }
 .chapter-heading-composition { position: relative; break-before: page; }
 .chapter-heading-composition > .chapter-heading { position: relative; z-index: 1; }

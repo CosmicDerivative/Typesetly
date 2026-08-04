@@ -1,15 +1,11 @@
 import type { CSSProperties } from 'react'
 import type { ThemeChapterDecoration } from '../types'
 import { useResolvedImageSrc } from '../library/useResolvedImageSrc'
+import { chapterDecorationAnchorTransform } from '../themes/chapterDecorations'
 
 function DecorationImage({ decoration }: { decoration: ThemeChapterDecoration }) {
   const src = useResolvedImageSrc(decoration.imageDataUrl)
   if (!src) return null
-  const alignTransform = decoration.align === 'center'
-    ? 'translateX(-50%)'
-    : decoration.align === 'right'
-      ? 'translateX(-100%)'
-      : ''
   const style = {
     '--decoration-width': `${decoration.width}%`,
     '--decoration-x': `${decoration.offsetX}%`,
@@ -17,7 +13,7 @@ function DecorationImage({ decoration }: { decoration: ThemeChapterDecoration })
     '--decoration-opacity': decoration.opacity / 100,
     '--decoration-rotation': `${decoration.rotation}deg`,
     '--decoration-anchor': decoration.align === 'left' ? '0%' : decoration.align === 'right' ? '100%' : '50%',
-    '--decoration-anchor-transform': alignTransform,
+    '--decoration-anchor-transform': chapterDecorationAnchorTransform(decoration.align),
     marginLeft: decoration.align === 'center' || decoration.align === 'right' ? 'auto' : undefined,
     marginRight: decoration.align === 'center' || decoration.align === 'left' ? 'auto' : undefined,
   } as CSSProperties

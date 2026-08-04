@@ -12,7 +12,7 @@ import { DrawerControls } from './DrawerControls'
 import { useResolvedImageSrc } from '../library/useResolvedImageSrc'
 import { colorWithOpacity, litRpgElementKey } from '../editor/litrpg'
 import { litRpgIsTranslucent } from '../export/litrpgExport'
-import { chapterDecorations, chapterOverlayInsets } from '../themes/chapterDecorations'
+import { chapterDecorations } from '../themes/chapterDecorations'
 import { ChapterDecorations } from './ChapterDecorations'
 import './ChapterDecorations.css'
 
@@ -136,7 +136,6 @@ export function Previewer() {
   const theme = activeTheme
   const decorations = chapterDecorations(theme.chapterHeading)
   const hasHeadingOverlay = decorations.some((item) => item.placement === 'header-overlay')
-  const headingOverlayInsets = chapterOverlayInsets(decorations)
   const deviceClass = `device ${profile.family} ${profile.color ? 'color-screen' : 'eink-screen'}`
   const goToScreen = (page: number) => {
     setScreenPage(Math.max(1, Math.min(screenPages, page)))
@@ -352,13 +351,7 @@ export function Previewer() {
               {activeChapter.type === 'chapter' && (
                 <ChapterDecorations decorations={decorations} placement="above-heading" />
               )}
-              <div
-                className={`preview-heading-composition${hasHeadingOverlay && activeChapter.type === 'chapter' ? ' has-overlay' : ''}`}
-                style={activeChapter.type === 'chapter' ? {
-                  '--heading-left-inset': `${headingOverlayInsets.left}%`,
-                  '--heading-right-inset': `${headingOverlayInsets.right}%`,
-                } as CSSProperties : undefined}
-              >
+              <div className={`preview-heading-composition${hasHeadingOverlay && activeChapter.type === 'chapter' ? ' has-overlay' : ''}`}>
                 {activeChapter.type === 'chapter' && (
                   <ChapterDecorations decorations={decorations} placement="header-overlay" />
                 )}

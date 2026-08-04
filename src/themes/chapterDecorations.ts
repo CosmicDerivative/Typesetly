@@ -36,30 +36,12 @@ export function chapterDecorations(heading: ThemeChapterHeading) {
 }
 
 /**
- * Reserve limited horizontal room for small artwork anchored beside a chapter
- * heading. Wide artwork is treated as a banner/background and stays behind
- * the full-width heading instead of forcing the title into a narrow column.
+ * Return an explicit transform for every alignment. The left value must not be
+ * an empty custom property: an omitted value makes CSS use the centered
+ * fallback and shifts a full-width banner halfway off the page.
  */
-export function chapterOverlayInsets(decorations: ThemeChapterDecoration[]) {
-  let left = 0
-  let right = 0
-
-  for (const decoration of decorations) {
-    if (decoration.placement !== 'header-overlay' || !decoration.imageDataUrl) continue
-    if (decoration.width > 40) continue
-    const offsetShare = decoration.width * decoration.offsetX / 100
-    if (decoration.align === 'left') left = Math.max(left, decoration.width + offsetShare)
-    if (decoration.align === 'right') right = Math.max(right, decoration.width - offsetShare)
-  }
-
-  left = clamp(left, 0, 32)
-  right = clamp(right, 0, 32)
-  const combined = left + right
-  if (combined > 56) {
-    const scale = 56 / combined
-    left *= scale
-    right *= scale
-  }
-
-  return { left, right }
+export function chapterDecorationAnchorTransform(align: ThemeChapterDecoration['align']) {
+  if (align === 'center') return 'translateX(-50%)'
+  if (align === 'right') return 'translateX(-100%)'
+  return 'translateX(0)'
 }

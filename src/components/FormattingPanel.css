@@ -178,7 +178,7 @@
   min-height: 12em;
   flex-direction: column;
   justify-content: center;
-  padding: 2em var(--heading-right-inset, 0%) 2em var(--heading-left-inset, 0%);
+  padding: 2em 0;
 }
 
 .theme-sample .chapter-decorations {

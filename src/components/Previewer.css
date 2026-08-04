@@ -232,7 +232,7 @@
   box-sizing: border-box;
   display: flex;
   min-height: 12em;
-  padding: 2em var(--heading-right-inset, 0%) 2em var(--heading-left-inset, 0%);
+  padding: 2em 0;
   flex-direction: column;
   justify-content: center;
 }
