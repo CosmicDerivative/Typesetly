@@ -79,14 +79,21 @@ jobs:
               hotpatch_revision="$packaged_revision"
             fi
           else
-            tag="$REF_NAME"
             draft="false"
-            hotpatch="false"
-            hotpatch_revision="$packaged_revision"
-            if [[ "$tag" == *-* ]]; then
-              prerelease="true"
-            else
+            if [[ "$REF_NAME" =~ ^v${version}-hotpatch\.([0-9]+)$ ]]; then
+              tag="v$version"
               prerelease="false"
+              hotpatch="true"
+              hotpatch_revision="${BASH_REMATCH[1]}"
+            else
+              tag="$REF_NAME"
+              hotpatch="false"
+              hotpatch_revision="$packaged_revision"
+              if [[ "$tag" == *-* ]]; then
+                prerelease="true"
+              else
+                prerelease="false"
+              fi
             fi
           fi
 
@@ -101,6 +108,10 @@ jobs:
           fi
           if [[ "$hotpatch" == "true" && "$hotpatch_revision" -lt 1 ]]; then
             echo "::error::A hotpatch release requires a revision of at least 1."
+            exit 1
+          fi
+          if [[ "$EVENT_NAME" != "workflow_dispatch" && "$hotpatch" == "true" && "$hotpatch_revision" != "$packaged_revision" ]]; then
+            echo "::error::Hotpatch tag revision '$hotpatch_revision' must match package.json revision '$packaged_revision'."
             exit 1
           fi
 
