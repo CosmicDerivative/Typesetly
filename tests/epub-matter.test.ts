@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { makePage } from '../src/data.ts'
-import { epubExportAttributeAllowed, epubTitlePageMarkup, epubTypeForPage } from '../src/export/epubMatter.ts'
+import { epubExportAttributeAllowed, epubParagraphLineHeight, epubPartPageMarkup, epubTitlePageMarkup, epubTypeForPage } from '../src/export/epubMatter.ts'
 import { exportableChapters } from '../src/layout/manuscript.ts'
 import type { BookProject, PageType } from '../src/types.ts'
 
@@ -21,6 +21,18 @@ test('EPUB title page is generated from escaped book metadata', () => {
   assert.match(markup, /&lt;An Ascension&gt;/)
   assert.match(markup, /The Archive · Book 2/)
   assert.match(markup, /by A\. Writer/)
+  assert.equal((markup.match(/class="title-rule"/g) || []).length, 2)
+})
+
+test('EPUB part pages render as omnibus book dividers with their own metadata', () => {
+  const part = makePage('part', 'Bonded Summoner Book 2', '<p></p>', {
+    subtitle: "Champion's Trial: A Summoner Fantasy LitRPG",
+  })
+  const markup = epubPartPageMarkup(part, 'JJ Bookerson')
+  assert.match(markup, /Bonded Summoner Book 2/)
+  assert.match(markup, /Champion&apos;s Trial/)
+  assert.match(markup, /JJ Bookerson/)
+  assert.doesNotMatch(markup, /Title Page/)
 })
 
 test('EPUB uses valid semantics for every supported front and back matter type', () => {
@@ -34,6 +46,13 @@ test('EPUB uses valid semantics for every supported front and back matter type',
   assert.equal(epubTypeForPage('title-page'), 'titlepage')
   assert.equal(epubTypeForPage('contents'), 'toc')
   assert.equal(epubTypeForPage('acknowledgements'), 'acknowledgments')
+})
+
+test('EPUB paragraph line spacing uses reader-resistant em units and safe bounds', () => {
+  assert.equal(epubParagraphLineHeight(1.6), '1.6em')
+  assert.equal(epubParagraphLineHeight(0), '0.8em')
+  assert.equal(epubParagraphLineHeight(99), '3em')
+  assert.equal(epubParagraphLineHeight(Number.NaN), '1.4em')
 })
 
 test('EPUB export selection retains enabled front, body, and back matter in book order', () => {

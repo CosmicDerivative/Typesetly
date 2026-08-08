@@ -5,8 +5,8 @@ import { decorateFirstSentenceHtml, exportableChapters, headingParts } from '../
 import type { BookProject, BookTheme, Chapter, ExportResult } from '../types'
 import { litRpgFreeformExportMarkup, litRpgIsTranslucent, litRpgUsesBoxedFields } from './litrpgExport'
 import { preflightBook } from './preflight'
-import { tableOfContentsEntries } from './toc'
-import { epubTitlePageMarkup, epubTypeForPage, stripEpubAuthoringAttributes } from './epubMatter'
+import { tableOfContentsTree, type TableOfContentsNode } from './toc'
+import { epubParagraphLineHeight, epubPartPageMarkup, epubTitlePageMarkup, epubTypeForPage, stripEpubAuthoringAttributes } from './epubMatter'
 import { chapterDecorations } from '../themes/chapterDecorations'
 import {
   createEpubImageRegistry,
@@ -191,6 +191,24 @@ function xhtml(title: string, body: string, language: string) {
 </html>`
 }
 
+function renderTocNodes(
+  nodes: TableOfContentsNode[],
+  hrefFor: (page: Chapter) => string,
+  subheadingsFor: (page: Chapter) => Array<{ id: string; text: string }>,
+): string {
+  return nodes.map((node): string => {
+    const href = hrefFor(node.page)
+    if (!href) return ''
+    const documentHref = href.split('#')[0]
+    const subheadingItems = subheadingsFor(node.page)
+      .map((heading) => `<li><a href="${escapeXml(documentHref)}#${escapeXml(heading.id)}">${escapeXml(heading.text)}</a></li>`)
+      .join('')
+    const childItems: string = renderTocNodes(node.children, hrefFor, subheadingsFor)
+    const nested: string = subheadingItems || childItems ? `<ol>${subheadingItems}${childItems}</ol>` : ''
+    return `<li><a href="${escapeXml(href)}">${escapeXml(node.page.title)}</a>${nested}</li>`
+  }).join('')
+}
+
 export async function exportProjectToEpub(project: BookProject, theme: BookTheme): Promise<ExportResult> {
   const preflight = preflightBook(project, theme)
   const blocking = preflight.filter((issue) => issue.level === 'error')
@@ -216,7 +234,6 @@ export async function exportProjectToEpub(project: BookProject, theme: BookTheme
     '<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav" />',
   ]
   const spine: string[] = []
-  const navigation: string[] = []
   const bookEndNotes: Array<{ id: string; number: number; text: string; ref: string }> = []
   const noteCounter = { value: 0 }
   const chapters = exportableChapters(project, 'ebook')
@@ -224,7 +241,7 @@ export async function exportProjectToEpub(project: BookProject, theme: BookTheme
     0,
     chapters.findIndex((chapter) => chapter.id === project.epubStartChapterId),
   )
-  const tocEntries = tableOfContentsEntries(chapters)
+  const tocTree = tableOfContentsTree(chapters)
   const chapterLinks = new Map(chapters.map((chapter, index) => [`#chapter-${chapter.id}`, `chapter-${index + 1}.xhtml#chapter-${chapter.id}`]))
   const preparedChapters = chapters.map((chapter) => ({
     chapter,
@@ -243,18 +260,11 @@ export async function exportProjectToEpub(project: BookProject, theme: BookTheme
       parsed.content = parsed.content.replaceAll(`href="${anchor}"`, `href="${destination}"`)
     }
     if (chapter.type === 'contents') {
-      parsed.content = `<nav epub:type="toc"><ol>${tocEntries
-        .map((candidate) => {
-          const targetHref = chapterLinks.get(`#chapter-${candidate.id}`)
-          if (!targetHref) return ''
-          const prepared = preparedById.get(candidate.id)
-          const targetDocumentHref = targetHref.split('#')[0]
-          const subnav = prepared?.parsed.subheadings.length
-            ? `<ol>${prepared.parsed.subheadings.map((subheading) => `<li><a href="${escapeXml(targetDocumentHref)}#${escapeXml(subheading.id)}">${escapeXml(subheading.text)}</a></li>`).join('')}</ol>`
-            : ''
-          return `<li><a href="${escapeXml(targetHref)}">${escapeXml(candidate.title)}</a>${subnav}</li>`
-        })
-        .join('')}${hasBookEndNotes ? '<li><a href="notes.xhtml">Notes</a></li>' : ''}</ol></nav>`
+      parsed.content = `<nav epub:type="toc"><ol>${renderTocNodes(
+        tocTree,
+        (page) => chapterLinks.get(`#chapter-${page.id}`) || '',
+        (page) => preparedById.get(page.id)?.parsed.subheadings || [],
+      )}${hasBookEndNotes ? '<li><a href="notes.xhtml">Notes</a></li>' : ''}</ol></nav>`
     }
     const usesChapterArtwork = pageUsesChapterThemeArtwork(chapter.type)
     const chapterImage = chapter.imageDataUrl
@@ -287,6 +297,8 @@ export async function exportProjectToEpub(project: BookProject, theme: BookTheme
     const hasHeadingOverlay = Boolean(decorationMarkup.get('header-overlay')?.length)
     const headingMarkup = chapter.type === 'title-page'
       ? epubTitlePageMarkup(project.details)
+      : chapter.type === 'part'
+        ? epubPartPageMarkup(chapter, project.details.author, imageMarkup)
       : chapter.options.hideChapterHeading
         ? ''
         : `<div class="chapter-heading-composition${hasHeadingOverlay ? ' has-overlay' : ''}">${decorationsAt('above-heading')}${decorationsAt('header-overlay')}<header class="chapter-heading">
@@ -316,12 +328,6 @@ export async function exportProjectToEpub(project: BookProject, theme: BookTheme
     xhtmlFiles.set(`text/${itemId}.xhtml`, chapterXhtml)
     manifest.push(`<item id="${itemId}" href="${href}" media-type="application/xhtml+xml" />`)
     spine.push(`<itemref idref="${itemId}"${index < startIndex ? ' linear="no"' : ''} />`)
-    if (preparedById.has(chapter.id) && tocEntries.some((entry) => entry.id === chapter.id)) {
-      const subnav = parsed.subheadings.length
-        ? `<ol>${parsed.subheadings.map((subheading) => `<li><a href="${href}#${subheading.id}">${escapeXml(subheading.text)}</a></li>`).join('')}</ol>`
-        : ''
-      navigation.push(`<li><a href="${href}">${escapeXml(chapter.title)}</a>${subnav}</li>`)
-    }
   })
 
   if (bookEndNotes.length) {
@@ -336,7 +342,6 @@ export async function exportProjectToEpub(project: BookProject, theme: BookTheme
     xhtmlFiles.set('text/notes.xhtml', notesXhtml)
     manifest.push('<item id="notes" href="text/notes.xhtml" media-type="application/xhtml+xml" />')
     spine.push('<itemref idref="notes" />')
-    navigation.push('<li><a href="text/notes.xhtml">Notes</a></li>')
   }
 
   let coverMetadata = ''
@@ -376,11 +381,13 @@ export async function exportProjectToEpub(project: BookProject, theme: BookTheme
   oebps.folder('styles')!.file(
     'stylesheet.css',
     `${embeddedFontCss}@page { margin: 1em; }
-body { margin: 0; font-family: ${theme.typography.bodyFont}, serif; font-size: ${theme.typography.bodySize}pt; line-height: ${theme.typography.lineSpacing}; text-align: ${theme.paragraph.bodyAlign}; hyphens: ${theme.print.hyphens ? 'auto' : 'none'}; -webkit-hyphens: ${theme.print.hyphens ? 'auto' : 'none'}; overflow-wrap: break-word; }
-.title-page { min-height: 80vh; display: flex; box-sizing: border-box; padding: 18vh 1em 2em; flex-direction: column; align-items: center; text-align: center; }
-.title-page h1 { margin: 0; font-family: ${theme.chapterHeading.titleFont}, serif; font-size: ${Math.max(theme.chapterHeading.titleSize, 24)}pt; }
-.title-page .book-subtitle, .title-page .book-series, .title-page .book-author { margin: 0.75em 0 0; }
-.title-page .book-author { margin-top: 2em; }
+body { margin: 0; font-family: ${theme.typography.bodyFont}, serif; font-size: ${theme.typography.bodySize}pt; line-height: 1; text-align: ${theme.paragraph.bodyAlign}; hyphens: ${theme.print.hyphens ? 'auto' : 'none'}; -webkit-hyphens: ${theme.print.hyphens ? 'auto' : 'none'}; overflow-wrap: break-word; }
+.title-page, .part-page { box-sizing: border-box; padding: 4em 1em 2em; text-align: center; }
+.title-page h1, .part-page h1 { margin: .75em 0; font-family: ${theme.chapterHeading.titleFont}, serif; font-size: ${Math.max(theme.chapterHeading.titleSize, 24)}pt; font-weight: ${theme.chapterHeading.titleWeight}; line-height: 1.15; }
+.title-rule { width: 100%; border-top: 1px solid currentColor; opacity: .6; }
+.title-page .book-subtitle, .title-page .book-series, .title-page .book-author, .part-page .part-subtitle, .part-page .part-author { margin: 1.5em 0 0; line-height: 1.3; text-indent: 0; }
+.title-page .book-author, .part-page .part-author { margin-top: 3em; font-weight: bold; }
+.part-page .chapter-image-wrap { margin: 0 auto 1.5em; }
 .chapter-heading { text-align: ${theme.chapterHeading.titleAlign}; margin: 3em 0 2em; }
 .chapter-heading-composition { position: relative; break-before: page; }
 .chapter-heading-composition > .chapter-heading { position: relative; z-index: 1; }
@@ -400,6 +407,7 @@ body { margin: 0; font-family: ${theme.typography.bodyFont}, serif; font-size: $
 .image-full-page img, .image-two-page img, img.image-full-page, img.image-two-page { width: 100% !important; max-height: 95vh; object-fit: contain; }
 figcaption { margin-top: .4em; font-size: .85em; font-style: italic; }
 p { margin: ${theme.paragraph.paragraphStyle === 'indent' ? '0' : '0 0 .8em'}; ${theme.paragraph.paragraphStyle === 'indent' ? 'text-indent: 1.2em;' : ''} widows: 2; orphans: 2; word-spacing: normal; }
+.chapter > p { line-height: ${epubParagraphLineHeight(theme.typography.lineSpacing)}; }
 p:first-of-type { text-indent: 0; }
 .dropcap { float: left; font-size: 2.8em; line-height: .86; padding: .06em .09em 0 0; }
 .lead-in { font-variant: small-caps; letter-spacing: .04em; }
@@ -468,7 +476,14 @@ h2,h3,h4,h5,h6 { font-family: ${theme.subheading.font}, serif; text-align: ${the
   const navXhtml = `<?xml version="1.0" encoding="UTF-8"?>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
 <head><title>Contents</title></head>
-<body><nav epub:type="toc" id="toc"><h1>Contents</h1><ol>${navigation.join('')}</ol></nav></body>
+<body><nav epub:type="toc" id="toc"><h1>Contents</h1><ol>${renderTocNodes(
+      tocTree,
+      (page) => {
+        const index = chapters.findIndex((candidate) => candidate.id === page.id)
+        return index < 0 ? '' : `text/chapter-${index + 1}.xhtml#chapter-${page.id}`
+      },
+      (page) => preparedById.get(page.id)?.parsed.subheadings || [],
+    )}${bookEndNotes.length ? '<li><a href="text/notes.xhtml">Notes</a></li>' : ''}</ol></nav></body>
 </html>`
   oebps.file('nav.xhtml', navXhtml)
   xhtmlFiles.set('nav.xhtml', navXhtml)

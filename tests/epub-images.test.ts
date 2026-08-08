@@ -27,7 +27,7 @@ test('EPUB image resources keep extensions consistent with their media type', ()
 
 test('shared chapter artwork never leaks onto front or back matter pages', () => {
   assert.equal(pageUsesChapterThemeArtwork('chapter'), true)
-  assert.equal(pageUsesChapterThemeArtwork('part'), true)
+  assert.equal(pageUsesChapterThemeArtwork('part'), false)
   assert.equal(pageUsesChapterThemeArtwork('title-page'), false)
   assert.equal(pageUsesChapterThemeArtwork('contents'), false)
   assert.equal(pageUsesChapterThemeArtwork('copyright'), false)

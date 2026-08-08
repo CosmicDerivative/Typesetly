@@ -155,6 +155,9 @@ export function EditorPane() {
     activeChapter?.imageDataUrl || activeTheme.chapterHeading.sharedImageDataUrl
   const chapterOrnamentSrc = useResolvedImageSrc(chapterOrnamentSource)
   const themeChapterDecorations = chapterDecorations(activeTheme.chapterHeading)
+  const hasHeaderOverlay = themeChapterDecorations.some(
+    (decoration) => decoration.placement === 'header-overlay' && decoration.imageDataUrl,
+  )
   const [editor, setEditor] = useState<Editor | null>(null)
   const [draftPageTotal, setDraftPageTotal] = useState(1)
   const [crossPageSelection, setCrossPageSelection] =
@@ -998,7 +1001,7 @@ export function EditorPane() {
             onPageCountChange={setDraftPageTotal}
             onCrossPageSelectionChange={setCrossPageSelection}
             firstPageChrome={(
-              <div className="chapter-meta">
+              <div className={`chapter-meta${hasHeaderOverlay ? ' has-header-overlay' : ''}`}>
                 {!isFrontOrSpecial && <ChapterDecorations decorations={themeChapterDecorations} placement="above-heading" />}
                 {!isFrontOrSpecial && <ChapterDecorations decorations={themeChapterDecorations} placement="header-overlay" />}
                 {!isFrontOrSpecial &&
@@ -1012,11 +1015,15 @@ export function EditorPane() {
                   </div>
                 )}
                 <div className="chapter-titles">
-                  <input
+                  <textarea
                     className="chapter-title-input"
                     value={activeChapter.title}
                     onChange={(e) => updateChapterTitle(activeChapter.id, e.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') event.preventDefault()
+                    }}
                     placeholder="Chapter title"
+                    rows={1}
                     data-lt-active="false"
                   />
                   {(activeChapter.type === 'chapter' || activeChapter.type === 'part') && (

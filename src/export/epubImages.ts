@@ -65,7 +65,7 @@ export function epubImageDataUrlParts(dataUrl: string) {
 }
 
 export function pageUsesChapterThemeArtwork(type: PageType) {
-  return type === 'chapter' || type === 'part'
+  return type === 'chapter'
 }
 
 export function epubChapterDecorationStyle(decoration: ThemeChapterDecoration) {

@@ -1,4 +1,4 @@
-import type { BookProject, PageType } from '../types'
+import type { BookProject, Chapter, PageType } from '../types'
 
 function escapeXml(value: string) {
   return value
@@ -36,16 +36,35 @@ export function epubTypeForPage(type: PageType) {
   return EPUB_PAGE_TYPES[type] || 'bodymatter'
 }
 
+export function epubParagraphLineHeight(value: number) {
+  const spacing = Number.isFinite(value) ? Math.min(3, Math.max(0.8, value)) : 1.4
+  return `${spacing}em`
+}
+
 /** EPUB title pages are generated from Book Details, matching PDF and DOCX. */
 export function epubTitlePageMarkup(details: BookProject['details']) {
   const series = details.seriesName
     ? `${details.seriesName}${details.seriesNumber != null ? ` · Book ${details.seriesNumber}` : ''}`
     : ''
   return `<header class="title-page">
+    <div class="title-rule" aria-hidden="true"></div>
     <h1>${escapeXml(details.title)}</h1>
+    <div class="title-rule" aria-hidden="true"></div>
     ${details.subtitle ? `<p class="book-subtitle">${escapeXml(details.subtitle)}</p>` : ''}
     ${series ? `<p class="book-series">${escapeXml(series)}</p>` : ''}
     ${details.author ? `<p class="book-author">by ${escapeXml(details.author)}</p>` : ''}
+  </header>`
+}
+
+/** Parts act as book/volume dividers in omnibuses rather than giant chapters. */
+export function epubPartPageMarkup(page: Chapter, author: string, imageMarkup = '') {
+  return `<header class="part-page">
+    <div class="title-rule" aria-hidden="true"></div>
+    ${imageMarkup}
+    <h1>${escapeXml(page.title)}</h1>
+    <div class="title-rule" aria-hidden="true"></div>
+    ${page.subtitle ? `<p class="part-subtitle">${escapeXml(page.subtitle)}</p>` : ''}
+    ${author ? `<p class="part-author">${escapeXml(author)}</p>` : ''}
   </header>`
 }
 

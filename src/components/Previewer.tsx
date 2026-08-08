@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useApp } from '../BookContext'
 import type { PreviewDevice } from '../types'
 import './Previewer.css'
-import { decorateFirstSentenceHtml, headingParts, parseManuscript, type ManuscriptBlock } from '../layout/manuscript'
+import { decorateFirstSentenceHtml, exportableChapters, headingParts, parseManuscript, type ManuscriptBlock } from '../layout/manuscript'
 import { layoutShowsPageNumber, runningHeaderAlignment, runningHeaderText } from '../layout/runningHeaders'
 import { preflightBook } from '../export/preflight'
 import { DEVICE_PROFILES, profileDescription, renderedDeviceWidth } from '../preview/devices'
@@ -15,6 +15,20 @@ import { litRpgIsTranslucent } from '../export/litrpgExport'
 import { chapterDecorations } from '../themes/chapterDecorations'
 import { ChapterDecorations } from './ChapterDecorations'
 import './ChapterDecorations.css'
+import { tableOfContentsTree, type TableOfContentsNode } from '../export/toc'
+
+function PreviewContentsList({ nodes }: { nodes: TableOfContentsNode[] }) {
+  return (
+    <ol>
+      {nodes.map((node) => (
+        <li key={node.page.id}>
+          <span>{node.page.title}</span>
+          {node.children.length > 0 && <PreviewContentsList nodes={node.children} />}
+        </li>
+      ))}
+    </ol>
+  )
+}
 
 export function Previewer() {
   const {
@@ -44,7 +58,9 @@ export function Previewer() {
   const swipeStartXRef = useRef<number | null>(null)
   const preflight = useMemo(() => project ? preflightBook(project, activeTheme) : [], [activeTheme, project])
   const previewOrnamentSrc = useResolvedImageSrc(
-    activeChapter?.imageDataUrl || activeTheme.chapterHeading.sharedImageDataUrl,
+    activeChapter?.type === 'chapter'
+      ? activeChapter.imageDataUrl || activeTheme.chapterHeading.sharedImageDataUrl
+      : activeChapter?.imageDataUrl,
   )
   const sceneBreakImageSrc = useResolvedImageSrc(activeTheme.sceneBreak.customImageDataUrl)
 
@@ -61,15 +77,14 @@ export function Previewer() {
       return { notes: [], blocks: [] as ManuscriptBlock[] }
     }
     if (activeChapter.type === 'contents') {
-      return {
-        notes: [],
-        blocks: project.chapters
-          .filter((chapter) => (chapter.type === 'chapter' || chapter.type === 'part') && !chapter.options.hideInToc)
-          .map((chapter) => ({ type: 'paragraph' as const, text: chapter.title, html: chapter.title })),
-      }
+      return { notes: [], blocks: [] as ManuscriptBlock[] }
     }
     return parseManuscript(activeChapter.content)
   }, [activeChapter, project])
+  const previewTocTree = useMemo(
+    () => project ? tableOfContentsTree(exportableChapters(project, 'ebook')) : [],
+    [project],
+  )
 
   const profile = DEVICE_PROFILES[previewDevice]
   const portraitWidth = previewDevice === 'Print' ? activeTheme.print.trimWidthIn * 72 : profile.logicalWidth
@@ -336,7 +351,9 @@ export function Previewer() {
               )}
             {activeChapter?.type === 'title-page' ? (
               <div className="preview-title-page">
+                <div className="preview-title-rule" aria-hidden="true" />
                 <h1>{project.details.title || 'Untitled Book'}</h1>
+                <div className="preview-title-rule" aria-hidden="true" />
                 {project.details.subtitle && <p>{project.details.subtitle}</p>}
                 {project.details.seriesName && (
                   <span className="preview-series">
@@ -345,6 +362,19 @@ export function Previewer() {
                   </span>
                 )}
                 <strong>{project.details.author || 'Author'}</strong>
+              </div>
+            ) : activeChapter?.type === 'part' ? (
+              <div className="preview-part-page">
+                <div className="preview-title-rule" aria-hidden="true" />
+                {theme.chapterHeading.imageEnabled && !activeChapter.options.hideChapterImage && previewOrnamentSrc && (
+                  <figure className="preview-part-image">
+                    <img src={previewOrnamentSrc} alt={activeChapter.imageAlt || ''} />
+                  </figure>
+                )}
+                <h1>{activeChapter.title}</h1>
+                <div className="preview-title-rule" aria-hidden="true" />
+                {activeChapter.subtitle && <p>{activeChapter.subtitle}</p>}
+                {project.details.author && <strong>{project.details.author}</strong>}
               </div>
             ) : activeChapter && (
               <>
@@ -425,7 +455,11 @@ export function Previewer() {
             )}
 
             <div className="preview-body">
-              {previewContent.blocks.length === 0 ? (
+              {activeChapter?.type === 'contents' ? (
+                <nav className="preview-contents" aria-label="Table of contents">
+                  <PreviewContentsList nodes={previewTocTree} />
+                </nav>
+              ) : previewContent.blocks.length === 0 ? (
                 <p className="preview-para muted">Nothing to preview yet.</p>
               ) : (
                 previewContent.blocks.map((b, i) => {
