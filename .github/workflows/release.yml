@@ -258,9 +258,19 @@ jobs:
           foreach ($package in @($setup, $portable)) {
             # Force the embedded payload format. Without -t7z, some runner
             # versions identify only the outer NSIS executable.
-            $listing = (& 7z l -t7z $package.FullName) -join "`n"
+            $listing = (& 7z l -slt -t7z $package.FullName) -join "`n"
             if ($listing -notmatch 'Typesetly\.exe' -or $listing -notmatch 'ffmpeg\.dll') {
               throw "$($package.Name) does not contain a complete application payload."
+            }
+
+            # electron-builder 26.15.3 allowed 7-Zip to select BCJ2/ARM64
+            # filters that NSIS could list but could not extract at install time.
+            # The result was an apparently successful install containing only
+            # the uninstaller. 26.15.6 pins the embedded application archive to
+            # the NSIS-compatible single-stream BCJ filter.
+            $archiveMethod = ($listing -split "`r?`n" | Where-Object { $_ -match '^Method = \S' } | Select-Object -First 1)
+            if ($archiveMethod -notmatch '\bBCJ\b' -or $archiveMethod -match '\bBCJ2\b|\bARM64\b') {
+              throw "$($package.Name) uses an NSIS-incompatible payload method: $archiveMethod"
             }
           }
 

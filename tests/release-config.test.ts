@@ -40,14 +40,20 @@ test('Windows releases build native x64 and ARM64 installers', () => {
   }
 })
 
+test('Windows packages use the electron-builder release with the ARM64 NSIS payload fix', () => {
+  assert.equal(packageValue.devDependencies?.['electron-builder'], '26.15.6')
+})
+
 test('Windows release jobs publish isolated updater channels and validate payloads', () => {
   assert.match(releaseWorkflow, /platform: windows-x64/)
   assert.match(releaseWorkflow, /platform: windows-arm64/)
   assert.match(releaseWorkflow, /release\/latest-x64\.yml/)
   assert.match(releaseWorkflow, /release\/latest-arm64\.yml/)
   assert.match(releaseWorkflow, /Verify Windows package payload/)
-  assert.match(releaseWorkflow, /7z l -t7z/)
+  assert.match(releaseWorkflow, /7z l -slt -t7z/)
   assert.match(releaseWorkflow, /Typesetly\.exe/)
+  assert.match(releaseWorkflow, /NSIS-incompatible payload method/)
+  assert.match(releaseWorkflow, /\\bBCJ2\\b\|\\bARM64\\b/)
   assert.match(releaseWorkflow, /0xAA64/)
   assert.match(releaseWorkflow, /0x8664/)
   assert.match(releaseWorkflow, /obsolete_windows_assets/)
