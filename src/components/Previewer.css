@@ -179,7 +179,7 @@
 
 .preview-para.space {
   text-indent: 0;
-  margin-bottom: .8em;
+  margin-bottom: var(--paragraph-spacing, .8em);
 }
 
 .scene-ornament {

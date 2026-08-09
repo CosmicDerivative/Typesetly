@@ -1,4 +1,5 @@
 import type { BookTheme } from '../types.ts'
+import { DEFAULT_PARAGRAPH_SPACING_EM } from './paragraph.ts'
 
 const defaults: Omit<BookTheme, 'id' | 'name'> = {
   preset: true,
@@ -30,6 +31,7 @@ const defaults: Omit<BookTheme, 'id' | 'name'> = {
     leadInSmallCaps: false,
     firstSentenceMode: 'chapter',
     paragraphStyle: 'indent',
+    paragraphSpacingEm: DEFAULT_PARAGRAPH_SPACING_EM,
     bodyAlign: 'justify',
   },
   subheading: {
@@ -123,6 +125,7 @@ export const PRESET_THEMES: BookTheme[] = [
     typography: { bodyFont: 'Georgia', bodySize: 11, lineSpacing: 1.45 },
     sceneBreak: { style: 'space', ornament: '', size: 16 },
     paragraph: {
+      ...defaults.paragraph,
       dropCaps: false,
       leadInSmallCaps: true,
       firstSentenceMode: 'chapter',
@@ -187,6 +190,7 @@ export const PRESET_THEMES: BookTheme[] = [
     sceneBreak: { style: 'ornament', ornament: '◇', size: 14 },
     typography: { bodyFont: 'Georgia', bodySize: 11, lineSpacing: 1.4 },
     paragraph: {
+      ...defaults.paragraph,
       dropCaps: false,
       leadInSmallCaps: false,
       firstSentenceMode: 'chapter',
@@ -240,6 +244,7 @@ export const PRESET_THEMES: BookTheme[] = [
       imageAlign: 'left',
     },
     paragraph: {
+      ...defaults.paragraph,
       dropCaps: false,
       leadInSmallCaps: false,
       firstSentenceMode: 'chapter',
@@ -286,6 +291,7 @@ export const PRESET_THEMES: BookTheme[] = [
       backgroundOpacity: 0.2,
     },
     paragraph: {
+      ...defaults.paragraph,
       dropCaps: false,
       leadInSmallCaps: false,
       firstSentenceMode: 'chapter',
@@ -319,6 +325,7 @@ export const PRESET_THEMES: BookTheme[] = [
       imageEnabled: false,
     },
     paragraph: {
+      ...defaults.paragraph,
       dropCaps: false,
       leadInSmallCaps: false,
       firstSentenceMode: 'chapter',
@@ -353,6 +360,7 @@ export const PRESET_THEMES: BookTheme[] = [
       imageAlign: 'left',
     },
     paragraph: {
+      ...defaults.paragraph,
       dropCaps: false,
       leadInSmallCaps: false,
       firstSentenceMode: 'chapter',
@@ -376,6 +384,7 @@ export const PRESET_THEMES: BookTheme[] = [
     },
     typography: { bodyFont: 'Georgia', bodySize: 16, lineSpacing: 1.6 },
     paragraph: {
+      ...defaults.paragraph,
       dropCaps: false,
       leadInSmallCaps: false,
       firstSentenceMode: 'chapter',
@@ -398,6 +407,7 @@ export const PRESET_THEMES: BookTheme[] = [
     },
     sceneBreak: { style: 'space', ornament: '', size: 12 },
     paragraph: {
+      ...defaults.paragraph,
       dropCaps: false,
       leadInSmallCaps: false,
       firstSentenceMode: 'chapter',
@@ -418,6 +428,7 @@ export const PRESET_THEMES: BookTheme[] = [
       subtitleSize: 13,
     },
     paragraph: {
+      ...defaults.paragraph,
       dropCaps: true,
       leadInSmallCaps: false,
       firstSentenceMode: 'chapter-and-scene',

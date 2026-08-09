@@ -2,6 +2,7 @@ import { countWords } from '../data'
 import type { BookProject, BookTheme, Chapter } from '../types'
 import type { DeviceProfile } from '../preview/devices'
 import { exportableChapters, parseManuscript } from './manuscript'
+import { paragraphSpacingEm } from '../themes/paragraph'
 
 function contentArea(theme: BookTheme, profile: DeviceProfile) {
   if (profile.family !== 'print') {
@@ -53,7 +54,10 @@ export function estimateChapterPages(chapter: Chapter, theme: BookTheme, profile
       lines += 4 + block.draft.rows.length + Math.ceil(textLength / Math.max(12, charactersPerLine - 8))
     } else {
       lines += Math.max(1, Math.ceil(block.text.length / charactersPerLine))
-      if (theme.paragraph.paragraphStyle === 'space') lines += .55
+      if (theme.paragraph.paragraphStyle === 'space') {
+        lines += paragraphSpacingEm(theme.paragraph.paragraphSpacingEm)
+          / Math.max(1, theme.typography.lineSpacing)
+      }
     }
   }
   if (parsed.notes.length) lines += parsed.notes.reduce((sum, note) => sum + 1 + Math.ceil(note.text.length / charactersPerLine), 2)

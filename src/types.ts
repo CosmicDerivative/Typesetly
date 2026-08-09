@@ -385,6 +385,8 @@ export interface ThemeParagraph {
   leadInSmallCaps: boolean
   firstSentenceMode: 'chapter' | 'chapter-and-scene'
   paragraphStyle: 'indent' | 'space'
+  /** Gap after each paragraph in em units when paragraphStyle is "space". */
+  paragraphSpacingEm: number
   bodyAlign: 'left' | 'justify'
 }
 

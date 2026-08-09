@@ -14,6 +14,11 @@ import { chapterDecorations } from '../themes/chapterDecorations'
 import { ChapterDecorations } from './ChapterDecorations'
 import './ChapterDecorations.css'
 import { previewLineSpacing } from '../preview/typography'
+import {
+  MAX_PARAGRAPH_SPACING_EM,
+  MIN_PARAGRAPH_SPACING_EM,
+  paragraphSpacingEm,
+} from '../themes/paragraph'
 
 function ResolvedImg({
   src,
@@ -62,7 +67,9 @@ function ThemeSample({
   const leadInSmallCaps = theme.paragraph.leadInSmallCaps
   const bodySize = Math.max(1, theme.typography.bodySize)
   const lineHeight = previewLineSpacing(theme.typography.lineSpacing)
-  const paragraphGap = theme.paragraph.paragraphStyle === 'space' ? '.8em' : '0'
+  const paragraphGap = theme.paragraph.paragraphStyle === 'space'
+    ? `${paragraphSpacingEm(theme.paragraph.paragraphSpacingEm)}em`
+    : '0'
   const imageMargin = theme.chapterHeading.imageAlign === 'center'
     ? '0 auto .5em'
     : theme.chapterHeading.imageAlign === 'right'
@@ -624,6 +631,23 @@ export function FormattingPanel() {
                 <option value="indent">Indent</option>
                 <option value="space">Space between</option>
               </select>
+            </label>
+            <label>
+              Paragraph spacing ({paragraphSpacingEm(t.paragraph.paragraphSpacingEm).toFixed(2)}em)
+              <input
+                type="number"
+                min={MIN_PARAGRAPH_SPACING_EM}
+                max={MAX_PARAGRAPH_SPACING_EM}
+                step={0.05}
+                value={paragraphSpacingEm(t.paragraph.paragraphSpacingEm)}
+                disabled={t.paragraph.paragraphStyle !== 'space'}
+                onChange={(event) => updateEditingTheme({
+                  paragraph: {
+                    ...t.paragraph,
+                    paragraphSpacingEm: paragraphSpacingEm(Number(event.target.value)),
+                  },
+                })}
+              />
             </label>
             <label>
               Body align

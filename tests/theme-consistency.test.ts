@@ -8,6 +8,10 @@ import {
   runningHeaderText,
 } from '../src/layout/runningHeaders.ts'
 import { PRESET_THEMES } from '../src/themes/presets.ts'
+import {
+  DEFAULT_PARAGRAPH_SPACING_EM,
+  paragraphSpacingEm,
+} from '../src/themes/paragraph.ts'
 
 test('all built-in themes have complete, usable print settings', () => {
   assert.equal(PRESET_THEMES.length, 17)
@@ -22,10 +26,19 @@ test('all built-in themes have complete, usable print settings', () => {
     assert.ok(theme.headerFooter.font.trim(), theme.name)
     assert.ok(theme.typography.bodySize >= 9 && theme.typography.bodySize <= 18, theme.name)
     assert.ok(theme.typography.lineSpacing >= 1.2 && theme.typography.lineSpacing <= 2, theme.name)
+    assert.ok(theme.paragraph.paragraphSpacingEm >= 0 && theme.paragraph.paragraphSpacingEm <= 3, theme.name)
     assert.ok(theme.print.trimWidthIn > theme.print.marginInside + theme.print.marginOutside + 2, theme.name)
     assert.ok(theme.print.trimHeightIn > theme.print.marginTop + theme.print.marginBottom + 3, theme.name)
     if (theme.sceneBreak.style === 'ornament') assert.ok(theme.sceneBreak.ornament.trim(), theme.name)
   }
+})
+
+test('paragraph spacing stays portable and migration safe', () => {
+  assert.equal(paragraphSpacingEm(undefined), DEFAULT_PARAGRAPH_SPACING_EM)
+  assert.equal(paragraphSpacingEm(Number.NaN), DEFAULT_PARAGRAPH_SPACING_EM)
+  assert.equal(paragraphSpacingEm(-1), 0)
+  assert.equal(paragraphSpacingEm(1.35), 1.35)
+  assert.equal(paragraphSpacingEm(9), 3)
 })
 
 test('generic chapter placeholders are never printed twice by a theme', () => {

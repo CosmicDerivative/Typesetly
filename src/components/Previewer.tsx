@@ -17,6 +17,7 @@ import { ChapterDecorations } from './ChapterDecorations'
 import './ChapterDecorations.css'
 import { tableOfContentsTree, type TableOfContentsNode } from '../export/toc'
 import { previewLineSpacing, previewReaderFontSize } from '../preview/typography'
+import { paragraphSpacingEm } from '../themes/paragraph'
 import { publishPreviewWidth } from '../preview/fit'
 
 function PreviewContentsList({ nodes }: { nodes: TableOfContentsNode[] }) {
@@ -319,6 +320,7 @@ export function Previewer() {
               '--quote-indent': `${theme.specialBlocks.quoteIndentEm}em`,
               '--quote-border': `${theme.specialBlocks.quoteBorderWidth}px`,
               '--quote-style': theme.specialBlocks.quoteItalic ? 'italic' : 'normal',
+              '--paragraph-spacing': `${paragraphSpacingEm(theme.paragraph.paragraphSpacingEm)}em`,
               ...(previewDevice === 'Print'
                 ? {
                     aspectRatio: `${theme.print.trimWidthIn} / ${theme.print.trimHeightIn}`,

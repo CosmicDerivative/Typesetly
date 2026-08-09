@@ -2,6 +2,19 @@ export interface PdfTextMeasurer {
   widthOfTextAtSize(text: string, size: number): number
 }
 
+/** Avoid the conspicuous rivers created by stretching sparse PDF lines. */
+export function pdfJustifiedWordGap(
+  availableWidth: number,
+  wordsWidth: number,
+  gapCount: number,
+  naturalSpaceWidth: number,
+) {
+  if (gapCount < 1 || naturalSpaceWidth <= 0) return null
+  const gap = (availableWidth - wordsWidth) / gapCount
+  if (gap < naturalSpaceWidth * 0.72 || gap > naturalSpaceWidth * 1.8) return null
+  return gap
+}
+
 /**
  * Wrap a paragraph while reserving space only on its first line for a
  * first-line indent. Later lines (including lines continued on another page)

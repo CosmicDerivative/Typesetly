@@ -373,6 +373,7 @@ test('chapter pages split on breaks, pack by budget, and rejoin for storage', as
     draftContentExceedsPageClip,
     draftChromeOccupiedHeight,
     draftSafeClipBottom,
+    draftSplitAtSentenceBoundary,
     estimateCharsPerPage,
     isSceneBreakBlock,
     isLitRpgBlock,
@@ -400,6 +401,15 @@ test('chapter pages split on breaks, pack by budget, and rejoin for storage', as
   assert.equal(draftContentExceedsPageClip(100.4, 100, 0.5), false)
   assert.equal(draftSafeClipBottom(100), 92)
   assert.equal(draftSafeClipBottom(100, 12), 88)
+  assert.equal(
+    draftSplitAtSentenceBoundary(
+      'It reminded him of a lion watching a gazelle just before the chase began.',
+      'Then, at the sound of heavy steps, their gaze shifted away.',
+    ),
+    true,
+  )
+  assert.equal(draftSplitAtSentenceBoundary('before the chase', 'began. Then'), false)
+  assert.equal(draftSplitAtSentenceBoundary('Dr.', 'Amara entered.'), false)
   assert.equal(draftChromeOccupiedHeight(20, 0, 12), 32)
   assert.equal(estimateCharsPerPage({
     widthPx: 720,

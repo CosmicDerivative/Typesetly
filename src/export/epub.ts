@@ -8,6 +8,7 @@ import { preflightBook } from './preflight'
 import { tableOfContentsTree, type TableOfContentsNode } from './toc'
 import { epubParagraphLineHeight, epubPartPageMarkup, epubTitlePageMarkup, epubTypeForPage, stripEpubAuthoringAttributes } from './epubMatter'
 import { chapterDecorations } from '../themes/chapterDecorations'
+import { paragraphSpacingEm } from '../themes/paragraph'
 import {
   createEpubImageRegistry,
   epubChapterDecorationStyle,
@@ -406,7 +407,7 @@ body { margin: 0; font-family: ${theme.typography.bodyFont}, serif; font-size: $
 .image-full-page, .image-two-page { break-before: page; break-after: page; margin: 0; }
 .image-full-page img, .image-two-page img, img.image-full-page, img.image-two-page { width: 100% !important; max-height: 95vh; object-fit: contain; }
 figcaption { margin-top: .4em; font-size: .85em; font-style: italic; }
-p { margin: ${theme.paragraph.paragraphStyle === 'indent' ? '0' : '0 0 .8em'}; ${theme.paragraph.paragraphStyle === 'indent' ? 'text-indent: 1.2em;' : ''} widows: 2; orphans: 2; word-spacing: normal; }
+p { margin: ${theme.paragraph.paragraphStyle === 'indent' ? '0' : `0 0 ${paragraphSpacingEm(theme.paragraph.paragraphSpacingEm)}em`}; ${theme.paragraph.paragraphStyle === 'indent' ? 'text-indent: 1.2em;' : ''} widows: 2; orphans: 2; word-spacing: normal; }
 .chapter > p { line-height: ${epubParagraphLineHeight(theme.typography.lineSpacing)}; }
 p:first-of-type { text-indent: 0; }
 .dropcap { float: left; font-size: 2.8em; line-height: .86; padding: .06em .09em 0 0; }

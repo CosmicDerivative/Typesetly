@@ -266,6 +266,20 @@ function splitOnExplicitPageBreaks(html: string) {
 }
 
 /**
+ * A maximal page split that already lands between sentences should not be
+ * moved backward merely to make the continuation occupy two rendered lines.
+ * Doing so can strand the final word of a sentence at the top of the next
+ * sheet even though it fits on the previous line.
+ */
+export function draftSplitAtSentenceBoundary(prefixText: string, suffixText: string) {
+  const prefix = prefixText.trim()
+  const suffix = suffixText.trim()
+  if (!prefix || !suffix) return false
+  if (/\b(?:Mr|Mrs|Ms|Dr|St|Jr|Sr|vs|etc)\.$/i.test(prefix)) return false
+  return /[.!?]["'’”)]*$/.test(prefix) && /^["'‘“(]*[A-Z]/.test(suffix)
+}
+
+/**
  * Split HTML into top-level blocks. Must keep void tags such as TipTap scene
  * breaks (`<hr data-typesetly-node="scene-break">`) which are neither paired
  * nor written with a trailing slash.

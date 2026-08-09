@@ -53,6 +53,7 @@ import {
   draftChromeOccupiedHeight,
   draftContentExceedsPageClip,
   draftSafeClipBottom,
+  draftSplitAtSentenceBoundary,
   draftOverflowMoveIndexPreferTrailingAfterLitRpg,
   splitChapterIntoPages,
 } from '../layout/chapterPages'
@@ -529,6 +530,11 @@ function splitParagraphForCurrentPage(
   // backward until the continuation renders as at least two lines.
   while (fittingOffset >= 0) {
     const boundary = offsets[fittingOffset]!
+    const prefix = node.type.create(
+      node.attrs,
+      node.content.cut(0, boundary.prefixEnd),
+      node.marks,
+    )
     const suffix = node.type.create(
       {
         ...node.attrs,
@@ -538,7 +544,10 @@ function splitParagraphForCurrentPage(
       node.content.cut(boundary.suffixStart, node.content.size),
       node.marks,
     )
-    if (hasTwoRenderedLines(editor, editor.state.doc, suffix)) break
+    if (
+      hasTwoRenderedLines(editor, editor.state.doc, suffix)
+      || draftSplitAtSentenceBoundary(prefix.textContent, suffix.textContent)
+    ) break
     fittingOffset -= 1
   }
   if (fittingOffset < 0) return null
@@ -602,22 +611,33 @@ function replaceDocumentPreservingSelection(editor: Editor, doc: ProseMirrorNode
 }
 
 /** Keep the caret’s page sheet (and desk scroller) in view while typing. */
-function scrollCaretIntoView(editor: Editor, mode: 'nearest' | 'center' = 'nearest') {
+function scrollCaretIntoView(
+  editor: Editor,
+  mode: 'nearest' | 'center' = 'nearest',
+  behavior: ScrollBehavior = 'auto',
+) {
   try {
     const coords = editor.view.coordsAtPos(editor.state.selection.head)
     const desk = editor.view.dom.closest('.editor-scroll')
     if (!(desk instanceof HTMLElement)) return
     const deskRect = desk.getBoundingClientRect()
+    let nextScrollTop = desk.scrollTop
     if (mode === 'center') {
       const target = deskRect.top + deskRect.height * 0.48
-      desk.scrollTop += coords.top - target
-      return
+      nextScrollTop += coords.top - target
+    } else {
+      const margin = 64
+      if (coords.top < deskRect.top + margin) {
+        nextScrollTop -= deskRect.top + margin - coords.top
+      } else if (coords.bottom > deskRect.bottom - margin) {
+        nextScrollTop += coords.bottom - (deskRect.bottom - margin)
+      }
     }
-    const margin = 64
-    if (coords.top < deskRect.top + margin) {
-      desk.scrollTop -= deskRect.top + margin - coords.top
-    } else if (coords.bottom > deskRect.bottom - margin) {
-      desk.scrollTop += coords.bottom - (deskRect.bottom - margin)
+    if (Math.abs(nextScrollTop - desk.scrollTop) < 1) return
+    if (behavior === 'smooth') {
+      desk.scrollTo({ top: nextScrollTop, behavior })
+    } else {
+      desk.scrollTop = nextScrollTop
     }
   } catch {
     // Selection can be briefly invalid while pages remount during reflow.
@@ -723,7 +743,10 @@ export function DraftPagedEditor({
     pageIndex: number
     where?: 'start' | 'end'
     position?: number
+    scrollBehavior?: ScrollBehavior
   } | null>(null)
+  /** Enter at a full page end gets one smooth handoff to this destination. */
+  const enterHandoffTargetRef = useRef<number | null>(null)
 
   const flushChapter = useCallback(() => {
     window.clearTimeout(emitTimerRef.current)
@@ -875,6 +898,7 @@ export function DraftPagedEditor({
     index: number,
     where: 'start' | 'end' = 'start',
     requestedPosition?: number,
+    scrollBehavior: ScrollBehavior = 'auto',
   ) => {
     const editor = editorsRef.current[index]
     if (!editor) return
@@ -889,9 +913,25 @@ export function DraftPagedEditor({
       editor.state.doc.resolve(Math.min(pos, size)),
       where === 'end' ? -1 : 1,
     )
-    editor.view.dispatch(editor.state.tr.setSelection(selection).scrollIntoView())
+    // ProseMirror's scrollIntoView plus the Draft desk scroll produced two
+    // competing jumps at generated page seams. Keep selection and desk scroll
+    // under one owner so Enter can hand off as a single smooth movement.
+    editor.view.dispatch(editor.state.tr.setSelection(selection))
+    const desk = editor.view.dom.closest('.editor-scroll')
+    const scrollTopBeforeFocus = desk instanceof HTMLElement ? desk.scrollTop : null
     editor.view.focus()
-    scrollCaretIntoView(editor, 'nearest')
+    if (
+      scrollBehavior === 'smooth'
+      && desk instanceof HTMLElement
+      && scrollTopBeforeFocus !== null
+    ) {
+      // Contenteditable focus may scroll synchronously. Restore before the next
+      // paint, then let the single intentional smooth scroll run.
+      desk.scrollTop = scrollTopBeforeFocus
+    }
+    window.requestAnimationFrame(() => {
+      if (!editor.isDestroyed) scrollCaretIntoView(editor, 'nearest', scrollBehavior)
+    })
   }, [onActiveEditorChange])
 
   const readLivePages = useCallback(() => {
@@ -1382,6 +1422,9 @@ export function DraftPagedEditor({
                 pendingCaretRef.current = {
                   pageIndex: nextIndex,
                   position: mappedCaretPosition,
+                  scrollBehavior: enterHandoffTargetRef.current === nextIndex
+                    ? 'smooth'
+                    : 'auto',
                 }
                 // Mark focus on the destination immediately so trailing-blank
                 // preserve survives later prune passes before focusPage runs.
@@ -1410,6 +1453,9 @@ export function DraftPagedEditor({
               pendingCaretRef.current = {
                 pageIndex: nextIndex,
                 position: mappedCaretPosition,
+                scrollBehavior: enterHandoffTargetRef.current === nextIndex
+                  ? 'smooth'
+                  : 'auto',
               }
               focusedIndexRef.current = nextIndex
             }
@@ -1624,9 +1670,15 @@ export function DraftPagedEditor({
             pendingCaretRef.current = null
             const editor = await waitForEditor(follow.pageIndex, epoch)
             if (editor && contentEpochRef.current === epoch) {
-              focusPage(follow.pageIndex, follow.where, follow.position)
+              focusPage(
+                follow.pageIndex,
+                follow.where,
+                follow.position,
+                follow.scrollBehavior,
+              )
             }
           }
+          enterHandoffTargetRef.current = null
         }
       } finally {
         busyRef.current = false
@@ -1634,10 +1686,21 @@ export function DraftPagedEditor({
     }
   }, [commitPages, focusPage, metrics, readLivePages, shouldPreserveTrailingBlankPages, waitForEditor])
 
-  const queueReflow = useCallback((fromIndex: number) => {
+  const queueReflow = useCallback((fromIndex: number, immediate = false) => {
     window.clearTimeout(reflowTimerRef.current)
     if (paginationPausedRef.current) {
       pausedReflowIndexRef.current = Math.min(pausedReflowIndexRef.current, fromIndex)
+      return
+    }
+    if (immediate) {
+      const startWhenSettled = () => {
+        if (busyRef.current) {
+          reflowTimerRef.current = window.setTimeout(startWhenSettled, 16)
+          return
+        }
+        void reflowFrom(fromIndex)
+      }
+      startWhenSettled()
       return
     }
     reflowTimerRef.current = window.setTimeout(() => {
@@ -2032,6 +2095,10 @@ export function DraftPagedEditor({
             })
             window.requestAnimationFrame(() => focusPage(index + 1, 'start'))
           }}
+          onEnterAtEnd={() => {
+            enterHandoffTargetRef.current = index + 1
+            queueReflow(index, true)
+          }}
           onBackspaceAtStart={() => {
             if (index <= 0) return
             const current = editorsRef.current[index]
@@ -2162,6 +2229,7 @@ interface DraftPageSheetProps {
   onUpdateHtml: (html: string) => void
   onRequestPrevious: () => void
   onRequestNext: () => void
+  onEnterAtEnd: () => void
   onBackspaceAtStart: () => void
 }
 
@@ -2191,11 +2259,13 @@ function DraftPageSheet({
   onUpdateHtml,
   onRequestPrevious,
   onRequestNext,
+  onEnterAtEnd,
   onBackspaceAtStart,
 }: DraftPageSheetProps) {
   const chromeRef = useRef<HTMLDivElement>(null)
   const [chromeHeight, setChromeHeight] = useState(0)
   const skipSyncRef = useRef(false)
+  const suppressNextCaretScrollRef = useRef(false)
   const typewriterRef = useRef(typewriterScrolling)
   typewriterRef.current = typewriterScrolling
 
@@ -2233,8 +2303,14 @@ function DraftPageSheet({
     onFocus: () => onFocus(),
     onUpdate: ({ editor: ed, transaction }) => {
       if (skipSyncRef.current) return
+      const suppressCaretScroll = suppressNextCaretScrollRef.current
+      suppressNextCaretScrollRef.current = false
       onUpdateHtml(ed.getHTML())
-      if (transaction.getMeta(PAGE_REFLOW_META) || !ed.isFocused) return
+      if (
+        suppressCaretScroll
+        || transaction.getMeta(PAGE_REFLOW_META)
+        || !ed.isFocused
+      ) return
       window.requestAnimationFrame(() => {
         if (ed.isFocused) {
           scrollCaretIntoView(ed, typewriterRef.current ? 'center' : 'nearest')
@@ -2270,6 +2346,27 @@ function DraftPageSheet({
         if (!empty) return false
         const atStart = $anchor.pos <= 1
         const atEnd = $anchor.pos >= view.state.doc.content.size - 1
+
+        if (
+          event.key === 'Enter'
+          && !event.shiftKey
+          && !event.altKey
+          && !event.ctrlKey
+          && !event.metaKey
+          && atEnd
+        ) {
+          // Let ProseMirror create the paragraph, but do not scroll the clipped
+          // old sheet. Reflow on the next frame and scroll only after focus is
+          // handed to the destination page.
+          suppressNextCaretScrollRef.current = true
+          window.requestAnimationFrame(() => {
+            // Native Enter normally consumed this flag synchronously in
+            // onUpdate. Do not let an intercepted Enter suppress a later edit.
+            suppressNextCaretScrollRef.current = false
+            onEnterAtEnd()
+          })
+          return false
+        }
 
         if (event.key === 'Backspace' && atStart) {
           event.preventDefault()

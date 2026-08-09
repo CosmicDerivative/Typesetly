@@ -17,9 +17,10 @@ import {
 import { pdfSafeText } from './pdfText'
 import { preflightBook } from './preflight'
 import { addInternalPdfLink } from './pdfLinks'
-import { wrapPdfParagraph } from './pdfLayout'
+import { pdfJustifiedWordGap, wrapPdfParagraph } from './pdfLayout'
 import { tableOfContentsEntries } from './toc'
 import { chapterDecorations } from '../themes/chapterDecorations'
+import { paragraphSpacingEm } from '../themes/paragraph'
 
 function fileName(title: string) {
   return `${title.replace(/[^\w\s-]/g, '').trim() || 'book'}.pdf`
@@ -57,7 +58,15 @@ async function splitImageSpread(dataUrl: string): Promise<[string, string] | nul
   ]
 }
 
-export async function exportProjectToPdf(project: BookProject, theme: BookTheme): Promise<ExportResult> {
+export interface BuiltProjectPdf {
+  bytes: Uint8Array
+  fileName: string
+  pageCount: number
+  warnings: string[]
+}
+
+/** Build the complete PDF without initiating a browser download. */
+export async function buildProjectPdf(project: BookProject, theme: BookTheme): Promise<BuiltProjectPdf> {
   const preflight = preflightBook(project, theme)
   const blocking = preflight.filter((issue) => issue.level === 'error')
   if (blocking.length) throw new Error(`PDF export is blocked: ${blocking.map((issue) => issue.message).join(' ')}`)
@@ -276,18 +285,33 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
       if (theme.paragraph.bodyAlign === 'justify' && index < lines.length - 1 && line.includes(' ')) {
         const words = line.split(' ')
         const wordsWidth = words.reduce((sum, word) => sum + bodyFont.widthOfTextAtSize(word, fontSize), 0)
-        const gap = (available - wordsWidth) / Math.max(1, words.length - 1)
-        let cursorX = x
-        for (const word of words) {
-          page.drawText(word, { x: cursorX, y, size: fontSize, font: bodyFont, color: rgb(0.1, 0.1, 0.1) })
-          cursorX += bodyFont.widthOfTextAtSize(word, fontSize) + gap
+        const naturalSpace = bodyFont.widthOfTextAtSize(' ', fontSize)
+        const gap = pdfJustifiedWordGap(
+          available,
+          wordsWidth,
+          words.length - 1,
+          naturalSpace,
+        )
+        // A short line with only a few words can otherwise be stretched across
+        // the full measure. Professional typesetting leaves that line ragged
+        // when acceptable word spacing cannot produce the requested width.
+        if (gap !== null) {
+          let cursorX = x
+          for (const word of words) {
+            page.drawText(word, { x: cursorX, y, size: fontSize, font: bodyFont, color: rgb(0.1, 0.1, 0.1) })
+            cursorX += bodyFont.widthOfTextAtSize(word, fontSize) + gap
+          }
+        } else {
+          page.drawText(line, { x, y, size: fontSize, font: bodyFont, color: rgb(0.1, 0.1, 0.1) })
         }
       } else {
         page.drawText(line, { x, y, size: fontSize, font: bodyFont, color: rgb(0.1, 0.1, 0.1) })
       }
       y -= lineHeight
     })
-    if (theme.paragraph.paragraphStyle === 'space') y -= lineHeight * 0.35
+    if (theme.paragraph.paragraphStyle === 'space') {
+      y -= fontSize * paragraphSpacingEm(theme.paragraph.paragraphSpacingEm)
+    }
   }
 
   const hardBreakHeight = (text: string) => {
@@ -1184,10 +1208,20 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
     warnings.push('Characters unsupported by the standard print fonts were replaced with print-safe equivalents.')
   }
   const bytes = await documentValue.save()
-  const blob = new Blob([bytes.buffer as ArrayBuffer], { type: 'application/pdf' })
   const outputName = fileName(project.details.title)
-  saveAs(blob, outputName)
-  return { ok: true, fileName: outputName, warnings: [...warnings, `Generated ${pageNumber} print page(s) at ${theme.print.trimWidthIn} × ${theme.print.trimHeightIn} inches.`] }
+  return {
+    bytes,
+    fileName: outputName,
+    pageCount: pageNumber,
+    warnings: [...warnings, `Generated ${pageNumber} print page(s) at ${theme.print.trimWidthIn} × ${theme.print.trimHeightIn} inches.`],
+  }
+}
+
+export async function exportProjectToPdf(project: BookProject, theme: BookTheme): Promise<ExportResult> {
+  const built = await buildProjectPdf(project, theme)
+  const blob = new Blob([built.bytes.buffer as ArrayBuffer], { type: 'application/pdf' })
+  saveAs(blob, built.fileName)
+  return { ok: true, fileName: built.fileName, warnings: built.warnings }
 }
 
 function makeNotesChapter(): Chapter {
