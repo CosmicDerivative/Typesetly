@@ -9,6 +9,7 @@ const {
   isHotpatchAvailable,
   normalizeHotpatchRevision,
   normalizeVersion,
+  windowsUpdaterChannel,
 } = require('../electron/updater.cjs') as {
   compareVersions: (left: string, right: string) => number
   describeUpdateCheck: (
@@ -27,6 +28,7 @@ const {
   isHotpatchAvailable: (updateInfo: unknown, currentVersion: string, currentRevision?: number) => boolean
   normalizeHotpatchRevision: (revision: unknown) => number
   normalizeVersion: (version: string) => { text: string } | undefined
+  windowsUpdaterChannel: (architecture: string) => string
 }
 
 test('version comparison detects newer stable updater releases', () => {
@@ -78,4 +80,10 @@ test('same-version hotpatch revisions are offered monotonically', () => {
       updateAvailable: true,
     },
   )
+})
+
+test('Windows updates select architecture-specific release metadata', () => {
+  assert.equal(windowsUpdaterChannel('arm64'), 'latest-arm64')
+  assert.equal(windowsUpdaterChannel('x64'), 'latest-x64')
+  assert.equal(windowsUpdaterChannel('ia32'), 'latest-x64')
 })

@@ -32,6 +32,10 @@ function normalizeHotpatchRevision(value) {
   return Number.isSafeInteger(revision) && revision >= 0 ? revision : 0
 }
 
+function windowsUpdaterChannel(architecture) {
+  return architecture === 'arm64' ? 'latest-arm64' : 'latest-x64'
+}
+
 function isHotpatchAvailable(updateInfo, currentVersion, currentHotpatchRevision = 0) {
   const latest = normalizeVersion(updateInfo?.version)
   const current = normalizeVersion(currentVersion)
@@ -69,4 +73,5 @@ module.exports = {
   isHotpatchAvailable,
   normalizeHotpatchRevision,
   normalizeVersion,
+  windowsUpdaterChannel,
 }

@@ -7,6 +7,7 @@ const {
   describeUpdateCheck,
   isHotpatchAvailable,
   normalizeHotpatchRevision,
+  windowsUpdaterChannel,
 } = require('./updater.cjs')
 
 const isDev = !app.isPackaged
@@ -18,6 +19,15 @@ autoUpdater.autoInstallOnAppQuit = true
 autoUpdater.autoRunAppAfterInstall = true
 autoUpdater.allowPrerelease = false
 autoUpdater.disableWebInstaller = true
+// Windows packages are built independently so an ARM installer never relies
+// on NSIS runtime architecture detection. Match each native package to its
+// own update manifest while keeping latest.yml available to older x64 builds.
+if (process.platform === 'win32') {
+  autoUpdater.channel = windowsUpdaterChannel(process.arch)
+  // Assigning a custom channel enables downgrades inside electron-updater;
+  // architecture routing must never relax normal version ordering.
+  autoUpdater.allowDowngrade = false
+}
 
 const installedHotpatchRevision = normalizeHotpatchRevision(
   packageMetadata.hotpatchRevision ?? packageMetadata.build?.extraMetadata?.hotpatchRevision,
