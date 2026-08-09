@@ -274,6 +274,29 @@ jobs:
             }
           }
 
+          # Both architecture-specific installers must perform a real extraction.
+          # The ARM64 application cannot launch on this x64 runner, but its NSIS
+          # bootstrapper can still install the ARM payload for structural QA.
+          $qaInstall = Join-Path $env:RUNNER_TEMP "typesetly-$env:WINDOWS_ARCH-install"
+          $installer = Start-Process -FilePath $setup.FullName -ArgumentList '/S', "/D=$qaInstall" -Wait -PassThru
+          if ($installer.ExitCode -ne 0) {
+            throw "$($setup.Name) exited with code $($installer.ExitCode)."
+          }
+          foreach ($relativePath in @('Typesetly.exe', 'resources/app.asar', 'ffmpeg.dll', 'libEGL.dll')) {
+            $installedPath = Join-Path $qaInstall $relativePath
+            if (-not (Test-Path -LiteralPath $installedPath -PathType Leaf)) {
+              throw "Installed payload is missing $relativePath for $env:WINDOWS_ARCH."
+            }
+          }
+
+          $uninstaller = Join-Path $qaInstall 'Uninstall Typesetly.exe'
+          if (Test-Path -LiteralPath $uninstaller -PathType Leaf) {
+            Start-Process -FilePath $uninstaller -ArgumentList '/S' -Wait
+          }
+          if (Test-Path -LiteralPath $qaInstall) {
+            Remove-Item -LiteralPath $qaInstall -Recurse -Force
+          }
+
       - name: Stamp hotpatch revision into updater metadata
         run: node .github/stamp-hotpatch.cjs metadata ${{ needs.verify.outputs.hotpatch_revision }} release/latest.yml release/latest-x64.yml release/latest-arm64.yml release/latest-mac.yml release/latest-linux.yml
 
