@@ -16,6 +16,8 @@ import { chapterDecorations } from '../themes/chapterDecorations'
 import { ChapterDecorations } from './ChapterDecorations'
 import './ChapterDecorations.css'
 import { tableOfContentsTree, type TableOfContentsNode } from '../export/toc'
+import { previewLineSpacing, previewReaderFontSize } from '../preview/typography'
+import { publishPreviewWidth } from '../preview/fit'
 
 function PreviewContentsList({ nodes }: { nodes: TableOfContentsNode[] }) {
   return (
@@ -53,6 +55,8 @@ export function Previewer() {
   const [readerAppearance, setReaderAppearance] = useState<'light' | 'sepia' | 'dark'>('light')
   const [readerFontMode, setReaderFontMode] = useState<'device' | 'book'>('device')
   const [screenWidth, setScreenWidth] = useState(1)
+  const [proofWidth, setProofWidth] = useState(0)
+  const stageRef = useRef<HTMLDivElement>(null)
   const screenRef = useRef<HTMLDivElement>(null)
   const pageFlowRef = useRef<HTMLDivElement>(null)
   const swipeStartXRef = useRef<number | null>(null)
@@ -142,6 +146,26 @@ export function Previewer() {
     readerFontMode,
     readerFontScale,
   ])
+
+  useEffect(() => {
+    if (mode !== 'publish') {
+      setProofWidth(0)
+      return
+    }
+    const stage = stageRef.current
+    if (!stage) return
+    const measure = () => {
+      setProofWidth(publishPreviewWidth(
+        stage.clientWidth,
+        stage.clientHeight,
+        profileWidth / profileHeight,
+      ))
+    }
+    const observer = new ResizeObserver(measure)
+    observer.observe(stage)
+    measure()
+    return () => observer.disconnect()
+  }, [landscape, mode, previewDevice, profileHeight, profileWidth])
 
   if ((mode !== 'publish' && rightPanel !== 'preview') || !project) return null
 
@@ -238,11 +262,11 @@ export function Previewer() {
         )}
       </div>
 
-      <div className="preview-stage">
+      <div ref={stageRef} className="preview-stage">
         <div
           className={deviceClass}
           style={{
-            '--device-width': `${renderedWidth}px`,
+            '--device-width': `${mode === 'publish' && proofWidth > 0 ? proofWidth : renderedWidth}px`,
             '--device-ratio': `${profileWidth} / ${profileHeight}`,
             '--device-bezel': `${profile.bezel}px`,
             '--device-radius': `${profile.cornerRadius}px`,
@@ -282,8 +306,12 @@ export function Previewer() {
               fontFamily: readerFont,
               fontSize: previewDevice === 'Print'
                 ? `${theme.print.largePrint ? Math.max(14, theme.typography.bodySize) : theme.typography.bodySize}pt`
-                : `${16 * readerFontScale}px`,
-              lineHeight: theme.typography.lineSpacing,
+                : previewReaderFontSize(
+                    theme.typography.bodySize,
+                    readerFontScale,
+                    readerFontMode === 'book',
+                  ),
+              lineHeight: previewLineSpacing(theme.typography.lineSpacing),
               textAlign: theme.paragraph.bodyAlign,
               '--verse-indent': `${theme.specialBlocks.verseIndentEm}em`,
               '--verse-spacing': theme.specialBlocks.verseLineSpacing,

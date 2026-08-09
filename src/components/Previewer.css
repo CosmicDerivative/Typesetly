@@ -169,7 +169,8 @@
 }
 
 .preview-para.indent {
-  text-indent: 1.1em;
+  margin-bottom: 0;
+  text-indent: 1.2em;
 }
 
 .preview-para.first-formatted {
@@ -178,7 +179,7 @@
 
 .preview-para.space {
   text-indent: 0;
-  margin-bottom: 1em;
+  margin-bottom: .8em;
 }
 
 .scene-ornament {
@@ -979,7 +980,7 @@
 }
 
 .preview-para {
-  margin: 0 0 0.9em;
+  margin: 0;
   text-align: inherit;
   hyphens: auto;
 }

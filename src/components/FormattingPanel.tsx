@@ -13,6 +13,7 @@ import { useResolvedImageSrc } from '../library/useResolvedImageSrc'
 import { chapterDecorations } from '../themes/chapterDecorations'
 import { ChapterDecorations } from './ChapterDecorations'
 import './ChapterDecorations.css'
+import { previewLineSpacing } from '../preview/typography'
 
 function ResolvedImg({
   src,
@@ -45,13 +46,23 @@ function previewChapterNumber(theme: BookTheme) {
   return 'CHAPTER 1'
 }
 
-function ThemeSample({ theme, className = '' }: { theme: BookTheme; className?: string }) {
+function ThemeSample({
+  theme,
+  className = '',
+  detailed = false,
+}: {
+  theme: BookTheme
+  className?: string
+  detailed?: boolean
+}) {
   const chapterNumber = previewChapterNumber(theme)
   const decorations = chapterDecorations(theme.chapterHeading)
   const hasOverlay = decorations.some((decoration) => decoration.placement === 'header-overlay')
   const dropCap = theme.paragraph.dropCaps
   const leadInSmallCaps = theme.paragraph.leadInSmallCaps
   const bodySize = Math.max(1, theme.typography.bodySize)
+  const lineHeight = previewLineSpacing(theme.typography.lineSpacing)
+  const paragraphGap = theme.paragraph.paragraphStyle === 'space' ? '.8em' : '0'
   const imageMargin = theme.chapterHeading.imageAlign === 'center'
     ? '0 auto .5em'
     : theme.chapterHeading.imageAlign === 'right'
@@ -131,7 +142,8 @@ function ThemeSample({ theme, className = '' }: { theme: BookTheme; className?: 
       <p
         className={dropCap ? 'ts-drop' : ''}
         style={{
-          lineHeight: Math.max(1.25, Math.min(1.7, theme.typography.lineSpacing)),
+          lineHeight,
+          marginBottom: detailed ? paragraphGap : 0,
           textAlign: theme.paragraph.bodyAlign,
         }}
       >
@@ -145,6 +157,18 @@ function ThemeSample({ theme, className = '' }: { theme: BookTheme; className?: 
           <>{dropCap ? 'hen' : 'When'} the story begins, the theme shapes every page.</>
         )}
       </p>
+      {detailed && (
+        <p
+          style={{
+            lineHeight,
+            marginBottom: 0,
+            textAlign: theme.paragraph.bodyAlign,
+            textIndent: theme.paragraph.paragraphStyle === 'indent' ? '1.2em' : 0,
+          }}
+        >
+          Wrapped lines reveal leading; this second paragraph reveals the separate paragraph gap.
+        </p>
+      )}
       <ChapterDecorations decorations={decorations} placement="chapter-footer" />
     </div>
   )
@@ -228,7 +252,7 @@ export function FormattingPanel() {
             <span>Live chapter proof</span>
             <p>Images, heading type, alignment, and decorative layers update here as you edit.</p>
           </div>
-          <ThemeSample theme={t} className="booklab-theme-sample" />
+          <ThemeSample theme={t} className="booklab-theme-sample" detailed />
         </section>
 
         <div className="fv-grid">
