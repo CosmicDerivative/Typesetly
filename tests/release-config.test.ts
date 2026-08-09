@@ -46,6 +46,7 @@ test('Windows release jobs publish isolated updater channels and validate payloa
   assert.match(releaseWorkflow, /release\/latest-x64\.yml/)
   assert.match(releaseWorkflow, /release\/latest-arm64\.yml/)
   assert.match(releaseWorkflow, /Verify Windows package payload/)
+  assert.match(releaseWorkflow, /7z l -t7z/)
   assert.match(releaseWorkflow, /Typesetly\.exe/)
   assert.match(releaseWorkflow, /0xAA64/)
   assert.match(releaseWorkflow, /0x8664/)

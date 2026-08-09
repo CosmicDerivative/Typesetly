@@ -256,7 +256,9 @@ jobs:
           $setup = Get-Item "release/Typesetly-Setup-*-$env:WINDOWS_ARCH.exe"
           $portable = Get-Item "release/Typesetly-Portable-*-$env:WINDOWS_ARCH.exe"
           foreach ($package in @($setup, $portable)) {
-            $listing = (& 7z l $package.FullName) -join "`n"
+            # Force the embedded payload format. Without -t7z, some runner
+            # versions identify only the outer NSIS executable.
+            $listing = (& 7z l -t7z $package.FullName) -join "`n"
             if ($listing -notmatch 'Typesetly\.exe' -or $listing -notmatch 'ffmpeg\.dll') {
               throw "$($package.Name) does not contain a complete application payload."
             }
