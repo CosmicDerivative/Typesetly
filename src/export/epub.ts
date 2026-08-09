@@ -535,6 +535,7 @@ h2,h3,h4,h5,h6 { font-family: ${theme.subheading.font}, serif; text-align: ${the
       validationWarnings.push(`Error: ${image.href} does not match its declared media type ${image.mediaType}.`)
     }
   }
+  const imageStats = imageRegistry.stats()
   if (validationWarnings.some((warning) => warning.startsWith('Error:'))) {
     throw new Error(`EPUB validation failed: ${validationWarnings.filter((warning) => warning.startsWith('Error:')).join(' ')}`)
   }
@@ -551,7 +552,7 @@ h2,h3,h4,h5,h6 { font-family: ${theme.subheading.font}, serif; text-align: ${the
     fileName,
     warnings: [
       ...validationWarnings,
-      `Internal validation passed for ${xhtmlFiles.size} XHTML files, ${chapters.length} spine item(s), and ${imageFiles.length} image(s). Run the final file through official EPUBCheck before publishing.`,
+      `Internal validation passed for ${xhtmlFiles.size} XHTML files, ${chapters.length} spine item(s), and ${imageStats.uniqueFiles} unique image(s) referenced ${imageStats.references} time(s). ${imageStats.reusedReferences} repeated image reference(s) were deduplicated. Run the final file through official EPUBCheck before publishing.`,
     ],
   }
 }

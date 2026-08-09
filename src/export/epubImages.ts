@@ -9,6 +9,27 @@ export type EpubImageFile = {
 
 export type EpubImageSource = Omit<EpubImageFile, 'id' | 'href'> & { extension: string }
 
+function canonicalImageMediaType(mediaType: string) {
+  const normalized = mediaType.toLowerCase()
+  return normalized === 'image/jpg' ? 'image/jpeg' : normalized
+}
+
+function canonicalImageExtension(mediaType: string, extension: string) {
+  return canonicalImageMediaType(mediaType) === 'image/jpeg' ? 'jpg' : extension.toLowerCase()
+}
+
+function canonicalBase64(base64: string) {
+  const unpadded = base64.replace(/\s+/g, '').replace(/=+$/, '')
+  return `${unpadded}${'='.repeat((4 - (unpadded.length % 4)) % 4)}`
+}
+
+function imageContentKey(image: EpubImageSource) {
+  // Padding is optional in base64, and browsers disagree on whether a .jpg
+  // Blob is reported as image/jpg or image/jpeg. Neither difference means the
+  // underlying image should be packaged again.
+  return `${canonicalImageMediaType(image.mediaType)}:${canonicalBase64(image.base64).replace(/=+$/, '')}`
+}
+
 /**
  * EPUB documents may reference the same artwork from many chapters. Package
  * identical bytes once and let every XHTML document point to that resource.
@@ -16,28 +37,51 @@ export type EpubImageSource = Omit<EpubImageFile, 'id' | 'href'> & { extension: 
 export function createEpubImageRegistry() {
   const files: EpubImageFile[] = []
   const byContent = new Map<string, EpubImageFile>()
+  let references = 0
+  let reusedReferences = 0
 
   return {
     files,
     add(image: EpubImageSource) {
-      const key = `${image.mediaType}:${image.base64}`
+      references += 1
+      const key = imageContentKey(image)
       const existing = byContent.get(key)
-      if (existing) return existing
+      if (existing) {
+        reusedReferences += 1
+        return existing
+      }
       const id = `image-${files.length + 1}`
       const file = {
         id,
-        href: `images/${id}.${image.extension}`,
-        mediaType: image.mediaType,
-        base64: image.base64,
+        href: `images/${id}.${canonicalImageExtension(image.mediaType, image.extension)}`,
+        mediaType: canonicalImageMediaType(image.mediaType),
+        base64: canonicalBase64(image.base64),
       }
       files.push(file)
       byContent.set(key, file)
       return file
     },
     addNamed(image: EpubImageSource, id: string, href: string) {
-      const file = { id, href, mediaType: image.mediaType, base64: image.base64 }
+      references += 1
+      const key = imageContentKey(image)
+      const existing = byContent.get(key)
+      if (existing) {
+        reusedReferences += 1
+        existing.id = id
+        return existing
+      }
+      const file = {
+        id,
+        href,
+        mediaType: canonicalImageMediaType(image.mediaType),
+        base64: canonicalBase64(image.base64),
+      }
       files.push(file)
+      byContent.set(key, file)
       return file
+    },
+    stats() {
+      return { references, uniqueFiles: files.length, reusedReferences }
     },
   }
 }
