@@ -2,6 +2,7 @@ import { countWords } from '../data'
 import type { BookProject, BookTheme, Chapter } from '../types'
 import type { DeviceProfile } from '../preview/devices'
 import { exportableChapters, parseManuscript } from './manuscript'
+import { paragraphSpacingEm } from '../themes/paragraph'
 
 function contentArea(theme: BookTheme, profile: DeviceProfile) {
   if (profile.family !== 'print') {
@@ -40,7 +41,11 @@ export function estimateChapterPages(chapter: Chapter, theme: BookTheme, profile
     else if (block.type === 'image') {
       lines += block.layout === 'full-page' ? linesPerPage : block.layout === 'two-page' ? linesPerPage * 2 : Math.ceil(linesPerPage * Math.max(.18, block.width / 130))
     } else if (block.type === 'callout' || block.type === 'styled-block') {
-      lines += 2 + Math.ceil(block.text.length / Math.max(12, charactersPerLine - 6))
+      const blockWidth = Math.max(12, charactersPerLine - 6)
+      lines += 2 + block.text.split(/\r?\n/).reduce(
+        (total, authoredLine) => total + Math.max(1, Math.ceil(authoredLine.length / blockWidth)),
+        0,
+      )
     } else if (block.type === 'litrpg-block') {
       const textLength = block.draft.rows.reduce(
         (total, row) => total + row.cells.join(' ').length,
@@ -49,7 +54,10 @@ export function estimateChapterPages(chapter: Chapter, theme: BookTheme, profile
       lines += 4 + block.draft.rows.length + Math.ceil(textLength / Math.max(12, charactersPerLine - 8))
     } else {
       lines += Math.max(1, Math.ceil(block.text.length / charactersPerLine))
-      if (theme.paragraph.paragraphStyle === 'space') lines += .55
+      if (theme.paragraph.paragraphStyle === 'space') {
+        lines += paragraphSpacingEm(theme.paragraph.paragraphSpacingEm)
+          / Math.max(1, theme.typography.lineSpacing)
+      }
     }
   }
   if (parsed.notes.length) lines += parsed.notes.reduce((sum, note) => sum + 1 + Math.ceil(note.text.length / charactersPerLine), 2)

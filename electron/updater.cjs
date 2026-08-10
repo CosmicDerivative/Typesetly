@@ -27,21 +27,51 @@ function compareVersions(left, right) {
   })
 }
 
-function describeUpdateCheck(result, currentVersion) {
+function normalizeHotpatchRevision(value) {
+  const revision = Number(value)
+  return Number.isSafeInteger(revision) && revision >= 0 ? revision : 0
+}
+
+function windowsUpdaterChannel(architecture) {
+  return architecture === 'arm64' ? 'latest-arm64' : 'latest-x64'
+}
+
+function isHotpatchAvailable(updateInfo, currentVersion, currentHotpatchRevision = 0) {
+  const latest = normalizeVersion(updateInfo?.version)
+  const current = normalizeVersion(currentVersion)
+  if (!latest || !current || compareVersions(latest.text, current.text) !== 0) return false
+  return normalizeHotpatchRevision(updateInfo?.hotpatchRevision) >
+    normalizeHotpatchRevision(currentHotpatchRevision)
+}
+
+function describeUpdateCheck(result, currentVersion, currentHotpatchRevision = 0) {
   const latest = normalizeVersion(result?.updateInfo?.version)
   if (!result || !latest) {
     throw new Error('The update service did not return valid release metadata.')
   }
+  const currentRevision = normalizeHotpatchRevision(currentHotpatchRevision)
+  const latestRevision = normalizeHotpatchRevision(result.updateInfo.hotpatchRevision)
+  const hotpatchAvailable = isHotpatchAvailable(
+    result.updateInfo,
+    currentVersion,
+    currentRevision,
+  )
   return {
     ok: true,
     currentVersion,
+    currentHotpatchRevision: currentRevision,
     latestVersion: latest.text,
-    updateAvailable: Boolean(result.isUpdateAvailable),
+    latestHotpatchRevision: latestRevision,
+    hotpatchAvailable,
+    updateAvailable: Boolean(result.isUpdateAvailable) || hotpatchAvailable,
   }
 }
 
 module.exports = {
   compareVersions,
   describeUpdateCheck,
+  isHotpatchAvailable,
+  normalizeHotpatchRevision,
   normalizeVersion,
+  windowsUpdaterChannel,
 }

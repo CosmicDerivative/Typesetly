@@ -14,9 +14,13 @@ export function estimateCharsPerPage(
   )
   const contentHeight = Math.max(
     80,
-    metrics.heightPx - metrics.marginTopPx - metrics.marginBottomPx,
+    metrics.heightPx - metrics.marginTopPx - metrics.marginBottomPx - 8,
   )
-  const charsPerLine = Math.max(18, Math.floor(contentWidth / (fontSize * 0.52)))
+  // Book serif faces are materially wider than the old 0.52em estimate. A
+  // conservative first pass prevents long chapters from mounting with several
+  // pages worth of text hidden in one clipped final sheet while live reflow
+  // catches up.
+  const charsPerLine = Math.max(18, Math.floor(contentWidth / (fontSize * 0.6)))
   const lines = Math.max(6, Math.floor(contentHeight / (fontSize * lineHeight)))
   return charsPerLine * lines
 }
@@ -246,8 +250,33 @@ export function splitChapterIntoPages(html: string, charsPerPage: number) {
 function splitOnExplicitPageBreaks(html: string) {
   const source = normalizePageHtml(html)
   const breakPattern = /<div\b[^>]*data-typesetly-node=["']page-break["'][^>]*>\s*<\/div>/gi
-  const pages = source.split(breakPattern).map((part) => part.trim() || '<p></p>')
+  const pages: string[] = []
+  let start = 0
+  let match: RegExpExecArray | null
+  while ((match = breakPattern.exec(source))) {
+    // Keep the authored marker at the end of the preceding sheet. Dropping it
+    // here made a manual page break disappear the next time paged Draft HTML
+    // was rejoined and saved.
+    const end = match.index + match[0].length
+    pages.push(source.slice(start, end).trim() || '<p></p>')
+    start = end
+  }
+  pages.push(source.slice(start).trim() || '<p></p>')
   return pages.length ? pages : ['<p></p>']
+}
+
+/**
+ * A maximal page split that already lands between sentences should not be
+ * moved backward merely to make the continuation occupy two rendered lines.
+ * Doing so can strand the final word of a sentence at the top of the next
+ * sheet even though it fits on the previous line.
+ */
+export function draftSplitAtSentenceBoundary(prefixText: string, suffixText: string) {
+  const prefix = prefixText.trim()
+  const suffix = suffixText.trim()
+  if (!prefix || !suffix) return false
+  if (/\b(?:Mr|Mrs|Ms|Dr|St|Jr|Sr|vs|etc)\.$/i.test(prefix)) return false
+  return /[.!?]["'’”)]*$/.test(prefix) && /^["'‘“(]*[A-Z]/.test(suffix)
 }
 
 /**
@@ -468,4 +497,13 @@ export function draftContentExceedsPageClip(
   epsilonPx = 0.5,
 ) {
   return contentBottomPx > clipBottomPx + epsilonPx
+}
+
+/**
+ * Keep authored paint away from the hard overflow clip. Browser sub-pixel
+ * rounding, font descenders, and proofreading overlays can extend a few pixels
+ * beyond an otherwise valid line box.
+ */
+export function draftSafeClipBottom(clipBottomPx: number, guardPx = 8) {
+  return clipBottomPx - Math.max(0, guardPx)
 }

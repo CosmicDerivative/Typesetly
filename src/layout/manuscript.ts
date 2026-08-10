@@ -18,6 +18,14 @@ export interface ManuscriptNote {
   number: number
 }
 
+function textWithAuthoredBreaks(element: HTMLElement) {
+  const clone = element.cloneNode(true) as HTMLElement
+  for (const br of Array.from(clone.querySelectorAll('br'))) {
+    br.replaceWith(clone.ownerDocument.createTextNode('\n'))
+  }
+  return clone.textContent || ''
+}
+
 export function parseManuscript(html: string): { blocks: ManuscriptBlock[]; notes: ManuscriptNote[] } {
   const documentValue = new DOMParser().parseFromString(html, 'text/html')
   const notes: ManuscriptNote[] = []
@@ -50,21 +58,21 @@ export function parseManuscript(html: string): { blocks: ManuscriptBlock[]; note
       })
     } else if (nodeType === 'callout' || tag === 'blockquote') {
       if (nodeType === 'attributedQuote') {
-        blocks.push({ type: 'styled-block', text: element.textContent || '', variant: 'attributedQuote', attribution: element.dataset.attribution || '' })
+        blocks.push({ type: 'styled-block', text: textWithAuthoredBreaks(element), variant: 'attributedQuote', attribution: element.dataset.attribution || '' })
         continue
       }
       blocks.push({
         type: 'callout',
         text: Array.from(element.children)
-          .map((child) => child.textContent || '')
-          .join('\n') || element.textContent || '',
+          .map((child) => textWithAuthoredBreaks(child as HTMLElement))
+          .join('\n') || textWithAuthoredBreaks(element),
         variant: element.dataset.variant === 'message' ? 'message' : 'callout',
         sender: element.dataset.sender || '',
         direction: element.dataset.direction || 'outgoing',
         theme: element.dataset.theme || 'ios',
       })
     } else if (nodeType === 'verse' || nodeType === 'hangingIndent') {
-      blocks.push({ type: 'styled-block', text: element.textContent || '', variant: nodeType, attribution: '' })
+      blocks.push({ type: 'styled-block', text: textWithAuthoredBreaks(element), variant: nodeType, attribution: '' })
     } else if (tag === 'img') {
       blocks.push({
         type: 'image',
@@ -85,7 +93,7 @@ export function parseManuscript(html: string): { blocks: ManuscriptBlock[]; note
         blocks.push({ type: 'list-item', text: item.textContent || '', ordered: tag === 'ol', ordinal: index + 1 })
       }
     } else {
-      blocks.push({ type: 'paragraph', text: element.textContent || '', html: element.innerHTML })
+      blocks.push({ type: 'paragraph', text: textWithAuthoredBreaks(element), html: element.innerHTML })
     }
   }
   return { blocks, notes }

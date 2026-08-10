@@ -209,11 +209,41 @@
 }
 
 .chapter-meta {
+  position: relative;
   display: grid;
   grid-template-columns: auto 1fr auto;
   gap: 14px;
   align-items: start;
   margin-bottom: 22px;
+}
+
+.chapter-meta > .chapter-decorations:not(.header-overlay) {
+  grid-column: 1 / -1;
+}
+
+.chapter-meta > .chapter-titles,
+.chapter-meta > .chapter-settings,
+.chapter-meta > .chapter-ornament {
+  position: relative;
+  z-index: 1;
+}
+
+.chapter-meta > .chapter-ornament {
+  grid-column: 1;
+}
+
+.chapter-meta > .chapter-titles {
+  grid-column: 2;
+}
+
+.chapter-meta > .chapter-settings {
+  grid-column: 3;
+}
+
+.chapter-meta.has-header-overlay {
+  min-height: 12em;
+  align-items: center;
+  overflow: hidden;
 }
 
 .chapter-ornament {
@@ -240,6 +270,15 @@
   padding: 0;
   margin: 0;
   line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.chapter-title-input {
+  min-height: 1.2em;
+  field-sizing: content;
+  resize: none;
+  overflow: hidden;
+  white-space: pre-wrap;
 }
 
 .chapter-subtitle-input {

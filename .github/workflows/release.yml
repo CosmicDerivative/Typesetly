@@ -20,6 +20,16 @@ on:
         required: false
         default: false
         type: boolean
+      hotpatch:
+        description: Replace assets on this version tag with a same-version hotpatch
+        required: false
+        default: false
+        type: boolean
+      hotpatch_revision:
+        description: Increasing hotpatch revision (for example, 1)
+        required: false
+        default: "0"
+        type: string
 
 permissions:
   contents: read
@@ -37,6 +47,8 @@ jobs:
       version: ${{ steps.release.outputs.version }}
       draft: ${{ steps.release.outputs.draft }}
       prerelease: ${{ steps.release.outputs.prerelease }}
+      hotpatch: ${{ steps.release.outputs.hotpatch }}
+      hotpatch_revision: ${{ steps.release.outputs.hotpatch_revision }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -49,21 +61,39 @@ jobs:
           INPUT_TAG: ${{ inputs.tag }}
           INPUT_DRAFT: ${{ inputs.draft }}
           INPUT_PRERELEASE: ${{ inputs.prerelease }}
+          INPUT_HOTPATCH: ${{ inputs.hotpatch }}
+          INPUT_HOTPATCH_REVISION: ${{ inputs.hotpatch_revision }}
           REF_NAME: ${{ github.ref_name }}
         run: |
           version="$(node -p "require('./package.json').version")"
+          packaged_revision="$(node -p "require('./package.json').hotpatchRevision || 0")"
 
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             tag="$INPUT_TAG"
             draft="$INPUT_DRAFT"
             prerelease="$INPUT_PRERELEASE"
-          else
-            tag="$REF_NAME"
-            draft="false"
-            if [[ "$tag" == *-* ]]; then
-              prerelease="true"
+            hotpatch="$INPUT_HOTPATCH"
+            if [[ "$hotpatch" == "true" ]]; then
+              hotpatch_revision="$INPUT_HOTPATCH_REVISION"
             else
+              hotpatch_revision="$packaged_revision"
+            fi
+          else
+            draft="false"
+            if [[ "$REF_NAME" =~ ^v${version}-hotpatch\.([0-9]+)$ ]]; then
+              tag="v$version"
               prerelease="false"
+              hotpatch="true"
+              hotpatch_revision="${BASH_REMATCH[1]}"
+            else
+              tag="$REF_NAME"
+              hotpatch="false"
+              hotpatch_revision="$packaged_revision"
+              if [[ "$tag" == *-* ]]; then
+                prerelease="true"
+              else
+                prerelease="false"
+              fi
             fi
           fi
 
@@ -72,10 +102,25 @@ jobs:
             exit 1
           fi
 
+          if [[ ! "$hotpatch_revision" =~ ^[0-9]+$ ]]; then
+            echo "::error::Hotpatch revision '$hotpatch_revision' must be a non-negative integer."
+            exit 1
+          fi
+          if [[ "$hotpatch" == "true" && "$hotpatch_revision" -lt 1 ]]; then
+            echo "::error::A hotpatch release requires a revision of at least 1."
+            exit 1
+          fi
+          if [[ "$EVENT_NAME" != "workflow_dispatch" && "$hotpatch" == "true" && "$hotpatch_revision" != "$packaged_revision" ]]; then
+            echo "::error::Hotpatch tag revision '$hotpatch_revision' must match package.json revision '$packaged_revision'."
+            exit 1
+          fi
+
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "draft=$draft" >> "$GITHUB_OUTPUT"
           echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+          echo "hotpatch=$hotpatch" >> "$GITHUB_OUTPUT"
+          echo "hotpatch_revision=$hotpatch_revision" >> "$GITHUB_OUTPUT"
 
       - name: Set up Node
         uses: actions/setup-node@v6
@@ -96,14 +141,25 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - label: Windows
+          - label: Windows x64
             os: windows-latest
-            platform: windows
-            script: package:win
+            platform: windows-x64
+            windows_arch: x64
+            script: package:win:x64
             assets: |
-              release/*.exe
+              release/*-x64.exe
+              release/*-x64.exe.blockmap
               release/latest.yml
-              release/*.blockmap
+              release/latest-x64.yml
+          - label: Windows ARM64
+            os: windows-latest
+            platform: windows-arm64
+            windows_arch: arm64
+            script: package:win:arm64
+            assets: |
+              release/*-arm64.exe
+              release/*-arm64.exe.blockmap
+              release/latest-arm64.yml
           - label: macOS
             os: macos-latest
             platform: macos
@@ -136,8 +192,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Stamp hotpatch revision into package
+        run: node .github/stamp-hotpatch.cjs package ${{ needs.verify.outputs.hotpatch_revision }}
+
       - name: Configure Windows certificate signing
-        if: matrix.platform == 'windows'
+        if: startsWith(matrix.platform, 'windows-')
         shell: bash
         env:
           SIGNING_LINK: ${{ secrets.WINDOWS_CSC_LINK }}
@@ -165,7 +224,81 @@ jobs:
           fi
 
       - name: Build native packages
-        run: npm run ${{ matrix.script }} -- --publish never
+        run: npm run ${{ matrix.script }}
+
+      - name: Verify Windows package payload
+        if: startsWith(matrix.platform, 'windows-')
+        shell: pwsh
+        env:
+          WINDOWS_ARCH: ${{ matrix.windows_arch }}
+        run: |
+          $unpacked = if ($env:WINDOWS_ARCH -eq 'arm64') { 'release/win-arm64-unpacked' } else { 'release/win-unpacked' }
+          $required = @(
+            "$unpacked/Typesetly.exe",
+            "$unpacked/resources/app.asar",
+            "$unpacked/ffmpeg.dll",
+            "$unpacked/libEGL.dll"
+          )
+          foreach ($path in $required) {
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+              throw "Missing required $env:WINDOWS_ARCH package payload: $path"
+            }
+          }
+
+          $executableBytes = [IO.File]::ReadAllBytes("$unpacked/Typesetly.exe")
+          $peOffset = [BitConverter]::ToInt32($executableBytes, 0x3c)
+          $machine = [BitConverter]::ToUInt16($executableBytes, $peOffset + 4)
+          $expectedMachine = if ($env:WINDOWS_ARCH -eq 'arm64') { 0xAA64 } else { 0x8664 }
+          if ($machine -ne $expectedMachine) {
+            throw "Typesetly.exe has PE machine 0x$($machine.ToString('X4')); expected 0x$($expectedMachine.ToString('X4')) for $env:WINDOWS_ARCH."
+          }
+
+          $setup = Get-Item "release/Typesetly-Setup-*-$env:WINDOWS_ARCH.exe"
+          $portable = Get-Item "release/Typesetly-Portable-*-$env:WINDOWS_ARCH.exe"
+          foreach ($package in @($setup, $portable)) {
+            # Force the embedded payload format. Without -t7z, some runner
+            # versions identify only the outer NSIS executable.
+            $listing = (& 7z l -slt -t7z $package.FullName) -join "`n"
+            if ($listing -notmatch 'Typesetly\.exe' -or $listing -notmatch 'ffmpeg\.dll') {
+              throw "$($package.Name) does not contain a complete application payload."
+            }
+
+            # electron-builder 26.15.3 allowed 7-Zip to select BCJ2/ARM64
+            # filters that NSIS could list but could not extract at install time.
+            # The result was an apparently successful install containing only
+            # the uninstaller. 26.15.6 pins the embedded application archive to
+            # the NSIS-compatible single-stream BCJ filter.
+            $archiveMethod = ($listing -split "`r?`n" | Where-Object { $_ -match '^Method = \S' } | Select-Object -First 1)
+            if ($archiveMethod -notmatch '\bBCJ\b' -or $archiveMethod -match '\bBCJ2\b|\bARM64\b') {
+              throw "$($package.Name) uses an NSIS-incompatible payload method: $archiveMethod"
+            }
+          }
+
+          # Both architecture-specific installers must perform a real extraction.
+          # The ARM64 application cannot launch on this x64 runner, but its NSIS
+          # bootstrapper can still install the ARM payload for structural QA.
+          $qaInstall = Join-Path $env:RUNNER_TEMP "typesetly-$env:WINDOWS_ARCH-install"
+          $installer = Start-Process -FilePath $setup.FullName -ArgumentList '/S', "/D=$qaInstall" -Wait -PassThru
+          if ($installer.ExitCode -ne 0) {
+            throw "$($setup.Name) exited with code $($installer.ExitCode)."
+          }
+          foreach ($relativePath in @('Typesetly.exe', 'resources/app.asar', 'ffmpeg.dll', 'libEGL.dll')) {
+            $installedPath = Join-Path $qaInstall $relativePath
+            if (-not (Test-Path -LiteralPath $installedPath -PathType Leaf)) {
+              throw "Installed payload is missing $relativePath for $env:WINDOWS_ARCH."
+            }
+          }
+
+          $uninstaller = Join-Path $qaInstall 'Uninstall Typesetly.exe'
+          if (Test-Path -LiteralPath $uninstaller -PathType Leaf) {
+            Start-Process -FilePath $uninstaller -ArgumentList '/S' -Wait
+          }
+          if (Test-Path -LiteralPath $qaInstall) {
+            Remove-Item -LiteralPath $qaInstall -Recurse -Force
+          }
+
+      - name: Stamp hotpatch revision into updater metadata
+        run: node .github/stamp-hotpatch.cjs metadata ${{ needs.verify.outputs.hotpatch_revision }} release/latest.yml release/latest-x64.yml release/latest-arm64.yml release/latest-mac.yml release/latest-linux.yml
 
       - name: Upload native packages
         uses: actions/upload-artifact@v7
@@ -213,12 +346,28 @@ jobs:
           RELEASE_VERSION: ${{ needs.verify.outputs.version }}
           RELEASE_DRAFT: ${{ needs.verify.outputs.draft }}
           RELEASE_PRERELEASE: ${{ needs.verify.outputs.prerelease }}
+          RELEASE_HOTPATCH: ${{ needs.verify.outputs.hotpatch }}
         run: |
           if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            obsolete_windows_assets=(
+              "Typesetly-Setup-$RELEASE_VERSION.exe"
+              "Typesetly-Setup-$RELEASE_VERSION.exe.blockmap"
+              "Typesetly-Portable-$RELEASE_VERSION.exe"
+            )
+            for asset in "${obsolete_windows_assets[@]}"; do
+              gh release delete-asset "$RELEASE_TAG" "$asset" \
+                --repo "$GITHUB_REPOSITORY" \
+                --yes >/dev/null 2>&1 || true
+            done
             gh release upload "$RELEASE_TAG" release-assets/* \
               --repo "$GITHUB_REPOSITORY" \
               --clobber
             exit 0
+          fi
+
+          if [[ "$RELEASE_HOTPATCH" == "true" ]]; then
+            echo "::error::Hotpatches can only replace assets on an existing release."
+            exit 1
           fi
 
           release_flags=(

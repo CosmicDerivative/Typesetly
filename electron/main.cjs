@@ -2,7 +2,13 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron')
 const { autoUpdater } = require('electron-updater')
 const path = require('path')
 const fs = require('fs')
-const { describeUpdateCheck } = require('./updater.cjs')
+const packageMetadata = require('../package.json')
+const {
+  describeUpdateCheck,
+  isHotpatchAvailable,
+  normalizeHotpatchRevision,
+  windowsUpdaterChannel,
+} = require('./updater.cjs')
 
 const isDev = !app.isPackaged
 let latestUpdateCheck
@@ -13,6 +19,24 @@ autoUpdater.autoInstallOnAppQuit = true
 autoUpdater.autoRunAppAfterInstall = true
 autoUpdater.allowPrerelease = false
 autoUpdater.disableWebInstaller = true
+// Windows packages are built independently so an ARM installer never relies
+// on NSIS runtime architecture detection. Match each native package to its
+// own update manifest while keeping latest.yml available to older x64 builds.
+if (process.platform === 'win32') {
+  autoUpdater.channel = windowsUpdaterChannel(process.arch)
+  // Assigning a custom channel enables downgrades inside electron-updater;
+  // architecture routing must never relax normal version ordering.
+  autoUpdater.allowDowngrade = false
+}
+
+const installedHotpatchRevision = normalizeHotpatchRevision(
+  packageMetadata.hotpatchRevision ?? packageMetadata.build?.extraMetadata?.hotpatchRevision,
+)
+const defaultIsUpdateAvailable = autoUpdater.isUpdateAvailable.bind(autoUpdater)
+autoUpdater.isUpdateAvailable = async (updateInfo) => {
+  if (isHotpatchAvailable(updateInfo, app.getVersion(), installedHotpatchRevision)) return true
+  return defaultIsUpdateAvailable(updateInfo)
+}
 
 function windowStatePath() {
   return path.join(app.getPath('userData'), 'window-state.json')
@@ -133,13 +157,15 @@ async function checkForDesktopUpdate() {
     return {
       ok: true,
       currentVersion: app.getVersion(),
+      currentHotpatchRevision: installedHotpatchRevision,
       latestVersion: app.getVersion(),
+      latestHotpatchRevision: installedHotpatchRevision,
       updateAvailable: false,
       development: true,
     }
   }
   latestUpdateCheck = await autoUpdater.checkForUpdates()
-  return describeUpdateCheck(latestUpdateCheck, app.getVersion())
+  return describeUpdateCheck(latestUpdateCheck, app.getVersion(), installedHotpatchRevision)
 }
 
 ipcMain.handle('check-for-updates', async () => {
@@ -149,6 +175,7 @@ ipcMain.handle('check-for-updates', async () => {
     return {
       ok: false,
       currentVersion: app.getVersion(),
+      currentHotpatchRevision: installedHotpatchRevision,
       error: error instanceof Error ? error.message : 'Typesetly could not check for updates.',
     }
   }
@@ -171,6 +198,7 @@ ipcMain.handle('install-latest-update', async () => {
     }
     await updateDownloadInProgress
     const version = latestUpdateCheck.updateInfo.version
+    const hotpatchRevision = normalizeHotpatchRevision(latestUpdateCheck.updateInfo.hotpatchRevision)
     broadcastUpdateProgress({ received: 1, total: 1, percent: 100 })
 
     // Resolve the renderer request first so it can announce the restart, then
@@ -182,6 +210,7 @@ ipcMain.handle('install-latest-update', async () => {
     return {
       ok: true,
       version,
+      hotpatchRevision,
       verified: true,
       installing: true,
     }

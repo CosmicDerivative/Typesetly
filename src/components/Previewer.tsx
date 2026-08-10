@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useApp } from '../BookContext'
 import type { PreviewDevice } from '../types'
 import './Previewer.css'
-import { decorateFirstSentenceHtml, headingParts, parseManuscript, type ManuscriptBlock } from '../layout/manuscript'
+import { decorateFirstSentenceHtml, exportableChapters, headingParts, parseManuscript, type ManuscriptBlock } from '../layout/manuscript'
 import { layoutShowsPageNumber, runningHeaderAlignment, runningHeaderText } from '../layout/runningHeaders'
 import { preflightBook } from '../export/preflight'
 import { DEVICE_PROFILES, profileDescription, renderedDeviceWidth } from '../preview/devices'
@@ -12,6 +12,26 @@ import { DrawerControls } from './DrawerControls'
 import { useResolvedImageSrc } from '../library/useResolvedImageSrc'
 import { colorWithOpacity, litRpgElementKey } from '../editor/litrpg'
 import { litRpgIsTranslucent } from '../export/litrpgExport'
+import { chapterDecorations } from '../themes/chapterDecorations'
+import { ChapterDecorations } from './ChapterDecorations'
+import './ChapterDecorations.css'
+import { tableOfContentsTree, type TableOfContentsNode } from '../export/toc'
+import { previewLineSpacing, previewReaderFontSize } from '../preview/typography'
+import { paragraphSpacingEm } from '../themes/paragraph'
+import { publishPreviewWidth } from '../preview/fit'
+
+function PreviewContentsList({ nodes }: { nodes: TableOfContentsNode[] }) {
+  return (
+    <ol>
+      {nodes.map((node) => (
+        <li key={node.page.id}>
+          <span>{node.page.title}</span>
+          {node.children.length > 0 && <PreviewContentsList nodes={node.children} />}
+        </li>
+      ))}
+    </ol>
+  )
+}
 
 export function Previewer() {
   const {
@@ -36,12 +56,16 @@ export function Previewer() {
   const [readerAppearance, setReaderAppearance] = useState<'light' | 'sepia' | 'dark'>('light')
   const [readerFontMode, setReaderFontMode] = useState<'device' | 'book'>('device')
   const [screenWidth, setScreenWidth] = useState(1)
+  const [proofWidth, setProofWidth] = useState(0)
+  const stageRef = useRef<HTMLDivElement>(null)
   const screenRef = useRef<HTMLDivElement>(null)
   const pageFlowRef = useRef<HTMLDivElement>(null)
   const swipeStartXRef = useRef<number | null>(null)
   const preflight = useMemo(() => project ? preflightBook(project, activeTheme) : [], [activeTheme, project])
   const previewOrnamentSrc = useResolvedImageSrc(
-    activeChapter?.imageDataUrl || activeTheme.chapterHeading.sharedImageDataUrl,
+    activeChapter?.type === 'chapter'
+      ? activeChapter.imageDataUrl || activeTheme.chapterHeading.sharedImageDataUrl
+      : activeChapter?.imageDataUrl,
   )
   const sceneBreakImageSrc = useResolvedImageSrc(activeTheme.sceneBreak.customImageDataUrl)
 
@@ -58,15 +82,14 @@ export function Previewer() {
       return { notes: [], blocks: [] as ManuscriptBlock[] }
     }
     if (activeChapter.type === 'contents') {
-      return {
-        notes: [],
-        blocks: project.chapters
-          .filter((chapter) => (chapter.type === 'chapter' || chapter.type === 'part') && !chapter.options.hideInToc)
-          .map((chapter) => ({ type: 'paragraph' as const, text: chapter.title, html: chapter.title })),
-      }
+      return { notes: [], blocks: [] as ManuscriptBlock[] }
     }
     return parseManuscript(activeChapter.content)
   }, [activeChapter, project])
+  const previewTocTree = useMemo(
+    () => project ? tableOfContentsTree(exportableChapters(project, 'ebook')) : [],
+    [project],
+  )
 
   const profile = DEVICE_PROFILES[previewDevice]
   const portraitWidth = previewDevice === 'Print' ? activeTheme.print.trimWidthIn * 72 : profile.logicalWidth
@@ -125,12 +148,34 @@ export function Previewer() {
     readerFontScale,
   ])
 
+  useEffect(() => {
+    if (mode !== 'publish') {
+      setProofWidth(0)
+      return
+    }
+    const stage = stageRef.current
+    if (!stage) return
+    const measure = () => {
+      setProofWidth(publishPreviewWidth(
+        stage.clientWidth,
+        stage.clientHeight,
+        profileWidth / profileHeight,
+      ))
+    }
+    const observer = new ResizeObserver(measure)
+    observer.observe(stage)
+    measure()
+    return () => observer.disconnect()
+  }, [landscape, mode, previewDevice, profileHeight, profileWidth])
+
   if ((mode !== 'publish' && rightPanel !== 'preview') || !project) return null
 
   const chapterIndex = bodyChapters.findIndex((c) => c.id === activeChapter?.id)
   const canPrev = chapterIndex > 0
   const canNext = chapterIndex >= 0 && chapterIndex < bodyChapters.length - 1
   const theme = activeTheme
+  const decorations = chapterDecorations(theme.chapterHeading)
+  const hasHeadingOverlay = decorations.some((item) => item.placement === 'header-overlay')
   const deviceClass = `device ${profile.family} ${profile.color ? 'color-screen' : 'eink-screen'}`
   const goToScreen = (page: number) => {
     setScreenPage(Math.max(1, Math.min(screenPages, page)))
@@ -218,11 +263,11 @@ export function Previewer() {
         )}
       </div>
 
-      <div className="preview-stage">
+      <div ref={stageRef} className="preview-stage">
         <div
           className={deviceClass}
           style={{
-            '--device-width': `${renderedWidth}px`,
+            '--device-width': `${mode === 'publish' && proofWidth > 0 ? proofWidth : renderedWidth}px`,
             '--device-ratio': `${profileWidth} / ${profileHeight}`,
             '--device-bezel': `${profile.bezel}px`,
             '--device-radius': `${profile.cornerRadius}px`,
@@ -262,8 +307,12 @@ export function Previewer() {
               fontFamily: readerFont,
               fontSize: previewDevice === 'Print'
                 ? `${theme.print.largePrint ? Math.max(14, theme.typography.bodySize) : theme.typography.bodySize}pt`
-                : `${16 * readerFontScale}px`,
-              lineHeight: theme.typography.lineSpacing,
+                : previewReaderFontSize(
+                    theme.typography.bodySize,
+                    readerFontScale,
+                    readerFontMode === 'book',
+                  ),
+              lineHeight: previewLineSpacing(theme.typography.lineSpacing),
               textAlign: theme.paragraph.bodyAlign,
               '--verse-indent': `${theme.specialBlocks.verseIndentEm}em`,
               '--verse-spacing': theme.specialBlocks.verseLineSpacing,
@@ -271,6 +320,7 @@ export function Previewer() {
               '--quote-indent': `${theme.specialBlocks.quoteIndentEm}em`,
               '--quote-border': `${theme.specialBlocks.quoteBorderWidth}px`,
               '--quote-style': theme.specialBlocks.quoteItalic ? 'italic' : 'normal',
+              '--paragraph-spacing': `${paragraphSpacingEm(theme.paragraph.paragraphSpacingEm)}em`,
               ...(previewDevice === 'Print'
                 ? {
                     aspectRatio: `${theme.print.trimWidthIn} / ${theme.print.trimHeightIn}`,
@@ -329,18 +379,11 @@ export function Previewer() {
                   )}
                 </>
               )}
-            {activeChapter?.type === 'chapter' &&
-              theme.chapterHeading.imageEnabled &&
-              !activeChapter.options.hideChapterImage &&
-              (activeChapter.imageDataUrl || theme.chapterHeading.sharedImageDataUrl) && (
-                <div className="preview-ornament" aria-hidden>
-                  {previewOrnamentSrc && <img src={previewOrnamentSrc} alt="" />}
-                </div>
-              )}
-
             {activeChapter?.type === 'title-page' ? (
               <div className="preview-title-page">
+                <div className="preview-title-rule" aria-hidden="true" />
                 <h1>{project.details.title || 'Untitled Book'}</h1>
+                <div className="preview-title-rule" aria-hidden="true" />
                 {project.details.subtitle && <p>{project.details.subtitle}</p>}
                 {project.details.seriesName && (
                   <span className="preview-series">
@@ -350,36 +393,103 @@ export function Previewer() {
                 )}
                 <strong>{project.details.author || 'Author'}</strong>
               </div>
-            ) : activeChapter && !activeChapter.options.hideChapterHeading && (
+            ) : activeChapter?.type === 'part' ? (
+              <div className="preview-part-page">
+                <div className="preview-title-rule" aria-hidden="true" />
+                {theme.chapterHeading.imageEnabled && !activeChapter.options.hideChapterImage && previewOrnamentSrc && (
+                  <figure className="preview-part-image">
+                    <img src={previewOrnamentSrc} alt={activeChapter.imageAlt || ''} />
+                  </figure>
+                )}
+                <h1>{activeChapter.title}</h1>
+                <div className="preview-title-rule" aria-hidden="true" />
+                {activeChapter.subtitle && <p>{activeChapter.subtitle}</p>}
+                {project.details.author && <strong>{project.details.author}</strong>}
+              </div>
+            ) : activeChapter && (
               <>
-                {heading?.number && (
-                  <p className="preview-number" style={{ textAlign: theme.chapterHeading.titleAlign }}>
+              {activeChapter.type === 'chapter' && (
+                <ChapterDecorations decorations={decorations} placement="above-heading" />
+              )}
+              <div className={`preview-heading-composition${hasHeadingOverlay && activeChapter.type === 'chapter' ? ' has-overlay' : ''}`}>
+                {activeChapter.type === 'chapter' && (
+                  <ChapterDecorations decorations={decorations} placement="header-overlay" />
+                )}
+                <div className="preview-heading-content">
+                {activeChapter.type === 'chapter' &&
+                  theme.chapterHeading.imageEnabled &&
+                  !activeChapter.options.hideChapterImage &&
+                  (activeChapter.imageDataUrl || theme.chapterHeading.sharedImageDataUrl) && (
+                    <figure
+                      className={`preview-ornament image-${activeChapter.imageLayout || 'inline'} align-${theme.chapterHeading.imageAlign}`}
+                      style={{ '--chapter-image-width': `${theme.chapterHeading.imageSize}%` } as CSSProperties}
+                    >
+                      {previewOrnamentSrc && <img src={previewOrnamentSrc} alt={activeChapter.imageAlt || ''} />}
+                      {activeChapter.imageCaption && <figcaption>{activeChapter.imageCaption}</figcaption>}
+                    </figure>
+                  )}
+                {!activeChapter.options.hideChapterHeading && heading?.number && (
+                  <p
+                    className="preview-number"
+                    style={{
+                      textAlign: theme.chapterHeading.titleAlign,
+                      fontFamily: readerFontMode === 'book' || previewDevice === 'Print'
+                        ? theme.chapterHeading.numberFont
+                        : profile.readerFont,
+                      fontSize: hasHeadingOverlay
+                        ? `min(${theme.chapterHeading.numberSize * (previewDevice === 'Print' ? 1 : readerFontScale)}pt, 6cqi)`
+                        : `${theme.chapterHeading.numberSize * (previewDevice === 'Print' ? 1 : readerFontScale)}pt`,
+                    }}
+                  >
                     Chapter {heading.number}
                   </p>
                 )}
-                {heading?.title && <h2
+                {!activeChapter.options.hideChapterHeading && heading?.title && <h2
                   className="preview-title"
                   style={{
                     textAlign: theme.chapterHeading.titleAlign,
                     fontFamily: readerFontMode === 'book' || previewDevice === 'Print'
                       ? theme.chapterHeading.titleFont
                       : profile.readerFont,
-                    fontSize: previewDevice === 'Print'
-                      ? `${activeChapter.options.useSmallerChapterTitle ? theme.chapterHeading.titleSize * .75 : theme.chapterHeading.titleSize}pt`
-                      : `${Math.max(18, Math.min(34, theme.chapterHeading.titleSize * .82)) * readerFontScale}px`,
+                    fontSize: hasHeadingOverlay
+                      ? `min(${(activeChapter.options.useSmallerChapterTitle ? theme.chapterHeading.titleSize * .75 : theme.chapterHeading.titleSize) * (previewDevice === 'Print' ? 1 : readerFontScale)}pt, 10cqi)`
+                      : `${(activeChapter.options.useSmallerChapterTitle ? theme.chapterHeading.titleSize * .75 : theme.chapterHeading.titleSize) * (previewDevice === 'Print' ? 1 : readerFontScale)}pt`,
                     fontWeight: theme.chapterHeading.titleWeight,
                   }}
                 >
                   {heading.title}
                 </h2>}
-                {heading?.subtitle ? (
-                  <p className="preview-subtitle">{heading.subtitle}</p>
+                {!activeChapter.options.hideChapterHeading && heading?.subtitle ? (
+                  <p
+                    className="preview-subtitle"
+                    style={{
+                      textAlign: theme.chapterHeading.titleAlign,
+                      fontFamily: readerFontMode === 'book' || previewDevice === 'Print'
+                        ? theme.chapterHeading.subtitleFont
+                        : profile.readerFont,
+                      fontSize: hasHeadingOverlay
+                        ? `min(${theme.chapterHeading.subtitleSize * (previewDevice === 'Print' ? 1 : readerFontScale)}pt, 6cqi)`
+                        : `${theme.chapterHeading.subtitleSize * (previewDevice === 'Print' ? 1 : readerFontScale)}pt`,
+                    }}
+                  >{heading.subtitle}</p>
                 ) : null}
+                </div>
+              </div>
+              {activeChapter.type === 'chapter' && (
+                <ChapterDecorations decorations={decorations} placement="below-heading" />
+              )}
+              {activeChapter.type === 'chapter' && (
+                <ChapterDecorations decorations={decorations} placement="before-opening" />
+              )}
               </>
             )}
 
             <div className="preview-body">
-              {previewContent.blocks.length === 0 ? (
+              {activeChapter?.type === 'contents' ? (
+                <nav className="preview-contents" aria-label="Table of contents">
+                  <PreviewContentsList nodes={previewTocTree} />
+                </nav>
+              ) : previewContent.blocks.length === 0 ? (
                 <p className="preview-para muted">Nothing to preview yet.</p>
               ) : (
                 previewContent.blocks.map((b, i) => {
@@ -571,6 +681,9 @@ export function Previewer() {
                     <p key={note.id}><sup>{note.number}</sup> {note.text}</p>
                   ))}
                 </section>
+              )}
+              {activeChapter?.type === 'chapter' && (
+                <ChapterDecorations decorations={decorations} placement="chapter-footer" />
               )}
             </div>
             </div>

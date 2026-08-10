@@ -3,13 +3,22 @@ import { useState, type CSSProperties } from 'react'
 import { useApp } from '../BookContext'
 import { TRIM_SIZES } from '../themes/presets'
 import { FONT_FAMILIES, FONT_FAMILY_GROUPS, fontStack } from '../themes/fonts'
-import type { BookTheme } from '../types'
+import type { BookTheme, ThemeChapterDecoration } from '../types'
 import './FormattingPanel.css'
 import { Dialog } from './Dialog'
 import { processImageFile } from '../images/process'
 import { dataUrlToBlob, imageRef } from '../library/images'
 import { storeNewImage } from '../library/store'
 import { useResolvedImageSrc } from '../library/useResolvedImageSrc'
+import { chapterDecorations } from '../themes/chapterDecorations'
+import { ChapterDecorations } from './ChapterDecorations'
+import './ChapterDecorations.css'
+import { previewLineSpacing } from '../preview/typography'
+import {
+  MAX_PARAGRAPH_SPACING_EM,
+  MIN_PARAGRAPH_SPACING_EM,
+  paragraphSpacingEm,
+} from '../themes/paragraph'
 
 function ResolvedImg({
   src,
@@ -40,6 +49,136 @@ function previewChapterNumber(theme: BookTheme) {
   if (theme.chapterHeading.numberView === 'roman') return 'CHAPTER I'
   if (theme.chapterHeading.numberView === 'words') return 'CHAPTER ONE'
   return 'CHAPTER 1'
+}
+
+function ThemeSample({
+  theme,
+  className = '',
+  detailed = false,
+}: {
+  theme: BookTheme
+  className?: string
+  detailed?: boolean
+}) {
+  const chapterNumber = previewChapterNumber(theme)
+  const decorations = chapterDecorations(theme.chapterHeading)
+  const hasOverlay = decorations.some((decoration) => decoration.placement === 'header-overlay')
+  const dropCap = theme.paragraph.dropCaps
+  const leadInSmallCaps = theme.paragraph.leadInSmallCaps
+  const bodySize = Math.max(1, theme.typography.bodySize)
+  const lineHeight = previewLineSpacing(theme.typography.lineSpacing)
+  const paragraphGap = theme.paragraph.paragraphStyle === 'space'
+    ? `${paragraphSpacingEm(theme.paragraph.paragraphSpacingEm)}em`
+    : '0'
+  const imageMargin = theme.chapterHeading.imageAlign === 'center'
+    ? '0 auto .5em'
+    : theme.chapterHeading.imageAlign === 'right'
+      ? '0 0 .5em auto'
+      : '0 auto .5em 0'
+
+  return (
+    <div
+      className={`theme-sample ${className}`.trim()}
+      style={{
+        fontFamily: fontStack(theme.typography.bodyFont),
+        fontSize: `${Math.max(9.5, Math.min(13, bodySize * .96))}px`,
+      }}
+    >
+      <ChapterDecorations decorations={decorations} placement="above-heading" />
+      <div className={`theme-heading-composition${hasOverlay ? ' has-overlay' : ''}`}>
+        <ChapterDecorations decorations={decorations} placement="header-overlay" />
+        <div className="theme-heading-content">
+          {theme.chapterHeading.imageEnabled && theme.chapterHeading.sharedImageDataUrl && (
+            <ResolvedImg
+              className="ts-kicker-image"
+              src={theme.chapterHeading.sharedImageDataUrl}
+              alt=""
+              style={{
+                width: `${theme.chapterHeading.imageSize}%`,
+                margin: imageMargin,
+              }}
+            />
+          )}
+          {chapterNumber && (
+            <div
+              className="ts-kicker"
+              style={{
+                fontFamily: fontStack(theme.chapterHeading.numberFont),
+                fontSize: hasOverlay
+                  ? `min(${theme.chapterHeading.numberSize / bodySize}em, 6cqi)`
+                  : `${theme.chapterHeading.numberSize / bodySize}em`,
+                textAlign: theme.chapterHeading.titleAlign,
+              }}
+            >
+              {chapterNumber}
+            </div>
+          )}
+          {theme.chapterHeading.showTitle && (
+            <div
+              className="ts-title"
+              style={{
+                fontFamily: fontStack(theme.chapterHeading.titleFont),
+                fontSize: hasOverlay
+                  ? `min(${theme.chapterHeading.titleSize / bodySize}em, 10cqi)`
+                  : `${theme.chapterHeading.titleSize / bodySize}em`,
+                fontWeight: theme.chapterHeading.titleWeight === 'bold' ? 700 : 400,
+                textAlign: theme.chapterHeading.titleAlign,
+              }}
+            >
+              Chapter Title
+            </div>
+          )}
+          {theme.chapterHeading.showSubtitle && (
+            <div
+              className="ts-subtitle"
+              style={{
+                fontFamily: fontStack(theme.chapterHeading.subtitleFont),
+                fontSize: hasOverlay
+                  ? `min(${theme.chapterHeading.subtitleSize / bodySize}em, 6cqi)`
+                  : `${theme.chapterHeading.subtitleSize / bodySize}em`,
+                textAlign: theme.chapterHeading.titleAlign,
+              }}
+            >
+              A chapter subtitle
+            </div>
+          )}
+        </div>
+      </div>
+      <ChapterDecorations decorations={decorations} placement="below-heading" />
+      <ChapterDecorations decorations={decorations} placement="before-opening" />
+      <p
+        className={dropCap ? 'ts-drop' : ''}
+        style={{
+          lineHeight,
+          marginBottom: detailed ? paragraphGap : 0,
+          textAlign: theme.paragraph.bodyAlign,
+        }}
+      >
+        {dropCap && <span className="ts-dropcap">W</span>}
+        {leadInSmallCaps ? (
+          <>
+            <span className="ts-small-caps">{dropCap ? 'hen' : 'When'} the story begins,</span>
+            {' the theme shapes every page.'}
+          </>
+        ) : (
+          <>{dropCap ? 'hen' : 'When'} the story begins, the theme shapes every page.</>
+        )}
+      </p>
+      {detailed && (
+        <p
+          style={{
+            lineHeight,
+            marginBottom: 0,
+            textAlign: theme.paragraph.bodyAlign,
+            textIndent: theme.paragraph.paragraphStyle === 'indent' ? '1.2em' : 0,
+          }}
+        >
+          Wrapped lines reveal leading; this second paragraph reveals the separate paragraph gap.
+        </p>
+      )}
+      <ChapterDecorations decorations={decorations} placement="chapter-footer" />
+    </div>
+  )
 }
 
 function fontOptions(current: string) {
@@ -83,6 +222,13 @@ export function FormattingPanel() {
 
   if (editingTheme) {
     const t = editingTheme
+    const decorationList = t.chapterHeading.decorations || []
+    const setDecorations = (decorations: ThemeChapterDecoration[]) => updateEditingTheme({
+      chapterHeading: { ...t.chapterHeading, decorations },
+    })
+    const updateDecoration = (id: string, patch: Partial<ThemeChapterDecoration>) => {
+      setDecorations(decorationList.map((item) => item.id === id ? { ...item, ...patch } : item))
+    }
     return (
       <>
       <div className="formatting-view">
@@ -108,8 +254,16 @@ export function FormattingPanel() {
           </div>
         </div>
 
+        <section className="booklab-live-preview" aria-label="Live chapter proof">
+          <div className="booklab-live-preview-copy">
+            <span>Live chapter proof</span>
+            <p>Images, heading type, alignment, and decorative layers update here as you edit.</p>
+          </div>
+          <ThemeSample theme={t} className="booklab-theme-sample" detailed />
+        </section>
+
         <div className="fv-grid">
-          <section className="fv-card">
+          <section className="fv-card fv-card--chapter-heading">
             <h3>Chapter Heading</h3>
             <label className="check">
               <input
@@ -148,6 +302,7 @@ export function FormattingPanel() {
               Chapter image / ornament
             </label>
             {t.chapterHeading.imageEnabled && (
+              <>
               <label>
                 Shared chapter image
                 <input
@@ -172,6 +327,139 @@ export function FormattingPanel() {
                   }}
                 />
               </label>
+              {t.chapterHeading.sharedImageDataUrl && (
+                <div className="shared-chapter-image-controls">
+                  <div className="compact-grid">
+                    <label>
+                      Shared image width ({t.chapterHeading.imageSize}%)
+                      <input
+                        type="range"
+                        min={10}
+                        max={100}
+                        value={t.chapterHeading.imageSize}
+                        onChange={(event) => updateEditingTheme({
+                          chapterHeading: {
+                            ...t.chapterHeading,
+                            imageSize: Number(event.target.value),
+                          },
+                        })}
+                      />
+                    </label>
+                    <label>
+                      Shared image alignment
+                      <select
+                        value={t.chapterHeading.imageAlign}
+                        onChange={(event) => updateEditingTheme({
+                          chapterHeading: {
+                            ...t.chapterHeading,
+                            imageAlign: event.target.value as typeof t.chapterHeading.imageAlign,
+                          },
+                        })}
+                      >
+                        <option value="left">Left</option>
+                        <option value="center">Center</option>
+                        <option value="right">Right</option>
+                      </select>
+                    </label>
+                  </div>
+                  <button
+                    type="button"
+                    className="remove-shared-chapter-image"
+                    onClick={() => updateEditingTheme({
+                      chapterHeading: { ...t.chapterHeading, sharedImageDataUrl: undefined },
+                    })}
+                  >
+                    <Trash2 size={13} /> Remove shared chapter image
+                  </button>
+                </div>
+              )}
+              <label>
+                Add decorative image layer
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={async (event) => {
+                    const file = event.target.files?.[0]
+                    if (!file) return
+                    try {
+                      const ref = await storeThemeImage(file)
+                      setDecorations([...decorationList, {
+                        id: crypto.randomUUID(),
+                        name: file.name.replace(/\.[^.]+$/, '') || `Decoration ${decorationList.length + 1}`,
+                        imageDataUrl: ref,
+                        placement: 'header-overlay',
+                        align: decorationList.length % 2 ? 'right' : 'left',
+                        width: 28,
+                        offsetX: 0,
+                        offsetY: 0,
+                        opacity: 100,
+                        rotation: 0,
+                      }])
+                      event.target.value = ''
+                    } catch (error) {
+                      window.dispatchEvent(new CustomEvent('typesetly:notice', {
+                        detail: error instanceof Error ? error.message : 'The decorative image could not be imported.',
+                      }))
+                    }
+                  }}
+                />
+              </label>
+              {decorationList.map((decoration, index) => (
+                <div className="decoration-layer-editor" key={decoration.id}>
+                  <div className="decoration-layer-head">
+                    <input
+                      aria-label="Layer name"
+                      value={decoration.name}
+                      onChange={(event) => updateDecoration(decoration.id, { name: event.target.value })}
+                    />
+                    <button type="button" disabled={index === 0} onClick={() => {
+                      const next = [...decorationList]
+                      ;[next[index - 1], next[index]] = [next[index]!, next[index - 1]!]
+                      setDecorations(next)
+                    }}>↑</button>
+                    <button type="button" disabled={index === decorationList.length - 1} onClick={() => {
+                      const next = [...decorationList]
+                      ;[next[index], next[index + 1]] = [next[index + 1]!, next[index]!]
+                      setDecorations(next)
+                    }}>↓</button>
+                    <button type="button" title="Remove layer" onClick={() => setDecorations(decorationList.filter((item) => item.id !== decoration.id))}>
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                  <div className="compact-grid">
+                    <label>Position
+                      <select value={decoration.placement} onChange={(event) => updateDecoration(decoration.id, { placement: event.target.value as ThemeChapterDecoration['placement'] })}>
+                        <option value="above-heading">Above heading</option>
+                        <option value="header-overlay">Around / behind heading</option>
+                        <option value="below-heading">Below heading</option>
+                        <option value="before-opening">Before opening text</option>
+                        <option value="chapter-footer">Chapter footer</option>
+                      </select>
+                    </label>
+                    <label>Align
+                      <select value={decoration.align} onChange={(event) => updateDecoration(decoration.id, { align: event.target.value as ThemeChapterDecoration['align'] })}>
+                        <option value="left">Left</option><option value="center">Center</option><option value="right">Right</option>
+                      </select>
+                    </label>
+                    <label>Width ({decoration.width}%)
+                      <input type="range" min={5} max={100} value={decoration.width} onInput={(event) => updateDecoration(decoration.id, { width: Number(event.currentTarget.value) })} />
+                    </label>
+                    <label>Opacity ({decoration.opacity}%)
+                      <input type="range" min={5} max={100} value={decoration.opacity} onInput={(event) => updateDecoration(decoration.id, { opacity: Number(event.currentTarget.value) })} />
+                    </label>
+                    <label>Horizontal offset
+                      <input type="number" min={-50} max={50} value={decoration.offsetX} onChange={(event) => updateDecoration(decoration.id, { offsetX: Number(event.target.value) })} />
+                    </label>
+                    <label>Vertical offset
+                      <input type="number" min={-240} max={240} value={decoration.offsetY} onChange={(event) => updateDecoration(decoration.id, { offsetY: Number(event.target.value) })} />
+                    </label>
+                    <label>Rotation
+                      <input type="number" min={-180} max={180} value={decoration.rotation} onChange={(event) => updateDecoration(decoration.id, { rotation: Number(event.target.value) })} />
+                    </label>
+                  </div>
+                </div>
+              ))}
+              </>
             )}
             <label>
               Title align
@@ -300,6 +588,7 @@ export function FormattingPanel() {
             </div>
           </section>
 
+          <div className="fv-settings-grid">
           <section className="fv-card">
             <h3>Paragraph</h3>
             <label className="check">
@@ -342,6 +631,23 @@ export function FormattingPanel() {
                 <option value="indent">Indent</option>
                 <option value="space">Space between</option>
               </select>
+            </label>
+            <label>
+              Paragraph spacing ({paragraphSpacingEm(t.paragraph.paragraphSpacingEm).toFixed(2)}em)
+              <input
+                type="number"
+                min={MIN_PARAGRAPH_SPACING_EM}
+                max={MAX_PARAGRAPH_SPACING_EM}
+                step={0.05}
+                value={paragraphSpacingEm(t.paragraph.paragraphSpacingEm)}
+                disabled={t.paragraph.paragraphStyle !== 'space'}
+                onChange={(event) => updateEditingTheme({
+                  paragraph: {
+                    ...t.paragraph,
+                    paragraphSpacingEm: paragraphSpacingEm(Number(event.target.value)),
+                  },
+                })}
+              />
             </label>
             <label>
               Body align
@@ -932,6 +1238,7 @@ export function FormattingPanel() {
               </select>
             </label>
           </section>
+          </div>
         </div>
       </div>
       {nameDialog && (
@@ -981,76 +1288,10 @@ export function FormattingPanel() {
       <div className="theme-grid">
         {sorted.map((theme) => {
           const active = project.themeId === theme.id
-          const chapterNumber = previewChapterNumber(theme)
-          const dropCap = theme.paragraph.dropCaps
-          const leadInSmallCaps = theme.paragraph.leadInSmallCaps
           return (
             <article key={theme.id} className={active ? 'theme-card active' : 'theme-card'}>
               <button type="button" className="theme-preview" onClick={() => applyTheme(theme.id)}>
-                <div
-                  className="theme-sample"
-                  style={{
-                    fontFamily: fontStack(theme.typography.bodyFont),
-                    fontSize: `${Math.max(9.5, Math.min(13, theme.typography.bodySize * .96))}px`,
-                  }}
-                >
-                  {theme.chapterHeading.sharedImageDataUrl && (
-                    <ResolvedImg
-                      className="ts-kicker-image"
-                      src={theme.chapterHeading.sharedImageDataUrl}
-                      alt=""
-                      style={{
-                        marginInline:
-                          theme.chapterHeading.imageAlign === 'center'
-                            ? 'auto'
-                            : theme.chapterHeading.imageAlign === 'right'
-                              ? 'auto 0'
-                              : '0 auto',
-                      }}
-                    />
-                  )}
-                  {chapterNumber && (
-                    <div
-                      className="ts-kicker"
-                      style={{
-                        fontFamily: fontStack(theme.chapterHeading.numberFont),
-                        textAlign: theme.chapterHeading.titleAlign,
-                      }}
-                    >
-                      {chapterNumber}
-                    </div>
-                  )}
-                  {theme.chapterHeading.showTitle && (
-                    <div
-                      className="ts-title"
-                      style={{
-                        fontFamily: fontStack(theme.chapterHeading.titleFont),
-                        fontSize: `${Math.max(13, Math.min(18, theme.chapterHeading.titleSize * .55))}px`,
-                        fontWeight: theme.chapterHeading.titleWeight === 'bold' ? 700 : 400,
-                        textAlign: theme.chapterHeading.titleAlign,
-                      }}
-                    >
-                      Chapter Title
-                    </div>
-                  )}
-                  <p
-                    className={dropCap ? 'ts-drop' : ''}
-                    style={{
-                      lineHeight: Math.max(1.25, Math.min(1.7, theme.typography.lineSpacing)),
-                      textAlign: theme.paragraph.bodyAlign,
-                    }}
-                  >
-                    {dropCap && <span className="ts-dropcap">W</span>}
-                    {leadInSmallCaps ? (
-                      <>
-                        <span className="ts-small-caps">{dropCap ? 'hen' : 'When'} the story begins,</span>
-                        {' the theme shapes every page.'}
-                      </>
-                    ) : (
-                      <>{dropCap ? 'hen' : 'When'} the story begins, the theme shapes every page.</>
-                    )}
-                  </p>
-                </div>
+                <ThemeSample theme={theme} />
               </button>
               <div className="theme-meta">
                 <strong>{theme.name}</strong>

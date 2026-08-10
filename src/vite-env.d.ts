@@ -33,7 +33,10 @@ declare global {
       checkForUpdates: (payload?: { force?: boolean }) => Promise<{
         ok: boolean
         currentVersion: string
+        currentHotpatchRevision?: number
         latestVersion?: string
+        latestHotpatchRevision?: number
+        hotpatchAvailable?: boolean
         updateAvailable?: boolean
         development?: boolean
         error?: string
@@ -41,6 +44,7 @@ declare global {
       installLatestUpdate: () => Promise<{
         ok: boolean
         version?: string
+        hotpatchRevision?: number
         verified?: boolean
         installing?: boolean
         error?: string

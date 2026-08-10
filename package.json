@@ -1,7 +1,8 @@
 {
   "name": "typesetly",
   "private": true,
-  "version": "1.2.2",
+  "version": "1.2.4",
+  "hotpatchRevision": 4,
   "description": "A local-first desktop studio for writing, formatting, previewing, and exporting books",
   "author": {
     "name": "Typesetly Contributors",
@@ -29,9 +30,12 @@
     "start": "npm run dev:electron",
     "electron": "electron .",
     "package:dir": "npm run build && electron-builder --dir",
-    "package:win": "npm run build && electron-builder --win nsis portable --x64",
-    "package:mac": "npm run build && electron-builder --mac dmg zip --x64 --arm64",
-    "package:linux": "npm run build && electron-builder --linux AppImage deb --x64"
+    "package:win": "npm run package:win:x64 && npm run package:win:arm64",
+    "package:win:x64": "npm run build && electron-builder --win nsis portable --x64 --publish never && node .github/prepare-windows-channel.cjs x64",
+    "prepackage:win:arm64": "node .github/patch-arm64-nsis.cjs",
+    "package:win:arm64": "npm run build && electron-builder --win nsis portable --arm64 --publish never && node .github/prepare-windows-channel.cjs arm64",
+    "package:mac": "npm run build && electron-builder --mac dmg zip --x64 --arm64 --publish never",
+    "package:linux": "npm run build && electron-builder --linux AppImage deb --x64 --publish never"
   },
   "dependencies": {
     "@tiptap/extension-horizontal-rule": "^3.28.0",
@@ -64,13 +68,17 @@
     "concurrently": "^10.0.3",
     "cross-env": "^10.1.0",
     "electron": "^43.2.0",
-    "electron-builder": "26.15.3",
+    "electron-builder": "26.15.6",
     "oxlint": "^1.71.0",
     "typescript": "~6.0.2",
     "vite": "^8.1.1",
     "wait-on": "^9.1.0"
   },
   "build": {
+    "buildVersion": "1.2.4.4",
+    "extraMetadata": {
+      "hotpatchRevision": 4
+    },
     "appId": "io.github.jorda.typesetly",
     "productName": "Typesetly",
     "asar": true,

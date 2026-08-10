@@ -35,6 +35,9 @@ import { v4 as uuid } from 'uuid'
 import { useApp } from '../BookContext'
 import { countBookWords, countWords } from '../data'
 import { ChapterOptionsMenu } from './ChapterOptionsMenu'
+import { ChapterDecorations } from './ChapterDecorations'
+import { chapterDecorations } from '../themes/chapterDecorations'
+import './ChapterDecorations.css'
 import {
   DraftPagedEditor,
   type CrossPageSelectionSummary,
@@ -78,6 +81,12 @@ const TRACKING_OPTIONS = [
   { value: '0.1em', label: 'Very wide' },
   { value: '0.16em', label: 'Display' },
 ]
+
+function setDraftPaginationPaused(paused: boolean) {
+  window.dispatchEvent(new CustomEvent('typesetly:draft-pagination-pause', {
+    detail: { paused },
+  }))
+}
 
 function formatTimer(seconds: number) {
   const m = Math.floor(seconds / 60)
@@ -145,6 +154,10 @@ export function EditorPane() {
   const chapterOrnamentSource =
     activeChapter?.imageDataUrl || activeTheme.chapterHeading.sharedImageDataUrl
   const chapterOrnamentSrc = useResolvedImageSrc(chapterOrnamentSource)
+  const themeChapterDecorations = chapterDecorations(activeTheme.chapterHeading)
+  const hasHeaderOverlay = themeChapterDecorations.some(
+    (decoration) => decoration.placement === 'header-overlay' && decoration.imageDataUrl,
+  )
   const [editor, setEditor] = useState<Editor | null>(null)
   const [draftPageTotal, setDraftPageTotal] = useState(1)
   const [crossPageSelection, setCrossPageSelection] =
@@ -172,6 +185,13 @@ export function EditorPane() {
   }, [activeChapter?.id])
 
   useEffect(() => {
+    setDraftPaginationPaused(blockOpen || litRpgOpen)
+    return () => {
+      if (blockOpen || litRpgOpen) setDraftPaginationPaused(false)
+    }
+  }, [blockOpen, litRpgOpen])
+
+  useEffect(() => {
     const editLitRpgBlock = (event: Event) => {
       const detail = (event as CustomEvent<{
         editor: Editor
@@ -180,6 +200,7 @@ export function EditorPane() {
         attrs: Record<string, unknown>
       }>).detail
       if (!detail?.editor || detail.editor.isDestroyed) return
+      setDraftPaginationPaused(true)
       setEditor(detail.editor)
       setLitRpgEditing(true)
       setLitRpgDraft(litRpgDraftFromAttrs(detail.attrs))
@@ -195,6 +216,7 @@ export function EditorPane() {
 
     const openFromLibrary = (detail: OpenLitRpgLibraryRequest | null | undefined) => {
       if (!detail?.draft) return
+      setDraftPaginationPaused(true)
       setLitRpgEditing(false)
       setLitRpgDraft(cloneLitRpgDraft(detail.draft))
       setLitRpgProvenance(detail.provenance || {})
@@ -304,6 +326,7 @@ export function EditorPane() {
 
   const openBlockEditor = (variant: 'callout' | 'message') => {
     if (!editor) return
+    setDraftPaginationPaused(true)
     const { $from, from, to } = editor.state.selection
     let activeCallout: { from: number; to: number; text: string; attrs: Record<string, unknown> } | null = null
     for (let depth = $from.depth; depth > 0; depth -= 1) {
@@ -327,7 +350,11 @@ export function EditorPane() {
     setBlockDirection((attrs?.direction as typeof blockDirection) || 'outgoing')
     setBlockTheme((attrs?.theme as typeof blockTheme) || 'ios')
     setBlockText(activeCallout?.text || editor.state.doc.textBetween(from, to, '\n') || '')
-    blockRangeRef.current = activeCallout || { from, to }
+    // Keep a fixed range only while editing an existing atom. New insertions
+    // must use the editor's live selection when the dialog is submitted: Draft
+    // pagination can move content between page editors while the dialog is open,
+    // making a captured page-local position point into the middle of prose.
+    blockRangeRef.current = activeCallout
     setPresetName('')
     setBlockOpen(true)
   }
@@ -444,7 +471,8 @@ export function EditorPane() {
 
   const openLitRpgBuilder = () => {
     if (!editor || editor.isDestroyed) return
-    const { from, to, $from } = editor.state.selection
+    setDraftPaginationPaused(true)
+    const { from, $from } = editor.state.selection
     const selectedNode = editor.state.doc.nodeAt(from) || $from.nodeAfter
     const editing = selectedNode?.type.name === 'litrpgBlock'
     setLitRpgEditing(editing)
@@ -459,9 +487,12 @@ export function EditorPane() {
       }
       : {})
     setLitRpgInitialTab('design')
+    // Existing blocks need their exact node range. A new block intentionally
+    // follows the live, transaction-mapped selection instead of a stale local
+    // page offset captured before the builder opened.
     litRpgRangeRef.current = editing
       ? { from, to: from + selectedNode.nodeSize }
-      : { from, to }
+      : null
     setLitRpgOpen(true)
   }
 
@@ -970,7 +1001,9 @@ export function EditorPane() {
             onPageCountChange={setDraftPageTotal}
             onCrossPageSelectionChange={setCrossPageSelection}
             firstPageChrome={(
-              <div className="chapter-meta">
+              <div className={`chapter-meta${hasHeaderOverlay ? ' has-header-overlay' : ''}`}>
+                {!isFrontOrSpecial && <ChapterDecorations decorations={themeChapterDecorations} placement="above-heading" />}
+                {!isFrontOrSpecial && <ChapterDecorations decorations={themeChapterDecorations} placement="header-overlay" />}
                 {!isFrontOrSpecial &&
                   activeTheme.chapterHeading.imageEnabled &&
                   !activeChapter.options.hideChapterImage &&
@@ -982,11 +1015,15 @@ export function EditorPane() {
                   </div>
                 )}
                 <div className="chapter-titles">
-                  <input
+                  <textarea
                     className="chapter-title-input"
                     value={activeChapter.title}
                     onChange={(e) => updateChapterTitle(activeChapter.id, e.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') event.preventDefault()
+                    }}
                     placeholder="Chapter title"
+                    rows={1}
                     data-lt-active="false"
                   />
                   {(activeChapter.type === 'chapter' || activeChapter.type === 'part') && (
@@ -1008,6 +1045,8 @@ export function EditorPane() {
                     onClose={() => setOptionsOpen(false)}
                   />
                 )}
+                {!isFrontOrSpecial && <ChapterDecorations decorations={themeChapterDecorations} placement="below-heading" />}
+                {!isFrontOrSpecial && <ChapterDecorations decorations={themeChapterDecorations} placement="before-opening" />}
               </div>
             )}
           />

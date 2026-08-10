@@ -324,6 +324,10 @@ function scrubThemeImageFields(theme: BookTheme): BookTheme {
     chapterHeading: {
       ...theme.chapterHeading,
       sharedImageDataUrl: scrubDeadBlobUrls(theme.chapterHeading.sharedImageDataUrl),
+      decorations: (theme.chapterHeading.decorations || []).map((decoration) => ({
+        ...decoration,
+        imageDataUrl: scrubDeadBlobUrls(decoration.imageDataUrl) || '',
+      })).filter((decoration) => decoration.imageDataUrl),
     },
     sceneBreak: {
       ...theme.sceneBreak,

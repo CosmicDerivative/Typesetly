@@ -364,6 +364,20 @@ export interface ThemeChapterHeading {
   useIndividualImages: boolean
   backgroundOpacity: number
   lightText: boolean
+  decorations?: ThemeChapterDecoration[]
+}
+
+export interface ThemeChapterDecoration {
+  id: string
+  name: string
+  imageDataUrl: string
+  placement: 'above-heading' | 'header-overlay' | 'below-heading' | 'before-opening' | 'chapter-footer'
+  align: 'left' | 'center' | 'right'
+  width: number
+  offsetX: number
+  offsetY: number
+  opacity: number
+  rotation: number
 }
 
 export interface ThemeParagraph {
@@ -371,6 +385,8 @@ export interface ThemeParagraph {
   leadInSmallCaps: boolean
   firstSentenceMode: 'chapter' | 'chapter-and-scene'
   paragraphStyle: 'indent' | 'space'
+  /** Gap after each paragraph in em units when paragraphStyle is "space". */
+  paragraphSpacingEm: number
   bodyAlign: 'left' | 'justify'
 }
 

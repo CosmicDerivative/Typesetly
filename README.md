@@ -58,6 +58,8 @@ Download the newest Windows, macOS, or Linux build from the [Typesetly Releases 
 
 Installed desktop builds also check this repository for newer stable releases. When an update is available, use the **Install version** control in the header. Typesetly downloads the matching package into its managed update cache, verifies it against electron-builder’s release metadata, closes the app, installs the update, and relaunches automatically.
 
+Maintainers can publish a fix without changing the public version. Run the **Desktop Release** workflow manually against the existing version tag, enable **hotpatch**, and enter a revision larger than the one currently published. The workflow rebuilds and replaces that release's assets while stamping the revision into every updater manifest. Desktop builds compare both values, so `1.2.3 hotpatch 2` updates `1.2.3 hotpatch 1` without creating a `1.2.4` release.
+
 Unsigned builds may display an operating-system security warning. Only install downloads obtained from the official Typesetly repository.
 
 ## Run from source

@@ -1,5 +1,5 @@
 import { saveAs } from 'file-saver'
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage } from 'pdf-lib'
+import { PDFDocument, StandardFonts, degrees, rgb, type PDFFont, type PDFImage, type PDFPage } from 'pdf-lib'
 import { exportableChapters, headingParts, parseManuscript } from '../layout/manuscript'
 import { layoutShowsPageNumber, runningHeaderText } from '../layout/runningHeaders'
 import type { BookProject, BookTheme, Chapter, ExportResult } from '../types'
@@ -16,35 +16,14 @@ import {
 } from './litrpgExport'
 import { pdfSafeText } from './pdfText'
 import { preflightBook } from './preflight'
+import { addInternalPdfLink } from './pdfLinks'
+import { pdfJustifiedWordGap, wrapPdfParagraph } from './pdfLayout'
+import { tableOfContentsEntries } from './toc'
+import { chapterDecorations } from '../themes/chapterDecorations'
+import { paragraphSpacingEm } from '../themes/paragraph'
 
 function fileName(title: string) {
   return `${title.replace(/[^\w\s-]/g, '').trim() || 'book'}.pdf`
-}
-
-function wrapText(text: string, font: PDFFont, size: number, width: number, hyphenate: boolean) {
-  const words = text.split(/\s+/).filter(Boolean).flatMap((original) => {
-    if (!hyphenate || font.widthOfTextAtSize(original, size) <= width) return [original]
-    const approximate = Math.max(4, Math.floor((original.length * width) / font.widthOfTextAtSize(original, size)) - 1)
-    const pieces: string[] = []
-    let remaining = original
-    while (remaining.length > approximate) {
-      pieces.push(`${remaining.slice(0, approximate)}-`)
-      remaining = remaining.slice(approximate)
-    }
-    if (remaining) pieces.push(remaining)
-    return pieces
-  })
-  const lines: string[] = []
-  let line = ''
-  for (const word of words) {
-    const candidate = line ? `${line} ${word}` : word
-    if (line && font.widthOfTextAtSize(candidate, size) > width) {
-      lines.push(line)
-      line = word
-    } else line = candidate
-  }
-  if (line) lines.push(line)
-  return lines
 }
 
 function dataUrlBytes(dataUrl: string) {
@@ -79,7 +58,15 @@ async function splitImageSpread(dataUrl: string): Promise<[string, string] | nul
   ]
 }
 
-export async function exportProjectToPdf(project: BookProject, theme: BookTheme): Promise<ExportResult> {
+export interface BuiltProjectPdf {
+  bytes: Uint8Array
+  fileName: string
+  pageCount: number
+  warnings: string[]
+}
+
+/** Build the complete PDF without initiating a browser download. */
+export async function buildProjectPdf(project: BookProject, theme: BookTheme): Promise<BuiltProjectPdf> {
   const preflight = preflightBook(project, theme)
   const blocking = preflight.filter((issue) => issue.level === 'error')
   if (blocking.length) throw new Error(`PDF export is blocked: ${blocking.map((issue) => issue.message).join(' ')}`)
@@ -107,7 +94,7 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
     return safe.text
   }
   const wrapForPdf = (text: string, font: PDFFont, size: number, width: number, hyphenate: boolean) =>
-    wrapText(safeText(text, font), font, size, width, hyphenate)
+    wrapPdfParagraph(safeText(text, font), font, size, width, hyphenate)
   const pageWidth = theme.print.trimWidthIn * 72
   const pageHeight = theme.print.trimHeightIn * 72
   const fontSize = theme.print.largePrint ? Math.max(14, theme.typography.bodySize) : theme.typography.bodySize
@@ -128,9 +115,30 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
   let pageFootnotes: Array<{ number: number; text: string }> = []
   const blankPages = new Set<number>()
   const chapterOpeningPages = new Set<number>()
+  const chapterDestinations = new Map<string, { page: PDFPage; number: number }>()
+  const deferredContents: Array<{ pages: Array<{ page: PDFPage; number: number }>; entries: Chapter[] }> = []
+  const printChapters = exportableChapters(project, 'print')
+  const generatedNotesChapter = makeNotesChapter()
+  const hasGeneratedBookNotes =
+    theme.notes.printPlacement === 'book-end' &&
+    printChapters.some((chapter) => parseManuscript(chapter.content).notes.length > 0)
+  const tocEntries = [
+    ...tableOfContentsEntries(printChapters),
+    ...(hasGeneratedBookNotes ? [generatedNotesChapter] : []),
+  ]
 
   const margins = () => {
     const odd = pageNumber % 2 === 1
+    return {
+      left: (odd ? theme.print.marginInside : theme.print.marginOutside) * 72,
+      right: (odd ? theme.print.marginOutside : theme.print.marginInside) * 72,
+      top: theme.print.marginTop * 72,
+      bottom: theme.print.marginBottom * 72,
+    }
+  }
+
+  const marginsForPage = (number: number) => {
+    const odd = number % 2 === 1
     return {
       left: (odd ? theme.print.marginInside : theme.print.marginOutside) * 72,
       right: (odd ? theme.print.marginOutside : theme.print.marginInside) * 72,
@@ -255,8 +263,15 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
     const margin = margins()
     const indent =
       theme.paragraph.paragraphStyle === 'indent' && !first ? fontSize * 1.2 : 0
-    const width = pageWidth - margin.left - margin.right - indent
-    const lines = wrapForPdf(text, bodyFont, fontSize, width, theme.print.hyphens)
+    const width = pageWidth - margin.left - margin.right
+    const lines = wrapPdfParagraph(
+      safeText(text, bodyFont),
+      bodyFont,
+      fontSize,
+      width,
+      theme.print.hyphens,
+      width - indent,
+    )
     if (theme.print.layoutPriority !== 'balanced' && lines.length > 1) {
       const availableLines = Math.floor((y - margin.bottom) / lineHeight)
       const leavesSingleLineOnNextPage = availableLines > 1 && lines.length - availableLines === 1
@@ -270,18 +285,54 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
       if (theme.paragraph.bodyAlign === 'justify' && index < lines.length - 1 && line.includes(' ')) {
         const words = line.split(' ')
         const wordsWidth = words.reduce((sum, word) => sum + bodyFont.widthOfTextAtSize(word, fontSize), 0)
-        const gap = (available - wordsWidth) / Math.max(1, words.length - 1)
-        let cursorX = x
-        for (const word of words) {
-          page.drawText(word, { x: cursorX, y, size: fontSize, font: bodyFont, color: rgb(0.1, 0.1, 0.1) })
-          cursorX += bodyFont.widthOfTextAtSize(word, fontSize) + gap
+        const naturalSpace = bodyFont.widthOfTextAtSize(' ', fontSize)
+        const gap = pdfJustifiedWordGap(
+          available,
+          wordsWidth,
+          words.length - 1,
+          naturalSpace,
+        )
+        // A short line with only a few words can otherwise be stretched across
+        // the full measure. Professional typesetting leaves that line ragged
+        // when acceptable word spacing cannot produce the requested width.
+        if (gap !== null) {
+          let cursorX = x
+          for (const word of words) {
+            page.drawText(word, { x: cursorX, y, size: fontSize, font: bodyFont, color: rgb(0.1, 0.1, 0.1) })
+            cursorX += bodyFont.widthOfTextAtSize(word, fontSize) + gap
+          }
+        } else {
+          page.drawText(line, { x, y, size: fontSize, font: bodyFont, color: rgb(0.1, 0.1, 0.1) })
         }
       } else {
         page.drawText(line, { x, y, size: fontSize, font: bodyFont, color: rgb(0.1, 0.1, 0.1) })
       }
       y -= lineHeight
     })
-    if (theme.paragraph.paragraphStyle === 'space') y -= lineHeight * 0.35
+    if (theme.paragraph.paragraphStyle === 'space') {
+      y -= fontSize * paragraphSpacingEm(theme.paragraph.paragraphSpacingEm)
+    }
+  }
+
+  const hardBreakHeight = (text: string) => {
+    const margin = margins()
+    const width = pageWidth - margin.left - margin.right
+    return text.split(/\r?\n/).reduce((height, authoredLine) => (
+      height + Math.max(
+        1,
+        wrapForPdf(authoredLine, bodyFont, fontSize, width, theme.print.hyphens).length,
+      ) * lineHeight
+    ), 0)
+  }
+
+  const drawTextWithHardBreaks = (text: string) => {
+    for (const authoredLine of text.split(/\r?\n/)) {
+      if (authoredLine) drawParagraph(authoredLine, true)
+      else {
+        ensureSpace(lineHeight)
+        y -= lineHeight
+      }
+    }
   }
 
   const drawMessageBubble = (
@@ -777,20 +828,61 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
       : documentValue.embedJpg(parsed.bytes)
   }
 
-  const drawImage = async (dataUrl: string, maxHeight = pageHeight * 0.35) => {
+  const drawImage = async (
+    dataUrl: string,
+    maxHeight = pageHeight * 0.35,
+    options: { maxWidthPercent?: number; align?: 'left' | 'center' | 'right' } = {},
+  ) => {
     const image = await embedImage(dataUrl)
     if (!image) {
       warnings.push('A WebP or GIF image could not be included in the print PDF. Use PNG or JPEG for print.')
       return
     }
     const margin = margins()
-    const maxWidth = pageWidth - margin.left - margin.right
+    const contentWidth = pageWidth - margin.left - margin.right
+    const maxWidth = contentWidth * Math.max(0.1, Math.min(1, (options.maxWidthPercent ?? 100) / 100))
     const scale = Math.min(maxWidth / image.width, maxHeight / image.height, 1)
     const width = image.width * scale
     const height = image.height * scale
     ensureSpace(height + lineHeight)
-    page.drawImage(image, { x: (pageWidth - width) / 2, y: y - height, width, height })
+    const x = options.align === 'left'
+      ? margin.left
+      : options.align === 'right'
+        ? pageWidth - margin.right - width
+        : (pageWidth - width) / 2
+    page.drawImage(image, { x, y: y - height, width, height })
     y -= height + lineHeight
+  }
+
+  const drawChapterDecorations = async (
+    placement: ReturnType<typeof chapterDecorations>[number]['placement'],
+    flow = true,
+  ) => {
+    for (const decoration of chapterDecorations(theme.chapterHeading).filter((item) => item.placement === placement)) {
+      const image = await embedImage(decoration.imageDataUrl)
+      if (!image) continue
+      const margin = margins()
+      const contentWidth = pageWidth - margin.left - margin.right
+      const maxWidth = contentWidth * decoration.width / 100
+      const scale = Math.min(maxWidth / image.width, pageHeight * .22 / image.height, 1)
+      const width = image.width * scale
+      const height = image.height * scale
+      if (flow) ensureSpace(height + lineHeight * .5)
+      const anchorX = decoration.align === 'left'
+        ? margin.left
+        : decoration.align === 'right'
+          ? pageWidth - margin.right - width
+          : (pageWidth - width) / 2
+      page.drawImage(image, {
+        x: anchorX + contentWidth * decoration.offsetX / 100,
+        y: y - height - decoration.offsetY,
+        width,
+        height,
+        opacity: decoration.opacity / 100,
+        rotate: degrees(decoration.rotation),
+      })
+      if (flow) y -= height + lineHeight * .5
+    }
   }
 
   const startChapter = (chapter: Chapter) => {
@@ -808,9 +900,10 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
       }
     }
     chapterOpeningPages.add(pageNumber)
+    chapterDestinations.set(chapter.id, { page, number: pageNumber })
   }
 
-  for (const chapter of exportableChapters(project, 'print')) {
+  for (const chapter of printChapters) {
     startChapter(chapter)
     if (chapter.type === 'title-page') {
       y = pageHeight * 0.62
@@ -828,14 +921,20 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
       continue
     }
     if (chapter.type === 'contents') {
-      drawLine('Contents', { font: headingFont, size: 24, align: 'center' })
-      y -= lineHeight
-      for (const entry of project.chapters.filter((candidate) =>
-        (candidate.type === 'chapter' || candidate.type === 'part') && !candidate.options.hideInToc
-      )) drawParagraph(entry.title, true)
+      const availableHeight = pageHeight - margins().top - margins().bottom - 24 * 1.3 - lineHeight
+      const linesPerPage = Math.max(1, Math.floor(availableHeight / (fontSize * 1.55)))
+      const pageCount = Math.max(1, Math.ceil(tocEntries.length / linesPerPage))
+      const pages = [{ page, number: pageNumber }]
+      for (let index = 1; index < pageCount; index += 1) {
+        newPage()
+        chapterOpeningPages.add(pageNumber)
+        pages.push({ page, number: pageNumber })
+      }
+      deferredContents.push({ pages, entries: tocEntries })
       continue
     }
     const heading = headingParts(project, chapter, theme)
+    await drawChapterDecorations('above-heading')
     const chapterImage = chapter.imageDataUrl || theme.chapterHeading.sharedImageDataUrl
     if (chapterImage && theme.chapterHeading.imageEnabled && !chapter.options.hideChapterImage) {
       const layout = chapter.imageLayout || 'inline'
@@ -862,12 +961,20 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
         }
         newPage()
       } else {
-        await drawImage(chapterImage, layout === 'wide' ? pageHeight * 0.35 : pageHeight * 0.2)
+        await drawImage(
+          chapterImage,
+          layout === 'wide' ? pageHeight * 0.35 : pageHeight * 0.2,
+          {
+            maxWidthPercent: layout === 'wide' ? 100 : theme.chapterHeading.imageSize,
+            align: theme.chapterHeading.imageAlign,
+          },
+        )
         if (chapter.imageCaption) drawLine(chapter.imageCaption, { size: Math.max(8, fontSize - 2), align: 'center' })
       }
     }
     if (!chapter.options.hideChapterHeading) {
       y -= lineHeight
+      await drawChapterDecorations('header-overlay', false)
       if (heading.number) drawLine(`Chapter ${heading.number}`, {
         font: numberFont,
         align: theme.chapterHeading.titleAlign,
@@ -892,6 +999,8 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
       })
       y -= lineHeight
     }
+    await drawChapterDecorations('below-heading')
+    await drawChapterDecorations('before-opening')
 
     const parsed = parseManuscript(chapter.content)
     const noteByNumber = new Map(parsed.notes.map((note) => [note.number, note]))
@@ -936,10 +1045,10 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
         if (block.variant === 'message') {
           drawMessageBubble(block.text, block.sender, block.direction, block.theme)
         } else {
-          ensureSpace(lineHeight * 3)
+          ensureSpace(hardBreakHeight(block.text) + 10)
           const margin = margins()
           const top = y + 4
-          drawParagraph(block.text, true)
+          drawTextWithHardBreaks(block.text)
           page.drawRectangle({
             x: margin.left - 6,
             y: y - 2,
@@ -961,7 +1070,8 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
       } else if (block.type === 'styled-block') {
         const text = block.attribution ? `${block.text} — ${block.attribution}` : block.text
         registerPageFootnotes(text)
-        drawParagraph(text, block.variant !== 'hangingIndent')
+        if (text.includes('\n')) drawTextWithHardBreaks(text)
+        else drawParagraph(text, block.variant !== 'hangingIndent')
       } else if (block.type === 'image') {
         if (block.layout === 'two-page') {
           const halves = await splitImageSpread(block.src)
@@ -1004,11 +1114,93 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
 
   if (allBookNotes.length) {
     newPage()
-    activeChapter = makeNotesChapter()
+    activeChapter = generatedNotesChapter
     chapterOpeningPages.add(pageNumber)
+    chapterDestinations.set(generatedNotesChapter.id, { page, number: pageNumber })
     drawLine('Notes', { font: headingFont, size: Math.min(theme.chapterHeading.titleSize, 30), align: 'center' })
     y -= lineHeight
     for (const note of allBookNotes) drawParagraph(`${note.number}. ${note.text}`, true)
+  }
+
+  for (const contents of deferredContents) {
+    let entryIndex = 0
+    for (const [contentsPageIndex, contentsPage] of contents.pages.entries()) {
+      const margin = marginsForPage(contentsPage.number)
+      let contentsY = pageHeight - margin.top
+      const title = contentsPageIndex === 0 ? 'Contents' : 'Contents (continued)'
+      const printableTitle = safeText(title, headingFont)
+      contentsPage.page.drawText(printableTitle, {
+        x: (pageWidth - headingFont.widthOfTextAtSize(printableTitle, 24)) / 2,
+        y: contentsY,
+        size: 24,
+        font: headingFont,
+        color: rgb(0.1, 0.1, 0.1),
+      })
+      contentsY -= 24 * 1.3 + lineHeight
+      const nextPageBottom = margin.bottom + fontSize * 1.55
+      while (entryIndex < contents.entries.length && contentsY >= nextPageBottom) {
+        const entry = contents.entries[entryIndex]
+        const destination = chapterDestinations.get(entry.id)
+        if (!destination) {
+          entryIndex += 1
+          continue
+        }
+        const pageLabel = String(destination.number)
+        const labelWidth = bodyFont.widthOfTextAtSize(pageLabel, fontSize)
+        const rowWidth = pageWidth - margin.left - margin.right
+        const titleWidth = Math.max(24, rowWidth - labelWidth - 18)
+        const originalEntry = safeText(entry.title, bodyFont)
+        const suffix = '...'
+        let printableEntry = originalEntry
+        while (
+          printableEntry.length > 1 &&
+          bodyFont.widthOfTextAtSize(
+            printableEntry === originalEntry ? printableEntry : `${printableEntry.trimEnd()}${suffix}`,
+            fontSize,
+          ) > titleWidth
+        ) {
+          printableEntry = printableEntry.slice(0, -1)
+        }
+        if (printableEntry !== originalEntry) printableEntry = `${printableEntry.trimEnd()}${suffix}`
+        const pageX = pageWidth - margin.right - labelWidth
+        contentsPage.page.drawText(printableEntry, {
+          x: margin.left,
+          y: contentsY,
+          size: fontSize,
+          font: bodyFont,
+          color: rgb(0.1, 0.1, 0.1),
+        })
+        contentsPage.page.drawText(pageLabel, {
+          x: pageX,
+          y: contentsY,
+          size: fontSize,
+          font: bodyFont,
+          color: rgb(0.1, 0.1, 0.1),
+        })
+        const titleEnd = margin.left + bodyFont.widthOfTextAtSize(printableEntry, fontSize)
+        const dot = safeText('.', bodyFont)
+        const dotWidth = bodyFont.widthOfTextAtSize(dot, fontSize)
+        const dotCount = Math.max(0, Math.floor((pageX - titleEnd - 12) / Math.max(1, dotWidth * 1.7)))
+        if (dotCount) {
+          contentsPage.page.drawText(Array(dotCount).fill(dot).join(' '), {
+            x: titleEnd + 6,
+            y: contentsY,
+            size: fontSize,
+            font: bodyFont,
+            color: rgb(0.45, 0.45, 0.45),
+          })
+        }
+        addInternalPdfLink(
+          documentValue,
+          contentsPage.page,
+          destination.page,
+          [margin.left, contentsY - 2, pageWidth - margin.right, contentsY + fontSize + 2],
+        )
+        contentsY -= fontSize * 1.55
+        entryIndex += 1
+      }
+    }
+    await drawChapterDecorations('chapter-footer')
   }
 
   if (pageNumber) drawHeaderFooter()
@@ -1016,10 +1208,20 @@ export async function exportProjectToPdf(project: BookProject, theme: BookTheme)
     warnings.push('Characters unsupported by the standard print fonts were replaced with print-safe equivalents.')
   }
   const bytes = await documentValue.save()
-  const blob = new Blob([bytes.buffer as ArrayBuffer], { type: 'application/pdf' })
   const outputName = fileName(project.details.title)
-  saveAs(blob, outputName)
-  return { ok: true, fileName: outputName, warnings: [...warnings, `Generated ${pageNumber} print page(s) at ${theme.print.trimWidthIn} × ${theme.print.trimHeightIn} inches.`] }
+  return {
+    bytes,
+    fileName: outputName,
+    pageCount: pageNumber,
+    warnings: [...warnings, `Generated ${pageNumber} print page(s) at ${theme.print.trimWidthIn} × ${theme.print.trimHeightIn} inches.`],
+  }
+}
+
+export async function exportProjectToPdf(project: BookProject, theme: BookTheme): Promise<ExportResult> {
+  const built = await buildProjectPdf(project, theme)
+  const blob = new Blob([built.bytes.buffer as ArrayBuffer], { type: 'application/pdf' })
+  saveAs(blob, built.fileName)
+  return { ok: true, fileName: built.fileName, warnings: built.warnings }
 }
 
 function makeNotesChapter(): Chapter {
