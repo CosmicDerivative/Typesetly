@@ -108,6 +108,17 @@ export function epubImageDataUrlParts(dataUrl: string) {
   }
 }
 
+/**
+ * Empty and unresolved local image sources cannot be packaged into an EPUB.
+ * They can be left behind by old imports or by a missing IndexedDB image blob.
+ */
+export function epubImageSourceIsUnavailable(source: string | null | undefined) {
+  const normalized = source?.trim() || ''
+  return !normalized
+    || normalized.startsWith('typesetly-image://')
+    || normalized.startsWith('blob:')
+}
+
 export function pageUsesChapterThemeArtwork(type: PageType) {
   return type === 'chapter'
 }

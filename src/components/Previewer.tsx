@@ -12,7 +12,7 @@ import { DrawerControls } from './DrawerControls'
 import { useResolvedImageSrc } from '../library/useResolvedImageSrc'
 import { colorWithOpacity, litRpgElementKey } from '../editor/litrpg'
 import { litRpgIsTranslucent } from '../export/litrpgExport'
-import { chapterDecorations } from '../themes/chapterDecorations'
+import { chapterDecorationsForPage } from '../themes/chapterDecorations'
 import { ChapterDecorations } from './ChapterDecorations'
 import './ChapterDecorations.css'
 import { tableOfContentsTree, type TableOfContentsNode } from '../export/toc'
@@ -174,7 +174,11 @@ export function Previewer() {
   const canPrev = chapterIndex > 0
   const canNext = chapterIndex >= 0 && chapterIndex < bodyChapters.length - 1
   const theme = activeTheme
-  const decorations = chapterDecorations(theme.chapterHeading)
+  const decorations = chapterDecorationsForPage(
+    theme.chapterHeading,
+    activeChapter?.type,
+    activeChapter?.options.hideChapterImage ?? false,
+  )
   const hasHeadingOverlay = decorations.some((item) => item.placement === 'header-overlay')
   const deviceClass = `device ${profile.family} ${profile.color ? 'color-screen' : 'eink-screen'}`
   const goToScreen = (page: number) => {

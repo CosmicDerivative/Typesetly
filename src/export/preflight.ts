@@ -76,6 +76,8 @@ export function preflightBook(project: BookProject, theme?: BookTheme): Prefligh
       previousHeading = level
     }
     for (const image of Array.from(doc.querySelectorAll('img'))) {
+      const source = image.getAttribute('src')?.trim() || ''
+      if (!source) continue
       if (!image.getAttribute('alt') && image.getAttribute('data-decorative') !== 'true') {
         issues.push({ level: 'warning', message: `${chapter.title}: an image needs alt text.`, chapterId: chapter.id })
       }

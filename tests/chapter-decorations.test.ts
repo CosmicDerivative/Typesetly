@@ -3,6 +3,7 @@ import test from 'node:test'
 import {
   chapterDecorationAnchorTransform,
   chapterDecorations,
+  chapterDecorationsForPage,
   normalizeChapterDecoration,
 } from '../src/themes/chapterDecorations.ts'
 import { PRESET_THEMES } from '../src/themes/presets.ts'
@@ -39,6 +40,18 @@ test('chapter decoration layers remain dormant when chapter imagery is disabled'
     decorations: [normalizeChapterDecoration({ imageDataUrl: 'data:image/png;base64,AA==' })],
   }
   assert.deepEqual(chapterDecorations(heading), [])
+})
+
+test('page-level image hiding suppresses every themed decoration consistently', () => {
+  const heading = {
+    ...PRESET_THEMES[0]!.chapterHeading,
+    imageEnabled: true,
+    decorations: [normalizeChapterDecoration({ imageDataUrl: 'data:image/png;base64,AA==' })],
+  }
+  assert.equal(chapterDecorationsForPage(heading, 'chapter', false).length, 1)
+  assert.deepEqual(chapterDecorationsForPage(heading, 'chapter', true), [])
+  assert.deepEqual(chapterDecorationsForPage(heading, 'part', false), [])
+  assert.deepEqual(chapterDecorationsForPage(heading, 'title-page', false), [])
 })
 
 test('chapter decoration alignments always emit an explicit anchor transform', () => {

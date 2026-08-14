@@ -6,6 +6,7 @@ import {
   epubChapterDecorationStyle,
   epubImageDataUrlParts,
   epubImageHrefMatchesMediaType,
+  epubImageSourceIsUnavailable,
   pageUsesChapterThemeArtwork,
 } from '../src/export/epubImages.ts'
 import { normalizeChapterDecoration } from '../src/themes/chapterDecorations.ts'
@@ -24,6 +25,16 @@ test('EPUB image resources keep extensions consistent with their media type', ()
   assert.equal(epubImageDataUrlParts('data:image/bmp;base64,QUJD'), null)
   assert.equal(epubImageHrefMatchesMediaType('images/chapter-frame.svg', 'image/svg+xml'), true)
   assert.equal(epubImageHrefMatchesMediaType('images/chapter-frame.jpg', 'image/svg+xml'), false)
+})
+
+test('EPUB drops empty and unresolved local image sources before validation', () => {
+  assert.equal(epubImageSourceIsUnavailable(undefined), true)
+  assert.equal(epubImageSourceIsUnavailable(''), true)
+  assert.equal(epubImageSourceIsUnavailable('   '), true)
+  assert.equal(epubImageSourceIsUnavailable('typesetly-image://missing-image'), true)
+  assert.equal(epubImageSourceIsUnavailable('blob:https://typesetly.invalid/dead-image'), true)
+  assert.equal(epubImageSourceIsUnavailable('data:image/png;base64,QUJD'), false)
+  assert.equal(epubImageSourceIsUnavailable('https://example.com/image.png'), false)
 })
 
 test('shared chapter artwork never leaks onto front or back matter pages', () => {
