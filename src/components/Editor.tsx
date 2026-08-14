@@ -36,7 +36,7 @@ import { useApp } from '../BookContext'
 import { countBookWords, countWords } from '../data'
 import { ChapterOptionsMenu } from './ChapterOptionsMenu'
 import { ChapterDecorations } from './ChapterDecorations'
-import { chapterDecorations } from '../themes/chapterDecorations'
+import { chapterDecorationsForPage } from '../themes/chapterDecorations'
 import './ChapterDecorations.css'
 import {
   DraftPagedEditor,
@@ -151,10 +151,14 @@ export function EditorPane() {
   const imageRefInput = useRef<HTMLInputElement>(null)
   const blockRangeRef = useRef<{ from: number; to: number } | null>(null)
   const litRpgRangeRef = useRef<{ from: number; to: number } | null>(null)
-  const chapterOrnamentSource =
-    activeChapter?.imageDataUrl || activeTheme.chapterHeading.sharedImageDataUrl
+  const chapterOrnamentSource = activeChapter?.imageDataUrl
+    || (activeChapter?.type === 'chapter' ? activeTheme.chapterHeading.sharedImageDataUrl : undefined)
   const chapterOrnamentSrc = useResolvedImageSrc(chapterOrnamentSource)
-  const themeChapterDecorations = chapterDecorations(activeTheme.chapterHeading)
+  const themeChapterDecorations = chapterDecorationsForPage(
+    activeTheme.chapterHeading,
+    activeChapter?.type,
+    activeChapter?.options.hideChapterImage ?? false,
+  )
   const hasHeaderOverlay = themeChapterDecorations.some(
     (decoration) => decoration.placement === 'header-overlay' && decoration.imageDataUrl,
   )

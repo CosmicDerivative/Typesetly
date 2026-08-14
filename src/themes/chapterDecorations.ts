@@ -1,4 +1,4 @@
-import type { ThemeChapterDecoration, ThemeChapterHeading } from '../types'
+import type { PageType, ThemeChapterDecoration, ThemeChapterHeading } from '../types'
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
@@ -33,6 +33,15 @@ export function chapterDecorations(heading: ThemeChapterHeading) {
   return (heading.decorations || [])
     .map(normalizeChapterDecoration)
     .filter((item) => item.imageDataUrl)
+}
+
+export function chapterDecorationsForPage(
+  heading: ThemeChapterHeading,
+  pageType: PageType | undefined,
+  hideChapterImage: boolean,
+) {
+  if (pageType !== 'chapter' || hideChapterImage) return []
+  return chapterDecorations(heading)
 }
 
 /**

@@ -7,13 +7,14 @@ import { litRpgFreeformExportMarkup, litRpgIsTranslucent, litRpgUsesBoxedFields 
 import { preflightBook } from './preflight'
 import { tableOfContentsTree, type TableOfContentsNode } from './toc'
 import { epubParagraphLineHeight, epubPartPageMarkup, epubTitlePageMarkup, epubTypeForPage, stripEpubAuthoringAttributes } from './epubMatter'
-import { chapterDecorations } from '../themes/chapterDecorations'
+import { chapterDecorationsForPage } from '../themes/chapterDecorations'
 import { paragraphSpacingEm } from '../themes/paragraph'
 import {
   createEpubImageRegistry,
   epubChapterDecorationStyle,
   epubImageDataUrlParts,
   epubImageHrefMatchesMediaType,
+  epubImageSourceIsUnavailable,
   pageUsesChapterThemeArtwork,
 } from './epubImages'
 
@@ -56,8 +57,18 @@ function chapterBody(
 
   for (const element of Array.from(documentValue.querySelectorAll('img'))) {
     const image = element as HTMLImageElement
-    const parsed = epubImageDataUrlParts(image.src)
-    if (!parsed) continue
+    const source = image.getAttribute('src')
+    const parsed = epubImageDataUrlParts(source || '')
+    if (!parsed) {
+      if (epubImageSourceIsUnavailable(source)) {
+        const parent = image.parentElement
+        image.remove()
+        if (parent?.tagName.toLowerCase() === 'figure' && !parent.textContent?.trim() && !parent.querySelector('img')) {
+          parent.remove()
+        }
+      }
+      continue
+    }
     const packaged = addImage(parsed)
     image.setAttribute('src', `../${packaged.href}`)
     const decorative = image.dataset.decorative === 'true'
@@ -210,7 +221,13 @@ function renderTocNodes(
   }).join('')
 }
 
-export async function exportProjectToEpub(project: BookProject, theme: BookTheme): Promise<ExportResult> {
+export interface BuiltEpub extends ExportResult {
+  blob: Blob
+  fileName: string
+}
+
+/** Build and validate an EPUB without initiating a browser download. */
+export async function buildProjectEpub(project: BookProject, theme: BookTheme): Promise<BuiltEpub> {
   const preflight = preflightBook(project, theme)
   const blocking = preflight.filter((issue) => issue.level === 'error')
   if (blocking.length) throw new Error(`EPUB export is blocked: ${blocking.map((issue) => issue.message).join(' ')}`)
@@ -271,7 +288,11 @@ export async function exportProjectToEpub(project: BookProject, theme: BookTheme
     const chapterImage = chapter.imageDataUrl
       || (usesChapterArtwork ? theme.chapterHeading.sharedImageDataUrl : undefined)
     const decorationMarkup = new Map<string, string[]>()
-    for (const decoration of usesChapterArtwork ? chapterDecorations(theme.chapterHeading) : []) {
+    for (const decoration of chapterDecorationsForPage(
+      theme.chapterHeading,
+      chapter.type,
+      chapter.options.hideChapterImage,
+    )) {
       const image = epubImageDataUrlParts(decoration.imageDataUrl)
       if (!image) continue
       const packaged = imageRegistry.add(image)
@@ -546,13 +567,23 @@ h2,h3,h4,h5,h6 { font-family: ${theme.subheading.font}, serif; text-align: ${the
     compressionOptions: { level: 9 },
   })
   const fileName = `${slug(project.details.title)}.epub`
-  saveAs(blob, fileName)
   return {
     ok: true,
+    blob,
     fileName,
     warnings: [
       ...validationWarnings,
       `Internal validation passed for ${xhtmlFiles.size} XHTML files, ${chapters.length} spine item(s), and ${imageStats.uniqueFiles} unique image(s) referenced ${imageStats.references} time(s). ${imageStats.reusedReferences} repeated image reference(s) were deduplicated. Run the final file through official EPUBCheck before publishing.`,
     ],
+  }
+}
+
+export async function exportProjectToEpub(project: BookProject, theme: BookTheme): Promise<ExportResult> {
+  const built = await buildProjectEpub(project, theme)
+  saveAs(built.blob, built.fileName)
+  return {
+    ok: built.ok,
+    fileName: built.fileName,
+    warnings: built.warnings,
   }
 }

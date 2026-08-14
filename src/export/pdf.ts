@@ -19,7 +19,7 @@ import { preflightBook } from './preflight'
 import { addInternalPdfLink } from './pdfLinks'
 import { pdfJustifiedWordGap, wrapPdfParagraph } from './pdfLayout'
 import { tableOfContentsEntries } from './toc'
-import { chapterDecorations } from '../themes/chapterDecorations'
+import { chapterDecorations, chapterDecorationsForPage } from '../themes/chapterDecorations'
 import { paragraphSpacingEm } from '../themes/paragraph'
 
 function fileName(title: string) {
@@ -858,7 +858,11 @@ export async function buildProjectPdf(project: BookProject, theme: BookTheme): P
     placement: ReturnType<typeof chapterDecorations>[number]['placement'],
     flow = true,
   ) => {
-    for (const decoration of chapterDecorations(theme.chapterHeading).filter((item) => item.placement === placement)) {
+    for (const decoration of chapterDecorationsForPage(
+      theme.chapterHeading,
+      activeChapter?.type,
+      activeChapter?.options.hideChapterImage ?? false,
+    ).filter((item) => item.placement === placement)) {
       const image = await embedImage(decoration.imageDataUrl)
       if (!image) continue
       const margin = margins()
