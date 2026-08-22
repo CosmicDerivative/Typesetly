@@ -53,6 +53,7 @@ test('Linux releases include a native Arch package for CachyOS variants', () => 
   assert.match(linux, /--linux\s+AppImage\s+deb\s+pacman\b/)
   assert.deepEqual(packageValue.build?.linux?.target, ['AppImage', 'deb', 'pacman'])
   assert.match(releaseWorkflow, /release\/\*\.pacman/)
+  assert.match(releaseWorkflow, /apt-get install --yes libarchive-tools/)
   assert.match(releaseWorkflow, /Verify Linux distribution packages/)
   assert.match(releaseWorkflow, /tar -tf release\/\*\.pacman/)
   assert.match(releaseWorkflow, /Arch\/CachyOS package/)
