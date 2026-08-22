@@ -193,6 +193,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install Linux package tooling
+        if: matrix.platform == 'linux'
+        run: sudo apt-get update && sudo apt-get install --yes libarchive-tools
+
       - name: Stamp hotpatch revision into package
         run: node .github/stamp-hotpatch.cjs package ${{ needs.verify.outputs.hotpatch_revision }}
 
