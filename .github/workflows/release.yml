@@ -314,7 +314,8 @@ jobs:
             fi
           done
 
-          tar -tf release/*.pacman | grep -Eq '(^|/)opt/Typesetly/' || {
+          tar -tf release/*.pacman > "$RUNNER_TEMP/typesetly-pacman-files.txt"
+          grep -Eq '(^|/)opt/Typesetly/' "$RUNNER_TEMP/typesetly-pacman-files.txt" || {
             echo '::error::The Arch/CachyOS package does not contain the Typesetly application payload.'
             exit 1
           }
