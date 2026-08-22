@@ -300,7 +300,7 @@ const WIKI_SECTIONS: WikiSection[] = [
       },
       {
         question: 'How do I build the desktop application?',
-        answer: 'Install Node.js and dependencies, then use npm.cmd start for desktop development. Package with npm.cmd run package:win on Windows, npm run package:mac on macOS, or npm run package:linux on Linux. The README covers signing and distribution.',
+        answer: 'Install Node.js and dependencies, then use npm.cmd start for desktop development. Package with npm.cmd run package:win on Windows, npm run package:mac on macOS, or npm run package:linux on Linux. Linux releases include AppImage, Debian, and Pacman artifacts; the Pacman package supports Arch-based distributions such as CachyOS. The README covers signing and distribution.',
         keywords: 'electron desktop build package installer',
       },
       {

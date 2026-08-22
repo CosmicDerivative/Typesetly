@@ -1,4 +1,3 @@
-import { saveAs } from 'file-saver'
 import JSZip from 'jszip'
 import { litRpgDraftFromAttrs } from '../editor/litrpg'
 import { decorateFirstSentenceHtml, exportableChapters, headingParts } from '../layout/manuscript'
@@ -580,6 +579,7 @@ h2,h3,h4,h5,h6 { font-family: ${theme.subheading.font}, serif; text-align: ${the
 
 export async function exportProjectToEpub(project: BookProject, theme: BookTheme): Promise<ExportResult> {
   const built = await buildProjectEpub(project, theme)
+  const { saveAs } = await import('file-saver')
   saveAs(built.blob, built.fileName)
   return {
     ok: built.ok,
