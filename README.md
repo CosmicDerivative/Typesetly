@@ -54,7 +54,7 @@ Download the newest Windows, macOS, or Linux build from the [Typesetly Releases 
 
 - **Windows:** choose the Setup executable for a normal installation or Portable to run without installing.
 - **macOS:** choose the DMG for your Mac. Intel and Apple Silicon builds are provided.
-- **Linux:** choose AppImage for a portable application or DEB for Debian-based distributions.
+- **Linux:** choose AppImage for a portable application, DEB for Debian-based distributions, or the Pacman package for Arch-based distributions such as CachyOS, CachyOS Handheld, Manjaro, and EndeavourOS. Install the Pacman artifact with `sudo pacman -U ./Typesetly-*.pacman`.
 
 Installed desktop builds also check this repository for newer stable releases. When an update is available, use the **Install version** control in the header. Typesetly downloads the matching package into its managed update cache, verifies it against electron-builder’s release metadata, closes the app, installs the update, and relaunches automatically.
 

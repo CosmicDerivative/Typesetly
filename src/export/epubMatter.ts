@@ -96,5 +96,13 @@ export function stripEpubAuthoringAttributes(root: ParentNode) {
 }
 
 export function epubExportAttributeAllowed(name: string) {
-  return name === 'class' || name === 'style' || EPUB_RENDER_DATA_ATTRIBUTES.has(name)
+  // Manuscript images are TipTap authoring nodes too. Their src/alt attributes
+  // are rewritten to packaged EPUB resources before this cleanup runs, so
+  // removing them here turns a valid Part-page cover into <img /> and causes
+  // both the missing-alt and empty-source validation errors.
+  return name === 'class'
+    || name === 'style'
+    || name === 'src'
+    || name === 'alt'
+    || EPUB_RENDER_DATA_ATTRIBUTES.has(name)
 }

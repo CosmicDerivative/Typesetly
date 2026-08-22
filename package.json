@@ -2,7 +2,7 @@
   "name": "typesetly",
   "private": true,
   "version": "1.2.4",
-  "hotpatchRevision": 5,
+  "hotpatchRevision": 6,
   "description": "A local-first desktop studio for writing, formatting, previewing, and exporting books",
   "author": {
     "name": "Typesetly Contributors",
@@ -35,7 +35,7 @@
     "prepackage:win:arm64": "node .github/patch-arm64-nsis.cjs",
     "package:win:arm64": "npm run build && electron-builder --win nsis portable --arm64 --publish never && node .github/prepare-windows-channel.cjs arm64",
     "package:mac": "npm run build && electron-builder --mac dmg zip --x64 --arm64 --publish never",
-    "package:linux": "npm run build && electron-builder --linux AppImage deb --x64 --publish never"
+    "package:linux": "npm run build && electron-builder --linux AppImage deb pacman --x64 --publish never"
   },
   "dependencies": {
     "@tiptap/extension-horizontal-rule": "^3.28.0",
@@ -75,9 +75,9 @@
     "wait-on": "^9.1.0"
   },
   "build": {
-    "buildVersion": "1.2.4.5",
+    "buildVersion": "1.2.4.6",
     "extraMetadata": {
-      "hotpatchRevision": 5
+      "hotpatchRevision": 6
     },
     "appId": "io.github.jorda.typesetly",
     "productName": "Typesetly",
@@ -131,7 +131,8 @@
       "vendor": "Typesetly Contributors",
       "target": [
         "AppImage",
-        "deb"
+        "deb",
+        "pacman"
       ],
       "artifactName": "${productName}-${version}-${arch}.${ext}"
     }

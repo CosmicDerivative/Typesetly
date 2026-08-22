@@ -77,7 +77,14 @@ test('EPUB strips editor-only node state but retains render-critical attributes'
   for (const name of ['kind', 'rows', 'revision', 'data-typesetly-node', 'sourcescreenid']) {
     assert.equal(epubExportAttributeAllowed(name), false)
   }
-  for (const name of ['class', 'style', 'data-appearance', 'data-alignment', 'data-translucent']) {
+  for (const name of ['class', 'style', 'src', 'alt', 'data-appearance', 'data-alignment', 'data-translucent']) {
     assert.equal(epubExportAttributeAllowed(name), true)
+  }
+})
+
+test('EPUB cleanup preserves the packaged source and alt text of an image authored on a Part page', () => {
+  for (const name of ['src', 'alt']) assert.equal(epubExportAttributeAllowed(name), true)
+  for (const name of ['data-typesetly-node', 'data-caption', 'data-natural-width', 'data-bytes']) {
+    assert.equal(epubExportAttributeAllowed(name), false)
   }
 })

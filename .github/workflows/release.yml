@@ -176,6 +176,7 @@ jobs:
             assets: |
               release/*.AppImage
               release/*.deb
+              release/*.pacman
               release/latest-linux.yml
               release/*.blockmap
     runs-on: ${{ matrix.os }}
@@ -295,6 +296,23 @@ jobs:
           }
           if (Test-Path -LiteralPath $qaInstall) {
             Remove-Item -LiteralPath $qaInstall -Recurse -Force
+          }
+
+      - name: Verify Linux distribution packages
+        if: matrix.platform == 'linux'
+        shell: bash
+        run: |
+          for pattern in 'release/*.AppImage' 'release/*.deb' 'release/*.pacman'; do
+            mapfile -t packages < <(compgen -G "$pattern" || true)
+            if [[ "${#packages[@]}" -ne 1 || ! -s "${packages[0]}" ]]; then
+              echo "::error::Expected one non-empty Linux package matching $pattern."
+              exit 1
+            fi
+          done
+
+          tar -tf release/*.pacman | grep -Eq '(^|/)opt/Typesetly/' || {
+            echo '::error::The Arch/CachyOS package does not contain the Typesetly application payload.'
+            exit 1
           }
 
       - name: Stamp hotpatch revision into updater metadata

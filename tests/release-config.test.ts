@@ -48,6 +48,16 @@ test('Windows packages use the electron-builder release with the ARM64 NSIS payl
   )
 })
 
+test('Linux releases include a native Arch package for CachyOS variants', () => {
+  const linux = String(packageValue.scripts?.['package:linux'] || '')
+  assert.match(linux, /--linux\s+AppImage\s+deb\s+pacman\b/)
+  assert.deepEqual(packageValue.build?.linux?.target, ['AppImage', 'deb', 'pacman'])
+  assert.match(releaseWorkflow, /release\/\*\.pacman/)
+  assert.match(releaseWorkflow, /Verify Linux distribution packages/)
+  assert.match(releaseWorkflow, /tar -tf release\/\*\.pacman/)
+  assert.match(releaseWorkflow, /Arch\/CachyOS package/)
+})
+
 test('Windows release jobs publish isolated updater channels and validate payloads', () => {
   assert.match(releaseWorkflow, /platform: windows-x64/)
   assert.match(releaseWorkflow, /platform: windows-arm64/)
