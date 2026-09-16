@@ -1,0 +1,6 @@
+.markdown-integration { grid-column: 1 / -1; padding: 1rem; border: 1px solid #b8aaa0; border-radius: 12px; margin-block: 1rem; }
+.markdown-integration h3 { margin: 0 0 .5rem; }
+.markdown-integration p { font-size: .85rem; line-height: 1.5; }
+.markdown-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.markdown-actions button { padding: .5rem .8rem; border-radius: 6px; cursor: pointer; }
+.markdown-status { white-space: pre-wrap; max-height: 16rem; overflow: auto; }

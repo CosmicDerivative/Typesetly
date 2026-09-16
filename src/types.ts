@@ -496,6 +496,8 @@ export interface BookProject {
   stickyNotes?: StickyNote[]
   manuscriptFolders?: ManuscriptFolder[]
   scrivenerSync?: ScrivenerSyncState
+  obsidianSync?: import('./integrations/markdownTypes').ObsidianConnection
+  markdownSources?: import('./integrations/markdownTypes').MarkdownMapping[]
 }
 
 export interface LibraryState {

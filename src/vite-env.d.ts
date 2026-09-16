@@ -3,6 +3,9 @@ export {}
 declare global {
   interface Window {
     typesetly?: {
+      chooseObsidianVault: () => Promise<import('./integrations/markdownTypes').VaultSnapshot>
+      readObsidianVault: (payload: { folderPath: string }) => Promise<import('./integrations/markdownTypes').VaultSnapshot>
+      writeObsidianVault: (payload: { folderPath: string; files: import('./integrations/markdownTypes').MarkdownWrite[] }) => Promise<{ ok: boolean; error?: string; written?: number }>
       saveDocx: (payload: {
         defaultName: string
         buffer: ArrayBuffer

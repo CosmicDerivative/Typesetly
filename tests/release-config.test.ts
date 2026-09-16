@@ -18,6 +18,54 @@ const releaseWorkflow = readFileSync(
   'utf8',
 )
 
+test('automatic workflows build only pushes to main, not branches, PRs or tags', () => {
+  const ciWorkflow = readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8')
+  for (const workflow of [ciWorkflow, releaseWorkflow]) {
+    const triggers = workflow.split('permissions:')[0]
+    assert.match(triggers, /on:\r?\n  push:\r?\n    branches:\r?\n      - main\r?\n/)
+    assert.doesNotMatch(triggers, /pull_request|\n    tags:/)
+  }
+  assert.match(releaseWorkflow, /if: \(inputs\.nightly && github\.ref == 'refs\/heads\/nightly'\) \|\| \(!inputs\.nightly && github\.ref == 'refs\/heads\/main'\)/)
+  assert.match(releaseWorkflow, /name: Publish GitHub release\r?\n    if: \(inputs\.nightly && github\.ref == 'refs\/heads\/nightly'\) \|\| \(github\.event_name == 'workflow_dispatch' && !inputs\.nightly && github\.ref == 'refs\/heads\/main'\)/)
+  assert.match(releaseWorkflow, /tag="v\$version"/)
+  assert.doesNotMatch(releaseWorkflow, /REF_NAME|BASH_REMATCH/)
+})
+
+test('nightly builds on nightly pushes or manual dispatch and publishes separately from stable', () => {
+  const nightly = readFileSync(new URL('../.github/workflows/nightly.yml', import.meta.url), 'utf8')
+  const main = readFileSync(new URL('../electron/main.cjs', import.meta.url), 'utf8')
+  assert.match(nightly, /workflow_dispatch:/)
+  assert.match(nightly, /push:\r?\n    branches:\r?\n      - nightly/)
+  assert.doesNotMatch(nightly, /\n  (pull_request|schedule):/)
+  assert.match(nightly, /github\.ref == 'refs\/heads\/nightly'/)
+  assert.match(nightly, /uses: \.\/\.github\/workflows\/release.yml/)
+  assert.match(nightly, /nightly: true/)
+  assert.match(releaseWorkflow, /gh release create nightly .*--prerelease --latest=false/)
+  assert.match(releaseWorkflow, /gh release edit nightly .*--prerelease --latest=false/)
+  assert.match(releaseWorkflow, /if: \$\{\{ !inputs.nightly \}\}/)
+  assert.match(main, /app\.setPath\('userData', path\.join\(app\.getPath\('appData'\), 'Typesetly Nightly'\)\)/)
+  assert.match(main, /if \(isNightly\) return \{ ok: false/)
+})
+
+test('nightly stamping creates distinct package, installer and profile identities', () => {
+  const { nightlyPackage } = require('../.github/stamp-nightly.cjs')
+  const original = structuredClone(packageValue)
+  const stamped = nightlyPackage(packageValue, '12345', '2')
+  assert.deepEqual(packageValue, original)
+  assert.equal(stamped.version, `${packageValue.version}-nightly.12345.2`)
+  assert.equal(stamped.name, 'typesetly-nightly')
+  assert.equal(stamped.productName, 'Typesetly Nightly')
+  assert.equal(stamped.build.win.executableName, 'Typesetly Nightly')
+  assert.notEqual(stamped.build.appId, packageValue.build.appId)
+  assert.equal(stamped.releaseChannel, 'nightly')
+  assert.equal(stamped.build.extraMetadata.releaseChannel, 'nightly')
+  assert.equal(stamped.build.detectUpdateChannel, false)
+  assert.match(stamped.build.buildVersion, /^\d+\.\d+\.\d+\.0$/)
+  assert.match(stamped.build.nsis.artifactName, /^Typesetly-Setup-/)
+  assert.throws(() => nightlyPackage(packageValue, '../bad', '1'))
+  assert.throws(() => nightlyPackage(packageValue, '1', '0'))
+})
+
 test('Windows releases build native x64 and ARM64 installers', () => {
   const aggregate = String(packageValue.scripts?.['package:win'] || '')
   const x64 = String(packageValue.scripts?.['package:win:x64'] || '')

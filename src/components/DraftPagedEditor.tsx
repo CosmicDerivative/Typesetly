@@ -769,6 +769,11 @@ export function DraftPagedEditor({
     emitTimerRef.current = window.setTimeout(flushChapter, 180)
   }, [flushChapter, onChapterHtmlChange])
 
+  useEffect(() => {
+    window.addEventListener('typesetly:flush-draft', flushChapter)
+    return () => window.removeEventListener('typesetly:flush-draft', flushChapter)
+  }, [flushChapter])
+
   const shouldPreserveTrailingBlankPages = useCallback((pageHtmls: string[]) => {
     // Pending Enter/overflow handoff — keep the destination blank sheet.
     if (pendingCaretRef.current) return true

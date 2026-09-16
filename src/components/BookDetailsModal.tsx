@@ -1,6 +1,7 @@
 import { FolderSync, RefreshCw, Unplug } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useApp } from '../BookContext'
+import { MarkdownIntegration } from './MarkdownIntegration'
 import './BookDetailsModal.css'
 import { processImageFile } from '../images/process'
 import { dataUrlToBlob, imageRef } from '../library/images'
@@ -181,6 +182,7 @@ export function BookDetailsModal({ onClose }: { onClose: () => void }) {
           </div>
         </div>
         <div className="details-export">
+          <MarkdownIntegration />
           <div className="scrivener-sync">
             <div className="scrivener-sync-heading">
               <span><FolderSync size={17} /></span>
