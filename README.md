@@ -60,31 +60,6 @@ Installed desktop builds also check this repository for newer stable releases. W
 
 Maintainers can publish a fix without changing the public version. Run the **Desktop Release** workflow manually with **Use workflow from: main**, enter the existing version tag, enable **hotpatch**, and enter a revision larger than the one currently published. The workflow rebuilds and replaces that release's assets while stamping the revision into every updater manifest. Desktop builds compare both values, so `1.2.3 hotpatch 2` updates `1.2.3 hotpatch 1` without creating a `1.2.4` release.
 
-### Main builds and Nightly downloads
-
-Stable verification and native installer builds run only on pushes to `main`.
-The separate Nightly workflow builds automatically on pushes to `nightly`.
-Other feature branches, pull requests, and tag pushes do not trigger builds. Main-push
-packages are retained as Actions artifacts for 14 days; publishing a stable
-release remains an explicit manual action from `main`.
-
-Pushing to `nightly` automatically builds and publishes an experimental download.
-To rebuild it manually, open **Actions → Build Nightly → Run
-workflow**, select `nightly`, and run it. This branch starts from the Markdown/Obsidian
-feature branch. After all platform checks pass, installers
-are published to the rolling [Nightly prerelease](https://github.com/CosmicDerivative/Typesetly/releases/tag/nightly).
-It includes Windows x64/ARM64 Setup and Portable builds, macOS Intel/Apple Silicon,
-and Linux AppImage, DEB, and Arch/CachyOS packages. Each successful run replaces
-the previous nightly downloads, without changing the latest stable release.
-
-Nightly versions include the run ID and attempt, install as **Typesetly Nightly**,
-and use a separate library/profile. Stable automatic updates are disabled in
-nightly builds; download newer nightlies from that prerelease page. Use a backup
-or exported copy to test manuscripts. The workflow runs on pushes or on demand, not on a timer;
-the button becomes available after these workflows are merged into `main`.
-
-Unsigned builds may display an operating-system security warning. Only install downloads obtained from the official Typesetly repository.
-
 ## Run from source
 
 Running from source requires Node.js 22 or newer and npm 10 or newer.
