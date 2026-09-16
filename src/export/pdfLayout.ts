@@ -28,17 +28,22 @@ export function wrapPdfParagraph(
   hyphenate: boolean,
   firstLineWidth = width,
 ) {
-  const wordWidth = Math.min(width, firstLineWidth)
+  const wordWidth = Math.max(1, Math.min(width, firstLineWidth))
   const words = text.split(/\s+/).filter(Boolean).flatMap((original) => {
-    if (!hyphenate || font.widthOfTextAtSize(original, size) <= wordWidth) return [original]
-    const approximate = Math.max(4, Math.floor((original.length * wordWidth) / font.widthOfTextAtSize(original, size)) - 1)
+    if (font.widthOfTextAtSize(original, size) <= wordWidth) return [original]
+    // Even with hyphenation disabled an unbroken URL/token must stay within
+    // the print area. Measure actual glyphs rather than estimating by length.
     const pieces: string[] = []
-    let remaining = original
-    while (remaining.length > approximate) {
-      pieces.push(`${remaining.slice(0, approximate)}-`)
-      remaining = remaining.slice(approximate)
+    let remaining = Array.from(original)
+    while (remaining.length && font.widthOfTextAtSize(remaining.join(''), size) > wordWidth) {
+      let count = 1
+      const suffix = hyphenate ? '-' : ''
+      while (count < remaining.length && font.widthOfTextAtSize(remaining.slice(0, count + 1).join('') + suffix, size) <= wordWidth) count++
+      const part = remaining.slice(0, count).join('')
+      pieces.push(part + (font.widthOfTextAtSize(part + suffix, size) <= wordWidth ? suffix : ''))
+      remaining = remaining.slice(count)
     }
-    if (remaining) pieces.push(remaining)
+    if (remaining.length) pieces.push(remaining.join(''))
     return pieces
   })
   const lines: string[] = []

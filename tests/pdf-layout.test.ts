@@ -28,3 +28,17 @@ test('PDF justification refuses visibly stretched or compressed word spacing', (
   assert.equal(pdfJustifiedWordGap(100, 98, 4, 3), null)
   assert.equal(pdfJustifiedWordGap(100, 80, 0, 3), null)
 })
+
+test('PDF wrapping contains unbroken tokens even when hyphenation is disabled', () => {
+  const token = 'abcdefghijklmnopqrstuv'
+  const lines = wrapPdfParagraph(token, monospace, 1, 6, false)
+  assert.equal(lines.join(''), token)
+  assert.ok(lines.every(line => line.length <= 6))
+})
+
+test('PDF wrapping measures wide glyphs when breaking long words', () => {
+  const font = { widthOfTextAtSize: (text: string) => Array.from(text).reduce((sum, char) => sum + (char === 'W' ? 4 : 1), 0) }
+  const lines = wrapPdfParagraph('iiWWWWWWiiii', font, 1, 10, true)
+  assert.ok(lines.every(line => font.widthOfTextAtSize(line) <= 10))
+  assert.equal(lines.join('').replaceAll('-', ''), 'iiWWWWWWiiii')
+})

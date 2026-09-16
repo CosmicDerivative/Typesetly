@@ -2,7 +2,7 @@ import type { BookProject, BookTheme, Chapter } from '../types'
 import { litRpgDraftFromAttrs, type LitRpgBlockDraft } from '../editor/litrpg.ts'
 
 export type ManuscriptBlock =
-  | { type: 'paragraph'; text: string; html: string }
+  | { type: 'paragraph'; text: string; html: string; align?: 'left' | 'center' | 'right' | 'justify' }
   | { type: 'heading'; text: string; level: number }
   | { type: 'scene-break' }
   | { type: 'page-break' }
@@ -93,7 +93,10 @@ export function parseManuscript(html: string): { blocks: ManuscriptBlock[]; note
         blocks.push({ type: 'list-item', text: item.textContent || '', ordered: tag === 'ol', ordinal: index + 1 })
       }
     } else {
-      blocks.push({ type: 'paragraph', text: textWithAuthoredBreaks(element), html: element.innerHTML })
+      const align = element.style.textAlign
+      blocks.push({ type: 'paragraph', text: textWithAuthoredBreaks(element), html: element.innerHTML,
+        ...(['left', 'center', 'right', 'justify'].includes(align) ? { align: align as 'left' | 'center' | 'right' | 'justify' } : {}),
+      })
     }
   }
   return { blocks, notes }
