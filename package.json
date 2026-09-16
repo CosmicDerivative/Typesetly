@@ -2,7 +2,7 @@
   "name": "typesetly",
   "private": true,
   "version": "1.3.0",
-  "hotpatchRevision": 0,
+  "hotpatchRevision": 1,
   "description": "A local-first desktop studio for writing, formatting, previewing, and exporting books",
   "author": {
     "name": "Typesetly Contributors",
