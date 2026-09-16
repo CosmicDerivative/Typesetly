@@ -12,6 +12,11 @@ const {
 } = require('./updater.cjs')
 
 const isDev = !app.isPackaged
+const isNightly = packageMetadata.releaseChannel === 'nightly'
+if (isNightly) {
+  app.setName('Typesetly Nightly')
+  app.setPath('userData', path.join(app.getPath('appData'), 'Typesetly Nightly'))
+}
 let latestUpdateCheck
 let updateDownloadInProgress
 
@@ -154,6 +159,9 @@ autoUpdater.on('error', (error) => {
 })
 
 async function checkForDesktopUpdate() {
+  if (isNightly) {
+    return { ok: true, currentVersion: app.getVersion(), latestVersion: app.getVersion(), updateAvailable: false }
+  }
   if (!app.isPackaged) {
     return {
       ok: true,
@@ -184,6 +192,7 @@ ipcMain.handle('check-for-updates', async () => {
 
 ipcMain.handle('install-latest-update', async () => {
   try {
+    if (isNightly) return { ok: false, error: 'Download newer nightly installers from the Nightly prerelease on GitHub. Stable updates are disabled in nightly builds.' }
     if (!app.isPackaged) {
       return { ok: false, error: 'Automatic updates are available in packaged desktop builds.' }
     }
