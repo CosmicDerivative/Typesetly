@@ -1,6 +1,7 @@
 import { Copy, FileArchive, FolderOpen, MoreVertical, Plus, Trash2, Upload } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useApp } from '../BookContext'
+import { MarkdownIntegration } from './MarkdownIntegration'
 import { TYPESETLY_LOGO_URL } from '../branding'
 import { countBookWords } from '../data'
 import './Home.css'
@@ -283,6 +284,7 @@ export function Home() {
             e.target.value = ''
           }}
         />
+        <MarkdownIntegration home />
         {importing && <p className="import-progress" role="status">Reading manuscript and detecting chapters…</p>}
       </section>
 
