@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron')
 const { autoUpdater } = require('electron-updater')
 const path = require('path')
 const fs = require('fs')
+require('./obsidian.cjs').registerObsidian(ipcMain, dialog)
 const packageMetadata = require('../package.json')
 const {
   describeUpdateCheck,

@@ -1,6 +1,9 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
 contextBridge.exposeInMainWorld('typesetly', {
+  chooseObsidianVault: () => ipcRenderer.invoke('choose-obsidian-vault'),
+  readObsidianVault: (payload) => ipcRenderer.invoke('read-obsidian-vault', payload),
+  writeObsidianVault: (payload) => ipcRenderer.invoke('write-obsidian-vault', payload),
   saveDocx: (payload) => ipcRenderer.invoke('save-docx', payload),
   saveJson: (payload) => ipcRenderer.invoke('save-json', payload),
   openJson: () => ipcRenderer.invoke('open-json'),
