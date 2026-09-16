@@ -66,7 +66,7 @@ test('Windows release jobs publish isolated updater channels and validate payloa
   assert.match(releaseWorkflow, /release\/latest-arm64\.yml/)
   assert.match(releaseWorkflow, /Verify Windows package payload/)
   assert.match(releaseWorkflow, /7z l -slt -t7z/)
-  assert.match(releaseWorkflow, /Typesetly\.exe/)
+  assert.match(releaseWorkflow, /\$applicationExe = "\$env:PACKAGE_PRODUCT\.exe"/)
   assert.match(releaseWorkflow, /NSIS-incompatible payload method/)
   assert.match(releaseWorkflow, /\\bBCJ2\\b\|\\bARM64\\b/)
   assert.match(releaseWorkflow, /Installed payload is missing/)

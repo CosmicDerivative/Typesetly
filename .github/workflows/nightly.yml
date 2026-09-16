@@ -1,0 +1,22 @@
+name: Build Nightly
+
+on:
+  push:
+    branches:
+      - nightly
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: typesetly-nightly
+  cancel-in-progress: false
+
+jobs:
+  nightly:
+    if: github.ref == 'refs/heads/nightly'
+    uses: ./.github/workflows/release.yml
+    with:
+      nightly: true
+    secrets: inherit

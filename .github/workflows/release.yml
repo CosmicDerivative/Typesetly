@@ -2,8 +2,14 @@ name: Desktop Release
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
+  workflow_call:
+    inputs:
+      nightly:
+        description: Build the isolated nightly application
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       tag:
@@ -35,12 +41,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: desktop-release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  group: desktop-release-${{ inputs.nightly && 'nightly' || inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
   verify:
     name: Verify release
+    if: (inputs.nightly && github.ref == 'refs/heads/nightly') || (!inputs.nightly && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.release.outputs.tag }}
@@ -63,12 +70,19 @@ jobs:
           INPUT_PRERELEASE: ${{ inputs.prerelease }}
           INPUT_HOTPATCH: ${{ inputs.hotpatch }}
           INPUT_HOTPATCH_REVISION: ${{ inputs.hotpatch_revision }}
-          REF_NAME: ${{ github.ref_name }}
+          NIGHTLY: ${{ inputs.nightly || false }}
         run: |
           version="$(node -p "require('./package.json').version")"
           packaged_revision="$(node -p "require('./package.json').hotpatchRevision || 0")"
 
-          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+          if [[ "$NIGHTLY" == "true" ]]; then
+            version="${version}-nightly.${GITHUB_RUN_ID}.${GITHUB_RUN_ATTEMPT}"
+            tag="nightly"
+            draft="false"
+            prerelease="true"
+            hotpatch="false"
+            hotpatch_revision="0"
+          elif [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             tag="$INPUT_TAG"
             draft="$INPUT_DRAFT"
             prerelease="$INPUT_PRERELEASE"
@@ -79,25 +93,15 @@ jobs:
               hotpatch_revision="$packaged_revision"
             fi
           else
+            # Main pushes validate/package without publishing a release.
+            tag="v$version"
             draft="false"
-            if [[ "$REF_NAME" =~ ^v${version}-hotpatch\.([0-9]+)$ ]]; then
-              tag="v$version"
-              prerelease="false"
-              hotpatch="true"
-              hotpatch_revision="${BASH_REMATCH[1]}"
-            else
-              tag="$REF_NAME"
-              hotpatch="false"
-              hotpatch_revision="$packaged_revision"
-              if [[ "$tag" == *-* ]]; then
-                prerelease="true"
-              else
-                prerelease="false"
-              fi
-            fi
+            prerelease="false"
+            hotpatch="false"
+            hotpatch_revision="$packaged_revision"
           fi
 
-          if [[ "$tag" != "v$version" ]]; then
+          if [[ "$NIGHTLY" != "true" && "$tag" != "v$version" ]]; then
             echo "::error::Release tag '$tag' must match package.json version '$version' as v$version."
             exit 1
           fi
@@ -108,10 +112,6 @@ jobs:
           fi
           if [[ "$hotpatch" == "true" && "$hotpatch_revision" -lt 1 ]]; then
             echo "::error::A hotpatch release requires a revision of at least 1."
-            exit 1
-          fi
-          if [[ "$EVENT_NAME" != "workflow_dispatch" && "$hotpatch" == "true" && "$hotpatch_revision" != "$packaged_revision" ]]; then
-            echo "::error::Hotpatch tag revision '$hotpatch_revision' must match package.json revision '$packaged_revision'."
             exit 1
           fi
 
@@ -200,6 +200,10 @@ jobs:
       - name: Stamp hotpatch revision into package
         run: node .github/stamp-hotpatch.cjs package ${{ needs.verify.outputs.hotpatch_revision }}
 
+      - name: Isolate nightly version and application identity
+        if: inputs.nightly
+        run: node .github/stamp-nightly.cjs
+
       - name: Configure Windows certificate signing
         if: startsWith(matrix.platform, 'windows-')
         shell: bash
@@ -236,10 +240,12 @@ jobs:
         shell: pwsh
         env:
           WINDOWS_ARCH: ${{ matrix.windows_arch }}
+          PACKAGE_PRODUCT: ${{ inputs.nightly && 'Typesetly Nightly' || 'Typesetly' }}
         run: |
           $unpacked = if ($env:WINDOWS_ARCH -eq 'arm64') { 'release/win-arm64-unpacked' } else { 'release/win-unpacked' }
+          $applicationExe = "$env:PACKAGE_PRODUCT.exe"
           $required = @(
-            "$unpacked/Typesetly.exe",
+            "$unpacked/$applicationExe",
             "$unpacked/resources/app.asar",
             "$unpacked/ffmpeg.dll",
             "$unpacked/libEGL.dll"
@@ -250,12 +256,12 @@ jobs:
             }
           }
 
-          $executableBytes = [IO.File]::ReadAllBytes("$unpacked/Typesetly.exe")
+          $executableBytes = [IO.File]::ReadAllBytes("$unpacked/$applicationExe")
           $peOffset = [BitConverter]::ToInt32($executableBytes, 0x3c)
           $machine = [BitConverter]::ToUInt16($executableBytes, $peOffset + 4)
           $expectedMachine = if ($env:WINDOWS_ARCH -eq 'arm64') { 0xAA64 } else { 0x8664 }
           if ($machine -ne $expectedMachine) {
-            throw "Typesetly.exe has PE machine 0x$($machine.ToString('X4')); expected 0x$($expectedMachine.ToString('X4')) for $env:WINDOWS_ARCH."
+            throw "$applicationExe has PE machine 0x$($machine.ToString('X4')); expected 0x$($expectedMachine.ToString('X4')) for $env:WINDOWS_ARCH."
           }
 
           $setup = Get-Item "release/Typesetly-Setup-*-$env:WINDOWS_ARCH.exe"
@@ -264,7 +270,7 @@ jobs:
             # Force the embedded payload format. Without -t7z, some runner
             # versions identify only the outer NSIS executable.
             $listing = (& 7z l -slt -t7z $package.FullName) -join "`n"
-            if ($listing -notmatch 'Typesetly\.exe' -or $listing -notmatch 'ffmpeg\.dll') {
+            if ($listing -notmatch [regex]::Escape($applicationExe) -or $listing -notmatch 'ffmpeg\.dll') {
               throw "$($package.Name) does not contain a complete application payload."
             }
 
@@ -287,14 +293,14 @@ jobs:
           if ($installer.ExitCode -ne 0) {
             throw "$($setup.Name) exited with code $($installer.ExitCode)."
           }
-          foreach ($relativePath in @('Typesetly.exe', 'resources/app.asar', 'ffmpeg.dll', 'libEGL.dll')) {
+          foreach ($relativePath in @($applicationExe, 'resources/app.asar', 'ffmpeg.dll', 'libEGL.dll')) {
             $installedPath = Join-Path $qaInstall $relativePath
             if (-not (Test-Path -LiteralPath $installedPath -PathType Leaf)) {
               throw "Installed payload is missing $relativePath for $env:WINDOWS_ARCH."
             }
           }
 
-          $uninstaller = Join-Path $qaInstall 'Uninstall Typesetly.exe'
+          $uninstaller = Join-Path $qaInstall "Uninstall $env:PACKAGE_PRODUCT.exe"
           if (Test-Path -LiteralPath $uninstaller -PathType Leaf) {
             Start-Process -FilePath $uninstaller -ArgumentList '/S' -Wait
           }
@@ -305,6 +311,8 @@ jobs:
       - name: Verify Linux distribution packages
         if: matrix.platform == 'linux'
         shell: bash
+        env:
+          PACKAGE_PRODUCT: ${{ inputs.nightly && 'Typesetly Nightly' || 'Typesetly' }}
         run: |
           for pattern in 'release/*.AppImage' 'release/*.deb' 'release/*.pacman'; do
             mapfile -t packages < <(compgen -G "$pattern" || true)
@@ -315,7 +323,7 @@ jobs:
           done
 
           tar -tf release/*.pacman > "$RUNNER_TEMP/typesetly-pacman-files.txt"
-          grep -Eq '(^|/)opt/Typesetly/' "$RUNNER_TEMP/typesetly-pacman-files.txt" || {
+          grep -F "opt/$PACKAGE_PRODUCT/" "$RUNNER_TEMP/typesetly-pacman-files.txt" >/dev/null || {
             echo '::error::The Arch/CachyOS package does not contain the Typesetly application payload.'
             exit 1
           }
@@ -334,6 +342,7 @@ jobs:
 
   release:
     name: Publish GitHub release
+    if: (inputs.nightly && github.ref == 'refs/heads/nightly') || (github.event_name == 'workflow_dispatch' && !inputs.nightly && github.ref == 'refs/heads/main')
     needs:
       - verify
       - build
@@ -362,6 +371,7 @@ jobs:
           sha256sum "${files[@]}" > SHA256SUMS.txt
 
       - name: Create or update release
+        if: ${{ !inputs.nightly }}
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -409,3 +419,27 @@ jobs:
           fi
 
           gh release create "$RELEASE_TAG" release-assets/* "${release_flags[@]}"
+
+      - name: Publish rolling Nightly prerelease
+        if: inputs.nightly
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NIGHTLY_VERSION: ${{ needs.verify.outputs.version }}
+        run: |
+          notes="Experimental Typesetly Nightly $NIGHTLY_VERSION, built from $GITHUB_SHA. Installs separately from stable and uses a separate library. Download the appropriate installer below. Automatic updates are disabled; get newer nightly builds from this page."
+          if gh release view nightly --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            # Keep the last successful downloads until the new uploads succeed.
+            gh release upload nightly release-assets/* --repo "$GITHUB_REPOSITORY" --clobber
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/nightly" -f sha="$GITHUB_SHA" -F force=true
+            gh release edit nightly --repo "$GITHUB_REPOSITORY" --title "Nightly" --prerelease --latest=false --notes "$notes"
+            # Remove only obsolete assets from the dedicated nightly release.
+            gh release view nightly --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' > "$RUNNER_TEMP/nightly-assets.txt"
+            while IFS= read -r asset; do
+              if [[ ! -f "release-assets/$asset" ]]; then
+                gh release delete-asset nightly "$asset" --repo "$GITHUB_REPOSITORY" --yes
+              fi
+            done < "$RUNNER_TEMP/nightly-assets.txt"
+          else
+            gh release create nightly release-assets/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Nightly" --prerelease --latest=false --notes "$notes"
+          fi
